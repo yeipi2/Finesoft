@@ -1,0 +1,42 @@
+﻿@inherits LayoutComponentBase
+
+<HeadContent>
+    <RadzenTheme Theme="material"/>
+</HeadContent>
+
+<main class="min-vh-100 d-flex align-items-center justify-content-center"
+      style="background: linear-gradient(to bottom right, #eff6ff, #e0e7ff);">
+
+    <section class="card shadow rounded-3 p-3" style="width: 26rem;">
+        <div class="card-body">
+
+            <div class="text-center m-4">
+                <img src="images/LogoFinesoft.png"
+                     style="width: 180px; height: auto;" alt="Logo"/>
+            </div>
+
+            <div class="text-center mb-2">
+                <p class="text-muted small mb-0">Sistema de Gestión de Soporte Técnico</p>
+            </div>
+
+            <div class="text-center mb-4">
+                <h2 class="fw-bold">Iniciar Sesión</h2>
+            </div>
+
+            <div>
+                @Body
+            </div>
+
+            <div class="mt-4 text-center">
+                <p class="text-muted small">
+                    Finesoft - Blvd. Juan de Dios Batiz #145 PTE <br/>
+                    Teléfono: (668) 817-1400
+                </p>
+            </div>
+
+        </div>
+    </section>
+</main>
+
+<RadzenComponents/>
+<RadzenNotification/>

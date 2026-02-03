@@ -1,0 +1,233 @@
+﻿@using fs_front.DTO
+
+<section class="container px-0">
+    <EditForm Model="_createProjectDto" OnValidSubmit="CreateProject">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Name" class="form-label fw-bold small">Nombre del Proyecto *</label>
+                    <InputText id="Name" class="form-control" placeholder="Sistema de Facturación"
+                               @bind-Value="_createProjectDto.Name"/>
+                    <ValidationMessage For="@(() => _createProjectDto.Name)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Description" class="form-label fw-bold small">Descripción</label>
+                    <InputText id="Description" class="form-control" placeholder="Descripción del proyecto..."
+                               @bind-Value="_createProjectDto.Description"/>
+                    <ValidationMessage For="@(() => _createProjectDto.Description)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="ClientId" class="form-label fw-bold small">Cliente *</label>
+                    @if (_isLoadingClients)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Cargando clientes...</span>
+                        </div>
+                    }
+                    else if (_clients == null || !_clients.Any())
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            No hay clientes disponibles. Por favor, cree un cliente primero.
+                        </div>
+                    }
+                    else
+                    {
+                        <InputSelect id="ClientId" class="form-select" @bind-Value="_createProjectDto.ClientId">
+                            <option value="0">-- Seleccione un cliente --</option>
+                            @foreach (var client in _clients)
+                            {
+                                <option value="@client.Id">@client.CompanyName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _createProjectDto.ClientId)"/>
+                        
+                        @if (_selectedClient != null)
+                        {
+                            <div class="form-text mt-2">
+                                <strong>Contacto:</strong> @_selectedClient.ContactName<br/>
+                                <strong>Email:</strong> @_selectedClient.Email<br/>
+                                <strong>Teléfono:</strong> @_selectedClient.Phone
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3 border rounded p-3">
+            <div class="form-check form-switch">
+                <label class="form-check-label fw-bold" for="IsActive">Proyecto Activo</label>
+                <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="_createProjectDto.IsActive"/>
+            </div>
+            <div class="form-text">Determina si el proyecto puede recibir nuevos tickets</div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || _isLoadingClients)">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                <i class="bi bi-check-lg"></i>
+                @(_isEditMode ? "Actualizar Proyecto" : "Crear Proyecto")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3" role="alert">
+                @_errorMessage
+            </div>
+        }
+    </EditForm>
+</section>
+
+@inject IProjectApiService ProjectApiService
+@inject IClientApiService ClientApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@code {
+    [Parameter] public int? ProjectId { get; set; }
+
+    private ProjectDto _createProjectDto = new();
+    private List<ClientDto>? _clients;
+    private ClientDto? _selectedClient => _clients?.FirstOrDefault(c => c.Id == _createProjectDto.ClientId);
+    
+    private bool _isSaving = false;
+    private bool _isLoadingClients = false;
+    private string? _errorMessage;
+    private bool _isEditMode => ProjectId.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+        
+        if (_isEditMode)
+        {
+            await LoadProject();
+        }
+    }
+
+    private async Task LoadClients()
+    {
+        _isLoadingClients = true;
+        try
+        {
+            _clients = await ClientApiService.GetClientsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar clientes: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingClients = false;
+        }
+    }
+
+    private async Task LoadProject()
+    {
+        try
+        {
+            var project = await ProjectApiService.GetProjectByIdAsync(ProjectId!.Value);
+            if (project != null)
+            {
+                _createProjectDto = new ProjectDto
+                {
+                    Id = project.Id,
+                    Name = project.Name,
+                    Description = project.Description,
+                    ClientId = project.ClientId,
+                    IsActive = project.IsActive
+                };
+            }
+            else
+            {
+                _errorMessage = "Proyecto no encontrado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar el proyecto: {ex.Message}";
+        }
+    }
+
+    private async Task CreateProject()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            if (_isEditMode)
+            {
+                var result = await ProjectApiService.UpdateProjectAsync(ProjectId!.Value, _createProjectDto);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Proyecto actualizado correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el proyecto.";
+                }
+            }
+            else
+            {
+                var result = await ProjectApiService.CreateProjectAsync(_createProjectDto);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Proyecto creado correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? "No se pudo crear el proyecto.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al {(_isEditMode ? "actualizar" : "crear")} el proyecto: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

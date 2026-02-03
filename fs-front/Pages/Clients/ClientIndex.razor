@@ -1,0 +1,201 @@
+﻿@page "/clientes"
+@using fs_front.DTO
+@inject IClientApiService ClientApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Finesoft - Clientes</PageTitle>
+
+<container class="container p-4">
+    <section class="container-fluid p-xl-5">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-people fs-1 text-primary me-3"></i>
+                <div>
+                    <p class="display-6 fw-bolder mb-2">Clientes Registrados</p>
+                    <p class="text-muted mb-0">Lista de todos los clientes con sus modalidades de servicio</p>
+                </div>
+            </div>
+            <button onclick="@ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+                <i class="bi bi-plus-lg"></i>
+                Nuevo Cliente
+            </button>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 col-lg-4">
+                <input type="text" class="form-control" placeholder="Buscar clientes..."/>
+            </div>
+        </div>
+    </section>
+
+    <section class="container-fluid p-xl-5 ">
+        <table class="table table-hover mb-0">
+            <tbody>
+            @if (_clients != null && _clients.Any())
+            {
+                @foreach (var client in _clients)
+                {
+                    <tr>
+                        <td class="fw-bold ps-4">@client.CompanyName</td>
+                        <td>
+                            <div class="fw-bold">@client.ContactName</div>
+                            <div class="text-muted small">@client.Phone</div>
+                        </td>
+                        <td class="fw-bold">@client.Email</td>
+                        <td>
+                            @if (client.ServiceMode == "Póliza Mensual")
+                            {
+                                <div class="fw-bold">
+                                    <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
+                                    <div class="text-muted small">@client.MonthlyRate</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-dark">@client.ServiceMode</span>
+                            }
+                        </td>
+                        <td>
+                            @if (client.IsActive)
+                            {
+                                <span class="badge bg-success">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactivo</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">1 proyectos</span>
+                        </td>
+
+                        <td class="text-center">
+                            <button @onclick="@(() => ShowEditModal(client.Id))"
+                                    class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button @onclick="@(() => DeleteClient(client.Id, client.CompanyName))"
+                                    class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="7" class="text-center py-4">No hay clientes registrados.</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+</container>
+
+
+@code {
+    private List<ClientDto>? _clients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        try
+        {
+            _clients = await ClientApiService.GetClientsAsync();
+            StateHasChanged();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            ShowNotification("Error", "No se pudo cargar la lista de clientes.", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ShowCreateModal()
+    {
+        var result = await DialogService.OpenAsync<ClientForm>("Crear Cliente",
+            options: new DialogOptions()
+            {
+                Width = "600px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadClients();
+        }
+    }
+
+    private async Task ShowEditModal(int? clientId)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "UserId", clientId }
+        };
+
+        var result = await DialogService.OpenAsync<ClientForm>("Editar Cliente",
+            parameters,
+            options: new DialogOptions()
+            {
+                Width = "600px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadClients();
+        }
+    }
+
+    private async Task DeleteClient(int? clientId, string clientName)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Estás seguro de que quieres eliminar a {clientName}?",
+            "Confirmar Eliminación",
+            new ConfirmOptions { OkButtonText = "Sí, Eliminar", CancelButtonText = "Cancelar" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var (success, errorMessage) = await ClientApiService.DeleteClientAsync(clientId);
+
+                if (success)
+                {
+                    ShowNotification("Éxito", "Cliente eliminado correctamente.", NotificationSeverity.Success);
+                    await LoadClients();
+                }
+                else
+                {
+                    ShowNotification("Error", errorMessage ?? "No se pudo eliminar el cliente.", NotificationSeverity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowNotification("Error Grave", ex.Message, NotificationSeverity.Error);
+            }
+        }
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+
+}

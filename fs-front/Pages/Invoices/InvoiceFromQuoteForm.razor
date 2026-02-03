@@ -1,0 +1,244 @@
+﻿@using fs_front.DTO
+
+<section class="container px-2">
+    <EditForm Model="_createInvoiceDto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator/>
+
+        <div class="mb-3">
+            <label for="QuoteId" class="form-label fw-bold small">Seleccionar Cotización *</label>
+            @if (_isLoadingQuotes)
+            {
+                <div class="d-flex align-items-center">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span>Cargando cotizaciones...</span>
+                </div>
+            }
+            else if (_quotes == null || !_quotes.Any())
+            {
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    No hay cotizaciones disponibles para convertir en factura.
+                </div>
+            }
+            else
+            {
+                <select id="QuoteId" class="form-select" @bind="_createInvoiceDto.QuoteId" @bind:after="OnQuoteSelected">
+                    <option value="0">-- Seleccione una cotización --</option>
+                    @foreach (var quote in _quotes)
+                    {
+                        <option value="@quote.Id">
+                            @quote.QuoteNumber - @quote.ClientName - @quote.Total.ToString("C")
+                        </option>
+                    }
+                </select>
+                <ValidationMessage For="@(() => _createInvoiceDto.QuoteId)"/>
+            }
+        </div>
+
+        @if (_selectedQuote != null)
+        {
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Detalles de la Cotización</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Cliente:</strong> @_selectedQuote.ClientName</p>
+                            <p><strong>Número:</strong> @_selectedQuote.QuoteNumber</p>
+                            <p><strong>Fecha:</strong> @_selectedQuote.CreatedAt.ToString("dd/MM/yyyy")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Estado:</strong> <span class="badge bg-success">@_selectedQuote.Status</span></p>
+                            <p><strong>Subtotal:</strong> @_selectedQuote.Subtotal.ToString("C")</p>
+                            <p><strong>IVA:</strong> @_selectedQuote.Tax.ToString("C")</p>
+                            <p><strong>Total:</strong> <span class="h5 text-success">@_selectedQuote.Total.ToString("C")</span></p>
+                        </div>
+                    </div>
+
+                    @if (_selectedQuote.Items.Any())
+                    {
+                        <hr/>
+                        <h6 class="mb-2">Artículos:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th class="text-center">Cant.</th>
+                                    <th class="text-end">P. Unit.</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var item in _selectedQuote.Items)
+                                {
+                                    <tr>
+                                        <td>@item.Description</td>
+                                        <td class="text-center">@item.Quantity</td>
+                                        <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                                        <td class="text-end">@item.Subtotal.ToString("C")</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="InvoiceDate" class="form-label fw-bold small">Fecha de Factura</label>
+                <InputDate id="InvoiceDate" class="form-control" @bind-Value="_createInvoiceDto.InvoiceDate"/>
+            </div>
+
+            <div class="col-md-6">
+                <label for="DueDate" class="form-label fw-bold small">Fecha de Vencimiento</label>
+                <InputDate id="DueDate" class="form-control" @bind-Value="_createInvoiceDto.DueDate"/>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="PaymentMethod" class="form-label fw-bold small">Método de Pago</label>
+            <InputText id="PaymentMethod" class="form-control" 
+                       placeholder="Transferencia, Efectivo, Tarjeta..."
+                       @bind-Value="_createInvoiceDto.PaymentMethod"/>
+        </div>
+
+        <div class="mb-3">
+            <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
+            <InputTextArea id="Notes" class="form-control" rows="3"
+                           placeholder="Términos de pago, condiciones adicionales..."
+                           @bind-Value="_createInvoiceDto.Notes"/>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" 
+                    disabled="@(_isSaving || _createInvoiceDto.QuoteId == 0)">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-receipt"></i>
+                Crear Factura desde Cotización
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3">
+                @_errorMessage
+            </div>
+        }
+    </EditForm>
+</section>
+
+@inject IInvoiceApiService InvoiceApiService
+@inject IQuoteApiService QuoteApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    private CreateInvoiceFromQuoteDto _createInvoiceDto = new();
+    private List<QuoteDetailDto>? _quotes;
+    private QuoteDetailDto? _selectedQuote;
+
+    private bool _isSaving = false;
+    private bool _isLoadingQuotes = false;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadQuotes();
+        
+        _createInvoiceDto = new CreateInvoiceFromQuoteDto
+        {
+            InvoiceDate = DateTime.Now,
+            DueDate = DateTime.Now.AddDays(30)
+        };
+    }
+
+    private async Task LoadQuotes()
+    {
+        _isLoadingQuotes = true;
+        try
+        {
+            var allQuotes = await QuoteApiService.GetQuotesAsync();
+            _quotes = allQuotes?.Where(q => q.Status == "Aceptada").ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"error al cargar cotizaciones: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingQuotes = false;
+        }
+    }
+
+    private async Task OnQuoteSelected()
+    {
+        if (_createInvoiceDto.QuoteId > 0)
+        {
+            try
+            {
+                _selectedQuote = await QuoteApiService.GetQuoteByIdAsync(_createInvoiceDto.QuoteId);
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"error al cargar detalles de cotización: {ex.Message}";
+            }
+        }
+        else
+        {
+            _selectedQuote = null;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await InvoiceApiService.CreateInvoiceFromQuoteAsync(_createInvoiceDto);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Factura creada desde cotización correctamente.", NotificationSeverity.Success);
+                DialogService.Close(true);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "no se pudo crear la factura desde la cotización.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

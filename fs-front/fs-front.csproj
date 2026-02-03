@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BlazorAnimate" Version="3.0.0" />
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.20" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.15" PrivateAssets="all" />
+    <PackageReference Include="Radzen.Blazor" Version="7.3.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Pages\Clients\Shared\ActivityForm.razor" />
+    <_ContentIncludedByDefault Remove="Pages\Clients\Shared\ActivityIndex.razor" />
+    <_ContentIncludedByDefault Remove="Pages\Clients\Shared\ServiceForm.razor" />
+    <_ContentIncludedByDefault Remove="Pages\Clients\Shared\ServiceIndex.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Pages\Quotes\Shared\" />
+    <Folder Include="wwwroot\NewFolder\" />
+  </ItemGroup>
+
+</Project>

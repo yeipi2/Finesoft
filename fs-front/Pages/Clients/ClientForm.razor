@@ -1,0 +1,235 @@
+﻿@using fs_front.DTO
+@inject IClientApiService ClientApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center p-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <span class="ms-3 fs-5">Cargando datos del cliente...</span>
+    </div>
+}
+else
+{
+    <section class="container px-0">
+        <EditForm Model="_clientModel" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="mb-3">
+                        <label for="CompanyName" class="form-label fw-bold small">Nombre de la Empresa *</label>
+                        <InputText id="CompanyName" class="form-control" placeholder="Empresa S.A. de C.V."
+                                   @bind-Value="_clientModel.CompanyName"/>
+                        <ValidationMessage For="@(() => _clientModel.CompanyName)"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ContactName" class="form-label fw-bold small">Nombre del Contacto *</label>
+                        <InputText id="ContactName" class="form-control" placeholder="Juan Pérez"
+                                   @bind-Value="_clientModel.ContactName"/>
+                        <ValidationMessage For="@(() => _clientModel.ContactName)"/>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="Email" class="form-label fw-bold small">Email *</label>
+                        <InputText id="Email" type="email" class="form-control" placeholder="correo@empresa.com"
+                                   @bind-Value="_clientModel.Email"/>
+                        <ValidationMessage For="@(() => _clientModel.Email)"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="Phone" class="form-label fw-bold small">Teléfono *</label>
+                        <InputText id="Phone" class="form-control" placeholder="+52 1234567890"
+                                   @bind-Value="_clientModel.Phone"/>
+                        <ValidationMessage For="@(() => _clientModel.Phone)"/>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="RFC" class="form-label fw-bold small">RFC *</label>
+                        <InputText id="RFC" class="form-control" placeholder="ABCDEFGHIJ12"
+                                   @bind-Value="_clientModel.RFC"/>
+                        <ValidationMessage For="@(() => _clientModel.RFC)"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="Address" class="form-label fw-bold small">Dirección *</label>
+                <InputText id="Address" class="form-control" placeholder="Av. Calle Azul, 123, Col. Centro"
+                           @bind-Value="_clientModel.Address"/>
+                <ValidationMessage For="@(() => _clientModel.Address)"/>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ServiceModality" class="form-label fw-bold small">Modalidad de Servicio *</label>
+                        <InputSelect id="ServiceModality" class="form-select"
+                                     @bind-Value="_clientModel.ServiceMode">
+                            <option class="small" value="Por Evento">Por Evento</option>
+                            <option class="small" value="Mensual">Póliza Mensual</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _clientModel.ServiceMode)"/>
+                    </div>
+                </div>
+                @if (_clientModel.ServiceMode == "Mensual")
+                {
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="MonthlyRate" class="form-label fw-bold small">Tarifa Mensual (MXN) *</label>
+                            <InputNumber id="MonthlyRate" class="form-control small" placeholder="0.00"
+                                         @bind-Value="_clientModel.MonthlyRate"/>
+                            <small class="text-muted super-tiny">Tarifa fija mensual para clientes con póliza</small>
+                            <ValidationMessage For="@(() => _clientModel.MonthlyRate)"/>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="mb-3 border rounded p-3">
+                <div class="form-check form-switch">
+                    <label class="form-check-label fw-bold" for="IsActive">Cliente Activo</label>
+                    <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="_clientModel.IsActive"/>
+                </div>
+                <div class="form-text">Determina si el cliente puede recibir nuevos servicios</div>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                    @if (_isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    <i class="bi bi-check-lg"></i>
+                    @( _isEditMode ? "Actualizar Cliente" : "Guardar Cliente" )
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    @_errorMessage
+                </div>
+            }
+        </EditForm>
+    </section>
+}
+
+
+@code {
+    [Parameter] public int UserId { get; set; } 
+
+    private ClientDto _clientModel = new();
+    private bool _isSaving = false;
+    private bool _isLoading = false;
+    private string? _errorMessage;
+    private bool _isEditMode => UserId > 0; 
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isEditMode)
+        {
+            _isLoading = true;
+            try
+            {
+                _clientModel = await ClientApiService.GetClientByIdAsync(UserId);
+                if (_clientModel == null)
+                {
+                    _errorMessage = "No se pudo encontrar el cliente para editar.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Error al cargar los datos: {ex.Message}";
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+        else
+        {
+            _clientModel = new ClientDto
+            {
+                IsActive = true,
+                ServiceMode = "Por Evento" 
+            };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            bool success = false;
+            string? errorMessage = null;
+
+            if (_isEditMode)
+            {
+                (success, errorMessage) = await ClientApiService.UpdateClientAsync(UserId, _clientModel);
+            }
+            else
+            {
+                var createResult = await ClientApiService.CreateClientAsync(_clientModel);
+                success = createResult.Success;
+                errorMessage = createResult.ErrorMessage;
+            }
+
+            if (success)
+            {
+                ShowNotification("Éxito", _isEditMode ? "Cliente actualizado" : "Cliente creado", NotificationSeverity.Success);
+                DialogService.Close(true); 
+            }
+            else
+            {
+                _errorMessage = errorMessage ?? "Ocurrió un error desconocido.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

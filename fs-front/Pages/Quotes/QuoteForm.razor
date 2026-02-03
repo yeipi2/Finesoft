@@ -1,0 +1,356 @@
+﻿@using fs_front.DTO
+
+<section class="container px-2" style="max-height: 500px; overflow-y: auto;">
+    <EditForm Model="_quoteDto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator/>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="ClientId" class="form-label fw-bold small">Cliente *</label>
+                @if (_isLoadingClients)
+                {
+                    <div class="d-flex align-items-center">
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span>Cargando clientes...</span>
+                    </div>
+                }
+                else
+                {
+                    <select id="ClientId" class="form-select" @bind="_quoteDto.ClientId">
+                        <option value="0">-- Seleccione un cliente --</option>
+                        @if (_clients != null)
+                        {
+                            @foreach (var client in _clients)
+                            {
+                                <option value="@client.Id">@client.CompanyName</option>
+                            }
+                        }
+                    </select>
+                    <ValidationMessage For="@(() => _quoteDto.ClientId)"/>
+                }
+            </div>
+
+            <div class="col-md-3">
+                <label for="ValidUntil" class="form-label fw-bold small">Válida Hasta</label>
+                <InputDate id="ValidUntil" class="form-control" @bind-Value="_quoteDto.ValidUntil"/>
+            </div>
+
+            <div class="col-md-3">
+                <label for="Status" class="form-label fw-bold small">Estado *</label>
+                <select id="Status" class="form-select" @bind="_quoteDto.Status">
+                    <option value="Borrador">Borrador</option>
+                    <option value="Enviada">Enviada</option>
+                    <option value="Aceptada">Aceptada</option>
+                    <option value="Rechazada">Rechazada</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold small">Artículos de la Cotización</label>
+            <div class="border rounded p-3 mb-3" style="max-height: 300px; overflow-y: auto;">
+                @foreach (var (item, index) in _quoteDto.Items.Select((item, i) => (item, i)))
+                {
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">Artículo #@(index + 1)</h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => RemoveItem(index)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-md-12">
+                                    <label class="form-label small">Descripción *</label>
+                                    <InputText class="form-control form-control-sm"
+                                               @bind-Value="item.Description"
+                                               placeholder="Descripción del servicio o producto"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small">Cantidad *</label>
+                                    <InputNumber class="form-control form-control-sm"
+                                                 @bind-Value="item.Quantity"
+                                                 @bind-Value:after="RecalculateTotals"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small">Precio Unitario *</label>
+                                    <InputNumber class="form-control form-control-sm"
+                                                 @bind-Value="item.UnitPrice"
+                                                 @bind-Value:after="RecalculateTotals"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small">Subtotal</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           value="@((item.Quantity * item.UnitPrice).ToString("C"))"
+                                           readonly/>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label class="form-label small">Servicio (Opcional)</label>
+                                    <select class="form-select form-select-sm" @bind="item.ServiceId">
+                                        <option value="">-- Sin servicio asociado --</option>
+                                        @if (_services != null)
+                                        {
+                                            @foreach (var service in _services)
+                                            {
+                                                <option value="@service.Id">@service.Name - $@service.HourlyRate</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (!_quoteDto.Items.Any())
+                {
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox fs-4"></i>
+                        <p>No hay artículos. Agregue al menos uno.</p>
+                    </div>
+                }
+            </div>
+
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddItem">
+                <i class="bi bi-plus-lg"></i> Agregar Artículo
+            </button>
+        </div>
+
+        <div class="mb-3">
+            <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
+            <InputTextArea id="Notes" class="form-control" rows="3"
+                           placeholder="Condiciones, términos adicionales..."
+                           @bind-Value="_quoteDto.Notes"/>
+        </div>
+
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8"></div>
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <strong>@_calculatedSubtotal.ToString("C")</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>IVA (16%):</span>
+                            <strong>@_calculatedTax.ToString("C")</strong>
+                        </div>
+                        <hr/>
+                        <div class="d-flex justify-content-between">
+                            <span class="h5">Total:</span>
+                            <strong class="h5 text-success">@_calculatedTotal.ToString("C")</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || !_quoteDto.Items.Any())">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-check-lg"></i>
+                @(_isEditMode ? "Actualizar" : "Crear") Cotización
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3">
+                @_errorMessage
+            </div>
+        }
+    </EditForm>
+</section>
+
+@inject IQuoteApiService QuoteApiService
+@inject IClientApiService ClientApiService
+@inject IServiceApiService ServiceApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    [Parameter] public int? QuoteId { get; set; }
+
+    private QuoteDto _quoteDto = new();
+    private List<ClientDto>? _clients;
+    private List<ServiceDetailDto>? _services;
+
+    private decimal _calculatedSubtotal = 0;
+    private decimal _calculatedTax = 0;
+    private decimal _calculatedTotal = 0;
+
+    private bool _isSaving = false;
+    private bool _isLoadingClients = false;
+    private string? _errorMessage;
+    private bool _isEditMode => QuoteId.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInitialData();
+
+        if (_isEditMode)
+        {
+            await LoadQuote();
+        }
+        else
+        {
+            _quoteDto = new QuoteDto
+            {
+                Status = "Borrador",
+                ValidUntil = DateTime.Now.AddDays(30)
+            };
+        }
+
+        RecalculateTotals();
+    }
+
+    private async Task LoadInitialData()
+    {
+        _isLoadingClients = true;
+        try
+        {
+            var clientsTask = ClientApiService.GetClientsAsync();
+            var servicesTask = ServiceApiService.GetServicesAsync();
+
+            await Task.WhenAll(clientsTask, servicesTask);
+
+            _clients = await clientsTask;
+            _services = await servicesTask;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar datos: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingClients = false;
+        }
+    }
+
+    private async Task LoadQuote()
+    {
+        try
+        {
+            var quote = await QuoteApiService.GetQuoteByIdAsync(QuoteId!.Value);
+            if (quote != null)
+            {
+                _quoteDto = new QuoteDto
+                {
+                    Id = quote.Id,
+                    ClientId = quote.ClientId,
+                    ValidUntil = quote.ValidUntil,
+                    Status = quote.Status,
+                    Notes = quote.Notes,
+                    Items = quote.Items.Select(i => new QuoteItemDto
+                    {
+                        Id = i.Id,
+                        Description = i.Description,
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice,
+                        ServiceId = i.ServiceId
+                    }).ToList()
+                };
+                RecalculateTotals();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar cotización: {ex.Message}";
+        }
+    }
+
+    private void AddItem()
+    {
+        _quoteDto.Items.Add(new QuoteItemDto
+        {
+            Quantity = 1,
+            UnitPrice = 0
+        });
+        RecalculateTotals();
+    }
+
+    private void RemoveItem(int index)
+    {
+        _quoteDto.Items.RemoveAt(index);
+        RecalculateTotals();
+    }
+
+    private void RecalculateTotals()
+    {
+        _calculatedSubtotal = _quoteDto.Items.Sum(i => i.Quantity * i.UnitPrice);
+        _calculatedTax = _calculatedSubtotal * 0.16m;
+        _calculatedTotal = _calculatedSubtotal + _calculatedTax;
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (_isEditMode)
+            {
+                var result = await QuoteApiService.UpdateQuoteAsync(QuoteId!.Value, _quoteDto);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Cotización actualizada correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar la cotización.";
+                }
+            }
+            else
+            {
+                var result = await QuoteApiService.CreateQuoteAsync(_quoteDto);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Cotización creada correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? "No se pudo crear la cotización.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

@@ -1,0 +1,188 @@
+﻿@using fs_front.DTO
+
+<div style="width: 100%; max-width: 500px;">
+    <RadzenTemplateForm TItem="UserDto" Data="@_model" Submit="@OnSubmit">
+        <RadzenStack Gap="1.5rem">
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" AllowClose="true"
+                             Close="@(() => _errorMessage = null)">
+                    @_errorMessage
+                </RadzenAlert>
+            }
+
+            <RadzenStack Gap="1rem">
+                <RadzenFormField Text="Nombre de Usuario" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextBox @bind-Value="_model.UserName" Name="UserName" class="w-50"
+                                       Placeholder="Ingrese el nombre de usuario"/>
+                    </ChildContent>
+                </RadzenFormField>
+
+                <RadzenFormField Text="Correo Electrónico" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextBox @bind-Value="_model.Email" Name="Email" class="w-50"
+                                       Placeholder="usuario@ejemplo.com"/>
+                    </ChildContent>
+                </RadzenFormField>
+
+                @if (!_isEditMode)
+                {
+                    <RadzenFormField Text="Contraseña" Variant="Variant.Outlined">
+                        <ChildContent>
+                            <RadzenPassword @bind-Value="_model.Password" Name="Password" class="w-50"
+                                            Placeholder="Mínimo 6 caracteres"/>
+                        </ChildContent>
+                    </RadzenFormField>
+                }
+
+                <RadzenFormField Text="Rol" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenDropDown @bind-Value="_model.RoleName" Name="RoleName"
+                                        Data="@_availableRoles" class="w-50"
+                                        Placeholder="Seleccionar rol..."/>
+                    </ChildContent>
+                </RadzenFormField>
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End"
+                         Gap="0.5rem" class="mt-3">
+                <RadzenButton Text="Cancelar" Icon="cancel" ButtonStyle="ButtonStyle.Light"
+                              Click="@OnCancel" Disabled="@_isSaving"/>
+
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="save"
+                              Text="@(_isEditMode ? "Actualizar" : "Crear")"
+                              ButtonStyle="ButtonStyle.Primary" IsBusy="@_isSaving"/>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenTemplateForm>
+</div>
+
+@inject IUserApiService UserApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    [Parameter] public string? UserId { get; set; }
+
+    private UserDto _model = new();
+    private List<string> _availableRoles = new() { "Admin", "User", "Technician" };
+    private bool _isSaving = false;
+    private string? _errorMessage;
+    private bool _isEditMode => !string.IsNullOrEmpty(UserId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEditMode)
+        {
+            await LoadUserForEdit();
+        }
+    }
+
+    private async Task LoadUserForEdit()
+    {
+        try
+        {
+            var user = await UserApiService.GetUserByIdAsync(UserId!);
+            if (user != null)
+            {
+                _model = new UserDto
+                {
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    RoleName = user.RoleName
+                };
+            }
+            else
+            {
+                _errorMessage = $"No se pudo encontrar el usuario con ID {UserId}.";
+                DialogService.Close(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar el usuario: {ex.Message}";
+        }
+    }
+
+    private async Task OnSubmit(UserDto model)
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (_isEditMode)
+            {
+                await UpdateUser(model);
+            }
+            else
+            {
+                await CreateUser(model);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task CreateUser(UserDto model)
+    {
+        var result = await UserApiService.CreateUserAsync(model);
+
+        if (result.Success)
+        {
+            ShowNotification("Éxito", "Usuario creado correctamente.", NotificationSeverity.Success);
+            DialogService.Close(true);
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage ?? "No se pudo crear el usuario.";
+        }
+    }
+
+    private async Task UpdateUser(UserDto model)
+    {
+        var updateUserDto = new UserDto
+        {
+            UserName = model.UserName,
+            Email = model.Email,
+            RoleName = model.RoleName
+        };
+
+        var result = await UserApiService.UpdateUserAsync(UserId!, updateUserDto);
+
+        if (result.Success)
+        {
+            ShowNotification("Éxito", "Usuario actualizado correctamente.", NotificationSeverity.Success);
+            DialogService.Close(true);
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el usuario.";
+        }
+    }
+
+    private void OnCancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+
+}

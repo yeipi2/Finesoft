@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "fs-backend", "fn-backend\fs-backend.csproj", "{75E07D19-D312-41E5-B3A0-783BE1ADAB23}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "fs-front", "fs-front\fs-front.csproj", "{AFEAEE33-AABC-40FE-A788-E2191B21AED1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{75E07D19-D312-41E5-B3A0-783BE1ADAB23}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75E07D19-D312-41E5-B3A0-783BE1ADAB23}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75E07D19-D312-41E5-B3A0-783BE1ADAB23}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75E07D19-D312-41E5-B3A0-783BE1ADAB23}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFEAEE33-AABC-40FE-A788-E2191B21AED1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFEAEE33-AABC-40FE-A788-E2191B21AED1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFEAEE33-AABC-40FE-A788-E2191B21AED1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFEAEE33-AABC-40FE-A788-E2191B21AED1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9763FC1F-7D50-4BDF-B962-0733709DBF63}
+	EndGlobalSection
+EndGlobal

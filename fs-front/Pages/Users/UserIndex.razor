@@ -1,0 +1,263 @@
+﻿@page "/usuarios"
+@using fs_front.DTO
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Finesoft - Usuarios</PageTitle>
+
+<div class="">
+    <section class="container-fluid p-xl-5">
+
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-people fs-1 text-primary me-3"></i>
+                <div>
+                    <p class="display-6 fw-bolder mb-2">Usuarios Registrados</p>
+                    <p class="text-muted mb-0">Administración de acceso y control de roles</p>
+                </div>
+            </div>
+
+            <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold small"
+                    @onclick="ShowCreateModal">
+                <i class="bi bi-plus-lg"></i> Nuevo Usuario
+            </button>
+        </div>
+
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-5 col-lg-4">
+                <input type="text" class="form-control"
+                       placeholder="Buscar usuarios..."
+                       @bind="_searchTerm"
+                       @bind:event="oninput"/>
+            </div>
+        </div>
+
+    </section>
+
+    <section class="container-fluid p-xl-5">
+
+        @if (_isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Cargando usuarios...</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+
+                <RadzenDataGrid @ref="_grid"
+                                Data="@_filteredUsers"
+                                TItem="UserDto"
+                                AllowPaging="false"
+                                AllowSorting="true"
+                                GridLines="DataGridGridLines.Both"
+                                class="table table-hover">
+                    <Columns>
+
+                        <RadzenDataGridColumn TItem="UserDto" Property="UserName" Title="Usuario">
+                            <Template Context="user">
+                                <div class="fw-bold text-primary">@user.UserName</div>
+                                <div class="text-muted small">@user.Email</div>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="UserDto" Property="RoleName" Title="Rol" Width="150px">
+                            <Template Context="user">
+                                <span class="badge bg-info text-dark">@user.RoleName</span>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="UserDto" Title="Acciones" TextAlign="TextAlign.Center"
+                                              Width="120px">
+                            <Template Context="user">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            @onclick="() => EditUser(user)"
+                                            @onclick:stopPropagation="true">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteUser(user)"
+                                            @onclick:stopPropagation="true">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </div>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                    </Columns>
+                </RadzenDataGrid>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_loadErrorMessage))
+        {
+            <div class="alert alert-danger mt-3">
+                <strong>Error:</strong> @_loadErrorMessage
+            </div>
+        }
+
+    </section>
+</div>
+
+@inject IUserApiService UserApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    private List<UserDto>? _users;
+    private IEnumerable<UserDto> _filteredUsers = Enumerable.Empty<UserDto>();
+    private RadzenDataGrid<UserDto>? _grid;
+    private string? _loadErrorMessage;
+    private bool _isLoading;
+    private string _searchTerm = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _isLoading = true;
+        _loadErrorMessage = null;
+
+        try
+        {
+            _users = await UserApiService.GetUsersAsync();
+
+            if (_users == null)
+            {
+                _loadErrorMessage = "No se pudo obtener la lista de usuarios desde el servidor.";
+                _filteredUsers = Enumerable.Empty<UserDto>();
+            }
+            else
+            {
+                FilterUsers();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadErrorMessage = $"Error inesperado: {ex.Message}";
+            _users = new();
+            _filteredUsers = Enumerable.Empty<UserDto>();
+            ShowNotification("Error", ex.Message, NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void FilterUsers()
+    {
+        if (_users == null) return;
+
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _filteredUsers = _users;
+        }
+        else
+        {
+            var searchLower = _searchTerm.ToLower();
+            _filteredUsers = _users.Where(u =>
+                u.UserName.ToLower().Contains(searchLower) ||
+                u.Email.ToLower().Contains(searchLower) ||
+                u.RoleName.ToLower().Contains(searchLower));
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+        FilterUsers();
+        StateHasChanged();
+    }
+
+    private async Task ShowCreateModal()
+    {
+        var result = await DialogService.OpenAsync<UserForm>("Crear Usuario",
+            options: new DialogOptions()
+            {
+                Width = "500px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadUsers();
+        }
+    }
+
+    private async Task EditUser(UserDto user)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "UserId", user.Id }
+        };
+
+        var result = await DialogService.OpenAsync<UserForm>("Editar Usuario", parameters,
+            options: new DialogOptions()
+            {
+                Width = "500px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadUsers();
+        }
+    }
+
+    private async Task DeleteUser(UserDto user)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Estás seguro de que deseas eliminar al usuario '{user.UserName}'?",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var result = await UserApiService.DeleteUserAsync(user.Id);
+
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Usuario eliminado correctamente.", NotificationSeverity.Success);
+                    await LoadUsers();
+                }
+                else
+                {
+                    _loadErrorMessage = result.ErrorMessage;
+                    ShowNotification("Error", result.ErrorMessage ?? "Error al eliminar usuario", NotificationSeverity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowNotification("Error", $"Error inesperado: {ex.Message}", NotificationSeverity.Error);
+            }
+        }
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = severity == NotificationSeverity.Error ? 6000 : 4000,
+            ShowProgress = true
+        });
+    }
+
+}

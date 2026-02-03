@@ -1,0 +1,319 @@
+﻿@page "/proyectos"
+@using fs_front.DTO
+
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Finesoft - Proyectos</PageTitle>
+
+<container class="container p-4">
+    <section class="container-fluid p-xl-5">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-folder fs-1 text-primary me-3"></i>
+                <div>
+                    <p class="display-6 fw-bolder mb-2">Proyectos y Servicios Registrados</p>
+                    <p class="text-muted mb-0">Lista de todos los proyectos con sus servicios asociados</p>
+                </div>
+            </div>
+            <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+                <i class="bi bi-plus-lg"></i>
+                Nuevo Proyecto
+            </button>
+        </div>
+
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-5 col-lg-4">
+                <input type="text" class="form-control" placeholder="Buscar proyectos..."
+                       @bind="_searchText" @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-7 col-lg-8 d-flex justify-content-md-end">
+                <div class="btn-group" role="group">
+                    <NavLink href="proyectos" class="btn btn-outline-primary" Match="NavLinkMatch.All">
+                        <i class="bi bi-folder-fill me-1"></i> Proyectos
+                    </NavLink>
+                    <NavLink href="/proyectos/tipos-actividades" class="btn btn-outline-primary">
+                        <i class="bi bi-list-task me-1"></i> Tipos de Actividades
+                    </NavLink>
+                    <NavLink href="/proyectos/tipos-servicios" class="btn btn-outline-primary">
+                        <i class="bi bi-gear-fill me-1"></i> Tipos de Servicios
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container-fluid p-xl-5">
+        @if (_isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2 text-muted">Cargando proyectos...</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th scope="col" class="ps-4">Proyecto</th>
+                        <th scope="col">Cliente</th>
+                        <th scope="col">Servicios</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col" class="text-center">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @if (_projects != null && _filteredProjects.Any())
+                    {
+                        @foreach (var project in _filteredProjects)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold text-primary">@project.Name</div>
+                                    <div class="text-muted small">@project.Description</div>
+                                </td>
+                                <td>
+                                    @if (project.Client != null)
+                                    {
+                                        <div>
+                                            <div class="fw-bold">@project.Client.CompanyName</div>
+                                            <div class="text-muted small">
+                                                <i class="bi bi-person"></i> @project.Client.ContactName
+                                            </div>
+                                            <div class="text-muted small">
+                                                <i class="bi bi-envelope"></i> @project.Client.Email
+                                            </div>
+                                            <div class="text-muted small">
+                                                <i class="bi bi-telephone"></i> @project.Client.Phone
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Sin cliente</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (project.Services != null && project.Services.Any())
+                                    {
+                                        <div>
+                                            <span class="badge bg-primary">@project.Services.Count servicio(s)</span>
+                                            <div class="mt-1">
+                                                @foreach (var service in project.Services.Take(3))
+                                                {
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-gear"></i> @service.Name
+                                                    </div>
+                                                }
+                                                @if (project.Services.Count > 3)
+                                                {
+                                                    <div class="text-muted small">
+                                                        <i>+@(project.Services.Count - 3) más...</i>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark">Sin servicios</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (project.IsActive)
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Activo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-x-circle"></i> Inactivo
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            @onclick="() => ShowEditModal(project.Id)" 
+                                            title="Editar">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info me-1" 
+                                            @onclick="() => ViewProjectDetails(project.Id)" 
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            @onclick="() => ConfirmDelete(project)" 
+                                            title="Eliminar">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                @if (string.IsNullOrWhiteSpace(_searchText))
+                                {
+                                    <div>
+                                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                                        <p class="text-muted mt-2">No hay proyectos registrados.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div>
+                                        <i class="bi bi-search fs-1 text-muted"></i>
+                                        <p class="text-muted mt-2">No se encontraron proyectos que coincidan con "@_searchText"</p>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</container>
+
+@inject IProjectApiService ProjectApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@code {
+    private List<ProjectDetailDto>? _projects;
+    private string _searchText = string.Empty;
+    private bool _isLoading = false;
+
+    private IEnumerable<ProjectDetailDto> _filteredProjects =>
+        _projects?.Where(p =>
+            string.IsNullOrWhiteSpace(_searchText) ||
+            p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+            (p.Client?.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (p.Client?.ContactName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+        ) ?? Enumerable.Empty<ProjectDetailDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+    }
+
+    private async Task LoadProjects()
+    {
+        _isLoading = true;
+        try
+        {
+            _projects = await ProjectApiService.GetProjectsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al cargar proyectos: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ShowCreateModal()
+    {
+        var result = await DialogService.OpenAsync<ProjectForm>("Crear Proyecto",
+            options: new DialogOptions()
+            {
+                Width = "600px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadProjects();
+        }
+    }
+
+    private async Task ShowEditModal(int projectId)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ProjectId", projectId }
+        };
+
+        var result = await DialogService.OpenAsync<ProjectForm>("Editar Proyecto",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "600px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadProjects();
+        }
+    }
+
+    private void ViewProjectDetails(int projectId)
+    {
+        NavigationManager.NavigateTo($"/proyectos/{projectId}");
+    }
+
+    private async Task ConfirmDelete(ProjectDetailDto project)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar el proyecto '{project.Name}'?",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteProject(project.Id);
+        }
+    }
+
+    private async Task DeleteProject(int projectId)
+    {
+        try
+        {
+            var result = await ProjectApiService.DeleteProjectAsync(projectId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Proyecto eliminado correctamente.", NotificationSeverity.Success);
+                await LoadProjects();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar el proyecto.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al eliminar proyecto: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

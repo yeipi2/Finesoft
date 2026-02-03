@@ -1,0 +1,410 @@
+﻿@page "/cotizaciones/{QuoteId:int}"
+@using fs_front.DTO
+
+<PageTitle>Cotización @_quote?.QuoteNumber</PageTitle>
+
+<div class="container p-4">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando cotización...</p>
+        </div>
+    }
+    else if (_quote != null)
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/cotizaciones">Cotizaciones</a>
+                        </li>
+                        <li class="breadcrumb-item active">@_quote.QuoteNumber</li>
+                    </ol>
+                </nav>
+
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h1 class="display-6 fw-bold mb-2">@_quote.QuoteNumber</h1>
+                        <div class="d-flex gap-2 mb-2">
+                            @{
+                                var statusClass = _quote.Status switch
+                                {
+                                    "Borrador" => "bg-secondary",
+                                    "Enviada" => "bg-primary",
+                                    "Aceptada" => "bg-success",
+                                    "Rechazada" => "bg-danger",
+                                    "Expirada" => "bg-warning",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass fs-6">@_quote.Status</span>
+                            @if (_quote.ValidUntil.HasValue && _quote.ValidUntil.Value < DateTime.Now && _quote.Status != "Aceptada")
+                            {
+                                <span class="badge bg-warning fs-6">Expirada</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if (_quote.Status == "Borrador" || _quote.Status == "Enviada")
+                        {
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="bi bi-arrow-repeat"></i> Cambiar Estado
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><button class="dropdown-item" @onclick='() => ChangeStatus("Enviada")'>Marcar como Enviada</button></li>
+                                    <li><button class="dropdown-item" @onclick='() => ChangeStatus("Aceptada")'>Marcar como Aceptada</button></li>
+                                    <li><button class="dropdown-item" @onclick='() => ChangeStatus("Rechazada")'>Marcar como Rechazada</button></li>
+                                </ul>
+                            </div>
+                        }
+                        <button class="btn btn-success" @onclick="DownloadPdf">
+                            <i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF
+                        </button>
+                        <button class="btn btn-primary" @onclick="EditQuote">
+                            <i class="bi bi-pencil-fill"></i> Editar
+                        </button>
+                        <button class="btn btn-danger" @onclick="ConfirmDelete">
+                            <i class="bi bi-trash-fill"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-building"></i> Información del Cliente</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Cliente:</strong> @_quote.ClientName</p>
+                                <p><strong>Email:</strong> @_quote.ClientEmail</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Creada por:</strong> @_quote.CreatedByUserName</p>
+                                <p><strong>Fecha de creación:</strong> @_quote.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Artículos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-end">Precio Unit.</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var item in _quote.Items)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div>@item.Description</div>
+                                            @if (!string.IsNullOrEmpty(item.ServiceName))
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="bi bi-gear"></i> @item.ServiceName
+                                                </small>
+                                            }
+                                        </td>
+                                        <td class="text-center">@item.Quantity</td>
+                                        <td class="text-end">$@item.UnitPrice.ToString("N2")</td>
+                                        <td class="text-end fw-bold">$@item.Subtotal.ToString("N2")</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-8"></div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Subtotal:</span>
+                                            <strong>$@_quote.Subtotal.ToString("N2")</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>IVA (16%):</span>
+                                            <strong>$@_quote.Tax.ToString("N2")</strong>
+                                        </div>
+                                        <hr/>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="h5">Total:</span>
+                                            <strong class="h5 text-success">$@_quote.Total.ToString("N2")</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_quote.Notes))
+                {
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="bi bi-sticky"></i> Notas Adicionales</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">@_quote.Notes</p>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Detalles</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted">Número de Cotización</small>
+                            <div class="fw-bold">@_quote.QuoteNumber</div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Fecha de Creación</small>
+                            <div>@_quote.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                        @if (_quote.ValidUntil.HasValue)
+                        {
+                            <div class="mb-3">
+                                <small class="text-muted">Válida Hasta</small>
+                                <div>@_quote.ValidUntil.Value.ToString("dd/MM/yyyy")</div>
+                                @if (_quote.ValidUntil.Value < DateTime.Now)
+                                {
+                                    <small class="text-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Expirada
+                                    </small>
+                                }
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <small class="text-muted">Estado</small>
+                            <div>
+                                <span class="badge @statusClass">@_quote.Status</span>
+                            </div>
+                        </div>
+                        <div>
+                            <small class="text-muted">Creado Por</small>
+                            <div>@_quote.CreatedByUserName</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-calculator"></i> Resumen Financiero</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <small class="text-muted">Número de Artículos</small>
+                            <div class="fw-bold">@_quote.Items.Count</div>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Subtotal</small>
+                            <div class="fw-bold">$@_quote.Subtotal.ToString("N2")</div>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">IVA</small>
+                            <div class="fw-bold">$@_quote.Tax.ToString("N2")</div>
+                        </div>
+                        <hr/>
+                        <div>
+                            <small class="text-muted">Total</small>
+                            <div class="h4 text-success mb-0">$@_quote.Total.ToString("N2")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col">
+                <button class="btn btn-secondary" @onclick="GoBack">
+                    <i class="bi bi-arrow-left"></i> Volver a Cotizaciones
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Cotización no encontrada.
+        </div>
+    }
+</div>
+
+@inject IQuoteApiService QuoteApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+@code {
+    [Parameter] public int QuoteId { get; set; }
+
+    private QuoteDetailDto? _quote;
+    private bool _isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadQuote();
+    }
+
+    private async Task LoadQuote()
+    {
+        _isLoading = true;
+        try
+        {
+            _quote = await QuoteApiService.GetQuoteByIdAsync(QuoteId);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al cargar la cotización: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task EditQuote()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "QuoteId", QuoteId }
+        };
+
+        var result = await DialogService.OpenAsync<QuoteForm>("Editar Cotización",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "900px",
+                Height = "600px",
+                Resizable = true,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadQuote();
+        }
+    }
+
+    private async Task ChangeStatus(string newStatus)
+    {
+        try
+        {
+            var result = await QuoteApiService.ChangeQuoteStatusAsync(QuoteId, newStatus);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", $"Estado cambiado a '{newStatus}' correctamente.", NotificationSeverity.Success);
+                await LoadQuote();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo cambiar el estado.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task DownloadPdf()
+    {
+        try
+        {
+            var pdfBytes = await QuoteApiService.GenerateQuotePdfAsync(QuoteId);
+            if (pdfBytes != null)
+            {
+                var base64 = Convert.ToBase64String(pdfBytes);
+                await JSRuntime.InvokeVoidAsync("downloadFile", $"Cotizacion-{_quote?.QuoteNumber}.pdf", base64);
+                ShowNotification("Éxito", "PDF generado correctamente.", NotificationSeverity.Success);
+            }
+            else
+            {
+                ShowNotification("Error", "No se pudo generar el PDF.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al generar PDF: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar la cotización '{_quote?.QuoteNumber}'?",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteQuote();
+        }
+    }
+
+    private async Task DeleteQuote()
+    {
+        try
+        {
+            var result = await QuoteApiService.DeleteQuoteAsync(QuoteId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Cotización eliminada correctamente.", NotificationSeverity.Success);
+                NavigationManager.NavigateTo("/cotizaciones");
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar la cotización.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/cotizaciones");
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

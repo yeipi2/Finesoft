@@ -1,0 +1,355 @@
+﻿@using fs_front.DTO
+
+<section class="container px-0">
+    <EditForm Model="_ticketDto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator/>
+        <ValidationSummary class="alert alert-danger"/>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Title" class="form-label fw-bold small">Título *</label>
+                    <InputText id="Title" class="form-control" placeholder="Problema con el sistema de facturación"
+                               @bind-Value="_ticketDto.Title"/>
+                    <ValidationMessage For="@(() => _ticketDto.Title)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Description" class="form-label fw-bold small">Descripción *</label>
+                    <InputTextArea id="Description" class="form-control" rows="4"
+                                   placeholder="Describe detalladamente el problema o solicitud..."
+                                   @bind-Value="_ticketDto.Description"/>
+                    <ValidationMessage For="@(() => _ticketDto.Description)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="ProjectId" class="form-label fw-bold small">Proyecto *</label>
+                    @if (_isLoadingProjects)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Cargando proyectos...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <select id="ProjectId" class="form-select" @onchange="OnProjectChanged">
+                            <option value="0">-- Seleccione un proyecto --</option>
+                            @if (_projects != null)
+                            {
+                                @foreach (var project in _projects)
+                                {
+                                    <option value="@project.Id">@project.Name (@project.Client?.CompanyName)</option>
+                                }
+                            }
+                        </select>
+                    }
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="ServiceId" class="form-label fw-bold small">Servicio *</label>
+                    <select id="ServiceId" class="form-select" @bind="_ticketDto.ServiceId"
+                            disabled="@(_selectedProjectServices == null || !_selectedProjectServices.Any())">
+                        <option value="0">-- Seleccione un servicio --</option>
+                        @if (_selectedProjectServices != null)
+                        {
+                            @foreach (var service in _selectedProjectServices)
+                            {
+                                <option value="@service.Id">@service.Name - $@service.HourlyRate.ToString("N2")/hr
+                                </option>
+                            }
+                        }
+                    </select>
+                    <ValidationMessage For="@(() => _ticketDto.ServiceId)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="Priority" class="form-label fw-bold small">Prioridad *</label>
+                    <select id="Priority" class="form-select" @bind="_ticketDto.Priority">
+                        <option value="Baja">Baja</option>
+                        <option value="Media">Media</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Urgente">Urgente</option>
+                    </select>
+                    <ValidationMessage For="@(() => _ticketDto.Priority)"/>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="Status" class="form-label fw-bold small">Estado *</label>
+                    <select id="Status" class="form-select" @bind="_ticketDto.Status">
+                        <option value="Abierto">Abierto</option>
+                        <option value="En Progreso">En Progreso</option>
+                        <option value="En Revisión">En Revisión</option>
+                        <option value="Cerrado">Cerrado</option>
+                    </select>
+                    <ValidationMessage For="@(() => _ticketDto.Status)"/>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="AssignedTo" class="form-label fw-bold small">Asignar a</label>
+                    @if (_isLoadingUsers)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Cargando usuarios...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <select id="AssignedTo" class="form-select" @bind="_ticketDto.AssignedToUserId">
+                            <option value="">-- Sin asignar --</option>
+                            @if (_users != null)
+                            {
+                                @foreach (var user in _users)
+                                {
+                                    <option value="@user.Id">@user.UserName (@user.RoleName)</option>
+                                }
+                            }
+                        </select>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="EstimatedHours" class="form-label fw-bold small">Horas Estimadas</label>
+                    <InputNumber id="EstimatedHours" class="form-control" placeholder="0.00"
+                                 @bind-Value="_ticketDto.EstimatedHours"/>
+                    <ValidationMessage For="@(() => _ticketDto.EstimatedHours)"/>
+                </div>
+            </div>
+
+            @if (_isEditMode)
+            {
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ActualHours" class="form-label fw-bold small">Horas Reales</label>
+                        <InputNumber id="ActualHours" class="form-control" placeholder="0.00"
+                                     @bind-Value="_ticketDto.ActualHours"/>
+                        <ValidationMessage For="@(() => _ticketDto.ActualHours)"/>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || _isLoadingProjects)">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-check-lg"></i>
+                @(_isEditMode ? "Actualizar Ticket" : "Crear Ticket")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3">
+                @_errorMessage
+            </div>
+        }
+    </EditForm>
+</section>
+
+@inject ITicketApiService TicketApiService
+@inject IProjectApiService ProjectApiService
+@inject IServiceApiService ServiceApiService
+@inject IUserApiService UserApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    [Parameter] public int? TicketId { get; set; }
+
+    private TicketDto _ticketDto = new();
+    private List<ProjectDetailDto>? _projects;
+    private List<ServiceDetailDto>? _selectedProjectServices;
+    private List<UserDto>? _users;
+
+    private bool _isSaving = false;
+    private bool _isLoadingProjects = false;
+    private bool _isLoadingUsers = false;
+    private string? _errorMessage;
+    private bool _isEditMode => TicketId.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInitialData();
+
+        if (_isEditMode)
+        {
+            await LoadTicket();
+        }
+        else
+        {
+            _ticketDto = new TicketDto
+            {
+                Status = "Abierto",
+                Priority = "Media"
+            };
+        }
+    }
+
+    private async Task LoadInitialData()
+    {
+        _isLoadingProjects = true;
+        _isLoadingUsers = true;
+        StateHasChanged();
+
+        try
+        {
+            var projectsTask = ProjectApiService.GetProjectsAsync();
+            var usersTask = UserApiService.GetUsersAsync();
+
+            await Task.WhenAll(projectsTask, usersTask);
+
+            _projects = await projectsTask;
+            _users = await usersTask;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar datos: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingProjects = false;
+            _isLoadingUsers = false;
+        }
+    }
+
+    private async Task LoadTicket()
+    {
+        try
+        {
+            var ticket = await TicketApiService.GetTicketByIdAsync(TicketId!.Value);
+            if (ticket != null)
+            {
+                _ticketDto = new TicketDto
+                {
+                    Id = ticket.Id,
+                    Title = ticket.Title,
+                    Description = ticket.Description,
+                    ServiceId = ticket.ServiceId,
+                    Status = ticket.Status,
+                    Priority = ticket.Priority,
+                    AssignedToUserId = ticket.AssignedToUserId,
+                    EstimatedHours = ticket.EstimatedHours,
+                    ActualHours = ticket.ActualHours
+                };
+
+                // Cargar servicios del proyecto
+                var project = _projects?.FirstOrDefault(p => p.Id == ticket.ProjectId);
+                if (project?.Services != null)
+                {
+                    _selectedProjectServices = project.Services;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar ticket: {ex.Message}";
+        }
+    }
+
+    private async Task OnProjectChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int projectId) && projectId > 0)
+        {
+            var project = _projects?.FirstOrDefault(p => p.Id == projectId);
+            _selectedProjectServices = project?.Services;
+            _ticketDto.ServiceId = 0; // Reset service selection
+        }
+        else
+        {
+            _selectedProjectServices = null;
+            _ticketDto.ServiceId = 0;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            if (_isEditMode)
+            {
+                var result = await TicketApiService.UpdateTicketAsync(TicketId!.Value, _ticketDto);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Ticket actualizado correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el ticket.";
+                }
+            }
+            else
+            {
+                var result = await TicketApiService.CreateTicketAsync(_ticketDto);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Ticket creado correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? "No se pudo crear el ticket.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+
+}

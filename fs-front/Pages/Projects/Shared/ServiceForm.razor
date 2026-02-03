@@ -1,0 +1,279 @@
+﻿@page "/servicios/gestion/{ServiceId:int?}"
+@using fs_front.DTO
+
+<section class="container px-0">
+    <EditForm Model="_createServiceDto" OnValidSubmit="SubmitService">
+        <DataAnnotationsValidator/>
+        <ValidationSummary class="alert alert-danger"/>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="Name" class="form-label fw-bold small">Nombre del Servicio *</label>
+                    <InputText id="Name" class="form-control" placeholder="Soporte Técnico Nivel 1"
+                               @bind-Value="_createServiceDto.Name"/>
+                    <ValidationMessage For="@(() => _createServiceDto.Name)"/>
+                </div>
+            </div>
+
+            @* Solo mostrar selector de proyecto si no viene desde ProjectDetail *@
+            @if (!_isProjectLocked)
+            {
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ProjectId" class="form-label fw-bold small">Proyecto Asociado *</label>
+                        <InputSelect id="ProjectId" class="form-select" @bind-Value="_createServiceDto.ProjectId">
+                            <option value="0">-- Seleccione un proyecto --</option>
+                            @if (_projects != null)
+                            {
+                                @foreach (var project in _projects)
+                                {
+                                    <option value="@project.Id">@project.Name</option>
+                                }
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _createServiceDto.ProjectId)"/>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Description" class="form-label fw-bold small">Descripción</label>
+                    <InputTextArea id="Description" class="form-control"
+                                   placeholder="Descripción detallada del servicio..."
+                                   @bind-Value="_createServiceDto.Description"/>
+                    <ValidationMessage For="@(() => _createServiceDto.Description)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="HourlyRate" class="form-label fw-bold small">Tarifa por Hora *</label>
+                    <InputNumber id="HourlyRate" class="form-control" placeholder="150.00"
+                                 @bind-Value="_createServiceDto.HourlyRate"/>
+                    <ValidationMessage For="@(() => _createServiceDto.HourlyRate)"/>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="TypeServiceId" class="form-label fw-bold small">Tipo de Servicio *</label>
+                    <InputSelect id="TypeServiceId" class="form-select" @bind-Value="_createServiceDto.TypeServiceId">
+                        <option value="0">-- Seleccione un tipo --</option>
+                        @if (_serviceTypes != null)
+                        {
+                            @foreach (var type in _serviceTypes)
+                            {
+                                <option value="@type.Id">@type.Name</option>
+                            }
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _createServiceDto.TypeServiceId)"/>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="TypeActivityId" class="form-label fw-bold small">Tipo de Actividad *</label>
+                    <InputSelect id="TypeActivityId" class="form-select" @bind-Value="_createServiceDto.TypeActivityId">
+                        <option value="0">-- Seleccione una actividad --</option>
+                        @if (_activityTypes != null)
+                        {
+                            @foreach (var type in _activityTypes)
+                            {
+                                <option value="@type.Id">@type.Name</option>
+                            }
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _createServiceDto.TypeActivityId)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3 border rounded p-3">
+            <div class="form-check form-switch">
+                <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="_createServiceDto.IsActive"/>
+                <label class="form-check-label fw-bold" for="IsActive">Servicio Activo</label>
+            </div>
+            <div class="form-text">Determina si se pueden crear nuevos tickets para este servicio.</div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || _isLoading)">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                <i class="bi bi-check-lg"></i>
+                @(_isEditMode ? "Actualizar Servicio" : "Crear Servicio")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3" role="alert">
+                @_errorMessage
+            </div>
+        }
+    </EditForm>
+</section>
+
+@code {
+    [Parameter] public int? ServiceId { get; set; }
+    [Parameter] public int? ProjectId { get; set; } // <- llega desde ProjectDetail
+
+    private ServiceDto _createServiceDto = new();
+
+    // Listas para selects
+    private List<ProjectDto>? _projects;
+    private List<TypeServiceDto>? _serviceTypes;
+    private List<TypeActivityDto>? _activityTypes;
+
+    private bool _isSaving = false;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private bool _isProjectLocked = false;
+
+    private bool _isEditMode => ServiceId.HasValue && ServiceId.Value > 0;
+
+    [Inject] IServiceApiService ServiceApiService { get; set; } = default!;
+    [Inject] IProjectApiService ProjectApiService { get; set; } = default!;
+    [Inject] ITypeServiceApiService TypeServiceApiService { get; set; } = default!;
+    [Inject] ITypeActivityApiService TypeActivityApiService { get; set; } = default!;
+    [Inject] DialogService DialogService { get; set; } = default!;
+    [Inject] NotificationService NotificationService { get; set; } = default!;
+    [Inject] NavigationManager NavigationManager { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInitialData();
+
+        if (ProjectId.HasValue && ProjectId.Value > 0)
+        {
+            _isProjectLocked = true;
+            _createServiceDto.ProjectId = ProjectId.Value;
+        }
+
+        if (_isEditMode)
+        {
+            await LoadService();
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task LoadInitialData()
+    {
+        try
+        {
+            var projectsTask = ProjectApiService.GetProjectsAsync();
+            var serviceTypesTask = TypeServiceApiService.GetTypeServicesAsync();
+            var activityTypesTask = TypeActivityApiService.GetTypeActivitiesAsync();
+
+            await Task.WhenAll(projectsTask, serviceTypesTask, activityTypesTask);
+
+            _serviceTypes = await serviceTypesTask;
+            _activityTypes = await activityTypesTask;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar los datos necesarios: {ex.Message}";
+        }
+    }
+
+    private async Task LoadService()
+    {
+        try
+        {
+            var service = await ServiceApiService.GetServiceByIdAsync(ServiceId!.Value);
+            if (service != null)
+            {
+                _createServiceDto = new ServiceDto
+                {
+                    Id = service.Id,
+                    Name = service.Name,
+                    Description = service.Description,
+                    HourlyRate = service.HourlyRate,
+                    ProjectId = service.ProjectId,
+                    TypeServiceId = service.TypeServiceId,
+                    TypeActivityId = service.TypeActivityId,
+                    IsActive = service.IsActive
+                };
+
+                _isProjectLocked = true;
+            }
+            else
+            {
+                _errorMessage = "Servicio no encontrado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar el servicio: {ex.Message}";
+        }
+    }
+
+    private async Task SubmitService()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (_isEditMode)
+            {
+                var (success, errorMessage) = await ServiceApiService.UpdateServiceAsync(ServiceId!.Value, _createServiceDto);
+                if (success)
+                {
+                    ShowNotification("Éxito", "Servicio actualizado correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = errorMessage ?? "No se pudo guardar el servicio.";
+                }
+            }
+            else
+            {
+                var (success, createdService, errorMessage) = await ServiceApiService.CreateServiceAsync(_createServiceDto);
+                if (success)
+                {
+                    ShowNotification("Éxito", "Servicio creado correctamente.", NotificationSeverity.Success);
+                    DialogService.Close(true);
+                }
+                else
+                {
+                    _errorMessage = errorMessage ?? "No se pudo guardar el servicio.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al guardar el servicio: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+
+}

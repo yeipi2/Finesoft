@@ -1,0 +1,86 @@
+﻿@page "/iniciar-sesion"
+@layout AuthLayout
+
+<PageTitle>Iniciar Sesión - Finesoft</PageTitle>
+
+<main>
+    <EditForm Model="_login" OnValidSubmit="LoginAsync" FormName="LoginForm">
+        <DataAnnotationsValidator/>
+
+        <div class="mb-2">
+            <label for="email" class="form-label small fw-bolder">Correo electrónico</label>
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-envelope"></i>
+                </span>
+                <InputText @bind-Value="_login.Email" id="email" placeholder="micorreo@empresa.mx"
+                           class="form-control"/>
+            </div>
+            <ValidationMessage For="@(() => _login.Email)" class="text-danger small"/>
+        </div>
+
+
+        <div class="mb-3">
+            <label for="password" class="form-label small fw-bolder">Contraseña</label>
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-lock"></i>
+                </span>
+                <InputText type="password" @bind-Value="_login.Password" id="password"
+                           placeholder="••••••••••••••••" class="form-control"/>
+            </div>
+            <ValidationMessage For="@(() => _login.Password)" class="text-danger small"/>
+        </div>
+
+        @if (_isLoading)
+        {
+            <button type="submit" class="btn w-100 py-2" style="background: #272e3f; color: white;">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Iniciando sesión...
+            </button>
+        }
+        else
+        {
+            <button type="submit" class="btn w-100 py-2" style="background: #272e3f; color: white;">
+                Iniciar sesión
+            </button>
+        }
+    </EditForm>
+</main>
+
+@inject AuthenticationStateProvider provider
+@inject NavigationManager navigation
+@inject NotificationService NotificationService
+
+@code {
+    public LoginModel _login = new();
+    private bool _isLoading = false;
+
+    private async Task LoginAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        var auth = (CustomAuthStateProvider)provider;
+        var formResult = await auth.LoginAsync(_login);
+
+        if (formResult.Succeeded)
+        {
+            navigation.NavigateTo("/dashboard");
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error de inicio de sesión",
+                Detail = formResult.Errors[0],
+                Duration = 5000
+            });
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+}

@@ -1,0 +1,446 @@
+﻿@page "/reportes"
+@using fs_front.DTO
+@inject IReportApiService ReportApiService
+@inject NotificationService NotificationService
+
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Finesoft - Reportes</PageTitle>
+
+<container class="container p-4">
+    <section class="container-fluid p-xl-5">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-bar-chart-fill fs-1 text-primary me-3"></i>
+                <div>
+                    <p class="display-6 fw-bolder mb-2">Panel de Reportes</p>
+                    <p class="text-muted mb-0">Métricas clave, indicadores financieros y operativos</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-end">
+                <div>
+                    <label class="form-label small text-muted">Desde</label>
+                    <input type="date" class="form-control" @bind="StartDate" />
+                </div>
+                <div>
+                    <label class="form-label small text-muted">Hasta</label>
+                    <input type="date" class="form-control" @bind="EndDate" />
+                </div>
+                <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold small mb-1" @onclick="LoadFilteredData">
+                    <i class="bi bi-filter"></i> Actualizar
+                </button>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            @*resumen general*@
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <h6 class="card-title opacity-75">Ingresos Totales</h6>
+                            <h3 class="fw-bold mb-0">$@dashboardStats?.TotalRevenue.ToString("N2")</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <h6 class="card-title opacity-75">Proyectos Activos</h6>
+                            <h3 class="fw-bold mb-0">@dashboardStats?.ActiveProjects</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <h6 class="card-title opacity-75">Tickets Abiertos</h6>
+                            <h3 class="fw-bold mb-0">@dashboardStats?.OpenTickets</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <h6 class="card-title opacity-75">Clientes Totales</h6>
+                            <h3 class="fw-bold mb-0">@dashboardStats?.TotalClients</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @*tabs navegación*@
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <button class="@GetTabClass("financial")" @onclick="@(() => activeTab = "financial")">Financiero</button>
+                </li>
+                <li class="nav-item">
+                    <button class="@GetTabClass("performance")" @onclick="@(() => activeTab = "performance")">Rendimiento</button>
+                </li>
+                <li class="nav-item">
+                    <button class="@GetTabClass("clients")" @onclick="@(() => activeTab = "clients")">Clientes</button>
+                </li>
+                <li class="nav-item">
+                    <button class="@GetTabClass("projects")" @onclick="@(() => activeTab = "projects")">Proyectos</button>
+                </li>
+                <li class="nav-item">
+                    <button class="@GetTabClass("users")" @onclick="@(() => activeTab = "users")">Usuarios</button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                @if (activeTab == "financial")
+                {
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3">Resumen Financiero</div>
+                                <div class="card-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item d-flex justify-content-between py-3">
+                                            <span>Total Facturado</span>
+                                            <span class="fw-bold">$@financialReport?.TotalInvoiced.ToString("N2")</span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between py-3">
+                                            <span>Total Pagado</span>
+                                            <span class="fw-bold text-success">$@financialReport?.TotalPaid.ToString("N2")</span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between py-3">
+                                            <span>Total Pendiente</span>
+                                            <span class="fw-bold text-warning">$@financialReport?.TotalPending.ToString("N2")</span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between py-3">
+                                            <span>Total Vencido</span>
+                                            <span class="fw-bold text-danger">$@financialReport?.TotalOverdue.ToString("N2")</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3">Tendencia de Ingresos (Últimos 12 meses)</div>
+                                <div class="card-body">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-secondary small text-uppercase">Mes</th>
+                                                <th class="text-secondary small text-uppercase text-end">Ingresos</th>
+                                                <th class="text-secondary small text-uppercase text-center">Facturas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @if (revenueTrends != null)
+                                            {
+                                                @foreach (var item in revenueTrends)
+                                                {
+                                                    <tr>
+                                                        <td class="fw-bold">@item.Month</td>
+                                                        <td class="text-end">$@item.Revenue.ToString("N2")</td>
+                                                        <td class="text-center">@item.InvoicesCount</td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "performance")
+                {
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3">Métricas Operativas</div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <label class="fw-bold">Tasa de Resolución de Tickets</label>
+                                            <span>@(performanceMetrics?.TicketResolutionRate.ToString("F1"))%</span>
+                                        </div>
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar" role="progressbar" style="width: @(performanceMetrics?.TicketResolutionRate ?? 0)%" ></div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <label class="fw-bold">Satisfacción del Cliente</label>
+                                            <span>@(performanceMetrics?.ClientSatisfactionScore.ToString("F1")) / 5.0</span>
+                                        </div>
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: @((performanceMetrics?.ClientSatisfactionScore ?? 0) * 20)%" ></div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-4">
+                                        <div class="col-6">
+                                            <div class="p-3 bg-light rounded text-center">
+                                                <div class="small text-muted mb-1">Eficiencia Facturación</div>
+                                                <div class="h5 mb-0">@(performanceMetrics?.BillingEfficiency.ToString("P"))</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="p-3 bg-light rounded text-center">
+                                                <div class="small text-muted mb-1">Utilización Recursos</div>
+                                                <div class="h5 mb-0">@(performanceMetrics?.ResourceUtilization.ToString("P"))</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3">Estado de Tickets</div>
+                                <div class="card-body">
+                                    <ul class="list-group">
+                                        @if (ticketStatusChart != null)
+                                        {
+                                            @foreach (var status in ticketStatusChart)
+                                            {
+                                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                                    @status.Status
+                                                    <span class="badge rounded-pill" style="background-color: @status.Color; font-size: 0.9rem;">@status.Count</span>
+                                                </li>
+                                            }
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "clients")
+                {
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Cliente</th>
+                                            <th class="text-center">Proyectos</th>
+                                            <th class="text-center">Tickets (Abiertos)</th>
+                                            <th class="text-end">Facturado</th>
+                                            <th class="text-end pe-4">Pendiente</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (clientReports != null && clientReports.Any())
+                                        {
+                                            @foreach (var client in clientReports)
+                                            {
+                                                <tr>
+                                                    <td class="fw-bold ps-4">@client.ClientName</td>
+                                                    <td class="text-center">@client.TotalProjects</td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-light text-dark border">@client.TotalTickets</span>
+                                                        <span class="badge bg-warning text-dark ms-1">@client.OpenTickets</span>
+                                                    </td>
+                                                    <td class="text-end">$@client.TotalBilled.ToString("N2")</td>
+                                                    <td class="text-end pe-4 @(client.PendingAmount > 0 ? "text-danger fw-bold" : "")">
+                                                        $@client.PendingAmount.ToString("N2")
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4">No hay datos disponibles.</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "projects")
+                {
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Proyecto</th>
+                                            <th>Cliente</th>
+                                            <th class="text-center">Horas (Est/Real)</th>
+                                            <th class="text-center">Tickets (Tot/Cerr)</th>
+                                            <th class="text-end pe-4">Ingresos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (projectReports != null && projectReports.Any())
+                                        {
+                                            @foreach (var project in projectReports)
+                                            {
+                                                <tr>
+                                                    <td class="fw-bold ps-4">@project.ProjectName</td>
+                                                    <td class="text-muted">@project.ClientName</td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-light text-dark border">@project.EstimatedHours</span> /
+                                                        <span class="badge bg-info text-white">@project.TotalHours</span>
+                                                    </td>
+                                                    <td class="text-center">@project.TotalTickets / @project.ClosedTickets</td>
+                                                    <td class="text-end pe-4 text-success fw-bold">$@project.Revenue.ToString("N2")</td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4">No hay datos disponibles.</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "users")
+                {
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-0">
+                             <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Usuario</th>
+                                            <th class="text-center">Tickets Creados</th>
+                                            <th class="text-center">Tickets Cerrados</th>
+                                            <th class="text-center">Horas Registradas</th>
+                                            <th class="text-end pe-4">Ingresos Generados</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (userReports != null && userReports.Any())
+                                        {
+                                            @foreach (var user in userReports)
+                                            {
+                                                <tr>
+                                                    <td class="fw-bold ps-4">@user.UserName</td>
+                                                    <td class="text-center">@user.TicketsCreated</td>
+                                                    <td class="text-center">@user.TicketsClosed</td>
+                                                    <td class="text-center">@user.TotalHoursWorked</td>
+                                                    <td class="text-end pe-4 text-success">$@user.Revenue.ToString("N2")</td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4">No hay datos disponibles.</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</container>
+
+@code {
+    private DateTime? StartDate;
+    private DateTime? EndDate;
+    private string activeTab = "financial";
+    private bool isLoading = true;
+
+    private DashboardStatsDto? dashboardStats;
+    private FinancialReportDto? financialReport;
+    private PerformanceMetricsDto? performanceMetrics;
+    private List<UserReportDto>? userReports;
+    private List<ClientReportDto>? clientReports;
+    private List<ProjectReportDto>? projectReports;
+    private List<RevenueTrendDto>? revenueTrends;
+    private List<TicketStatusChartDto>? ticketStatusChart;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //valores por defecto
+        var now = DateTime.Now;
+        StartDate = new DateTime(now.Year, now.Month, 1);
+        EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
+
+        await LoadData();
+    }
+
+    private async Task LoadFilteredData()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            //carga paralela
+            var t1 = ReportApiService.GetDashboardStatsAsync();
+            var t2 = ReportApiService.GetFinancialReportAsync(StartDate, EndDate);
+            var t3 = ReportApiService.GetPerformanceMetricsAsync(StartDate, EndDate);
+            var t4 = ReportApiService.GetRevenueTrendAsync(12);
+            var t5 = ReportApiService.GetTicketsByStatusAsync();
+            var t6 = ReportApiService.GetReportsByClientAsync(StartDate, EndDate);
+            var t7 = ReportApiService.GetReportsByProjectAsync(StartDate, EndDate);
+            var t8 = ReportApiService.GetReportsByUserAsync(StartDate, EndDate);
+
+            await Task.WhenAll(t1, t2, t3, t4, t5, t6, t7, t8);
+
+            dashboardStats = await t1;
+            financialReport = await t2;
+            performanceMetrics = await t3;
+            revenueTrends = await t4;
+            ticketStatusChart = await t5;
+            clientReports = await t6;
+            projectReports = await t7;
+            userReports = await t8;
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", "No se pudieron cargar los reportes.", NotificationSeverity.Error);
+            Console.WriteLine($"Error loading reports: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetTabClass(string tabName)
+    {
+        return $"nav-link btn {(activeTab == tabName ? "active fw-bold" : "text-secondary")}";
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

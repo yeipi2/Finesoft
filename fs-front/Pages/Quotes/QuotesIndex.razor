@@ -1,0 +1,347 @@
+﻿@page "/cotizaciones"
+@using fs_front.DTO
+
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Finesoft - Cotizaciones</PageTitle>
+
+<container class="p-4">
+    <section class="container-fluid p-xl-5">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-receipt fs-1 text-primary me-3"></i>
+                <div>
+                    <p class="display-6 fw-bolder mb-2">Cotizaciones</p>
+                    <p class="text-muted mb-0">Gestión de cotizaciones y presupuestos</p>
+                </div>
+            </div>
+            <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
+                <i class="bi bi-plus-lg"></i>
+                Nueva Cotización
+            </button>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Buscar cotizaciones..."
+                       @bind="_searchText" @bind:event="oninput"/>
+            </div>
+
+            <div class="col-md-3">
+                <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
+                    <option value="">Todos los estados</option>
+                    <option value="Borrador">Borrador</option>
+                    <option value="Enviada">Enviada</option>
+                    <option value="Aceptada">Aceptada</option>
+                    <option value="Rechazada">Rechazada</option>
+                    <option value="Expirada">Expirada</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select class="form-select" @bind="_clientFilter" @bind:event="onchange">
+                    <option value="0">Todos los clientes</option>
+                    @if (_clients != null)
+                    {
+                        @foreach (var client in _clients)
+                        {
+                            <option value="@client.Id">@client.CompanyName</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex justify-content-end">
+                <button class="btn btn-outline-secondary" @onclick="ClearFilters">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="container-fluid p-xl-5">
+        @if (_isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Cargando cotizaciones...</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Número</th>
+                        <th>Cliente</th>
+                        <th>Fecha</th>
+                        <th>Válida Hasta</th>
+                        <th>Estado</th>
+                        <th>Total</th>
+                        <th>Creado Por</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @if (_filteredQuotes.Any())
+                    {
+                        @foreach (var quote in _filteredQuotes)
+                        {
+                            <tr>
+                                <td class="fw-bold">@quote.QuoteNumber</td>
+                                <td>
+                                    <div class="fw-bold">@quote.ClientName</div>
+                                    <small class="text-muted">@quote.ClientEmail</small>
+                                </td>
+                                <td>@quote.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    @if (quote.ValidUntil.HasValue)
+                                    {
+                                        <span>@quote.ValidUntil.Value.ToString("dd/MM/yyyy")</span>
+                                        @if (quote.ValidUntil.Value < DateTime.Now && quote.Status != "Aceptada")
+                                        {
+                                            <span class="badge bg-danger ms-1">Expirada</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Sin límite</span>
+                                    }
+                                </td>
+                                <td>
+                                    @{
+                                        var statusClass = quote.Status switch
+                                        {
+                                            "Borrador" => "bg-secondary",
+                                            "Enviada" => "bg-primary",
+                                            "Aceptada" => "bg-success",
+                                            "Rechazada" => "bg-danger",
+                                            "Expirada" => "bg-warning",
+                                            _ => "bg-secondary"
+                                        };
+                                    }
+                                    <span class="badge @statusClass">@quote.Status</span>
+                                </td>
+                                <td class="fw-bold text-success">$@quote.Total.ToString("N2")</td>
+                                <td>@quote.CreatedByUserName</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => ViewQuoteDetails(quote.Id)"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info me-1"
+                                            @onclick="() => ShowEditModal(quote.Id)"
+                                            title="Editar">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success me-1"
+                                            @onclick="() => DownloadPdf(quote.Id)"
+                                            title="Descargar PDF">
+                                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => ConfirmDelete(quote)"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="bi bi-inbox fs-1 text-muted"></i>
+                                <p class="text-muted mt-2">No se encontraron cotizaciones.</p>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</container>
+
+@inject IQuoteApiService QuoteApiService
+@inject IClientApiService ClientApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+@code {
+    private List<QuoteDetailDto>? _quotes;
+    private List<ClientDto>? _clients;
+    private string _searchText = string.Empty;
+    private string _statusFilter = string.Empty;
+    private int _clientFilter = 0;
+    private bool _isLoading = false;
+
+    private IEnumerable<QuoteDetailDto> _filteredQuotes
+        => _quotes?
+            .Where(q =>
+                (string.IsNullOrWhiteSpace(_searchText) ||
+                q.QuoteNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                q.ClientName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                && (string.IsNullOrEmpty(_statusFilter) || q.Status == _statusFilter)
+                && (_clientFilter == 0 || q.ClientId == _clientFilter)
+            )
+            .OrderByDescending(q => q.CreatedAt)
+            ?? Enumerable.Empty<QuoteDetailDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        try
+        {
+            var quotesTask = QuoteApiService.GetQuotesAsync();
+            var clientsTask = ClientApiService.GetClientsAsync();
+
+            await Task.WhenAll(quotesTask, clientsTask);
+
+            _quotes = await quotesTask;
+            _clients = await clientsTask;
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ShowCreateModal()
+    {
+        var result = await DialogService.OpenAsync<QuoteForm>("Nueva Cotización",
+            options: new DialogOptions()
+            {
+                Width = "900px",
+                Height = "600px",
+                Resizable = true,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task ShowEditModal(int quoteId)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "QuoteId", quoteId }
+        };
+
+        var result = await DialogService.OpenAsync<QuoteForm>("Editar Cotización",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "1200px",
+                Height = "600px",
+                Resizable = true,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadData();
+        }
+    }
+
+    private void ViewQuoteDetails(int quoteId)
+    {
+        NavigationManager.NavigateTo($"/cotizaciones/{quoteId}");
+    }
+
+    private async Task DownloadPdf(int quoteId)
+    {
+        try
+        {
+            var pdfBytes = await QuoteApiService.GenerateQuotePdfAsync(quoteId);
+            if (pdfBytes != null)
+            {
+                var base64 = Convert.ToBase64String(pdfBytes);
+                await JSRuntime.InvokeVoidAsync("downloadFile", $"Cotizacion-{quoteId}.pdf", base64);
+                ShowNotification("Éxito", "PDF generado correctamente.", NotificationSeverity.Success);
+            }
+            else
+            {
+                ShowNotification("Error", "No se pudo generar el PDF.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al generar PDF: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ConfirmDelete(QuoteDetailDto quote)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar la cotización '{quote.QuoteNumber}'?",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteQuote(quote.Id);
+        }
+    }
+
+    private async Task DeleteQuote(int quoteId)
+    {
+        try
+        {
+            var result = await QuoteApiService.DeleteQuoteAsync(quoteId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Cotización eliminada correctamente.", NotificationSeverity.Success);
+                await LoadData();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar la cotización.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        _searchText = string.Empty;
+        _statusFilter = string.Empty;
+        _clientFilter = 0;
+        await LoadData();
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}

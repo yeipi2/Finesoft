@@ -1,0 +1,435 @@
+﻿@page "/tickets/{TicketId:int}"
+@using fs_front.DTO
+
+<PageTitle>Ticket #@TicketId</PageTitle>
+
+<div class="container p-4">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando detalles del ticket...</p>
+        </div>
+    }
+    else if (_ticket != null)
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/tickets">Tickets</a>
+                        </li>
+                        <li class="breadcrumb-item active">Ticket #@_ticket.Id</li>
+                    </ol>
+                </nav>
+
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h1 class="display-6 fw-bold mb-2">
+                            <span class="text-muted">#@_ticket.Id</span> @_ticket.Title
+                        </h1>
+                        <div class="d-flex gap-2 mb-2">
+                            @{
+                                var priorityClass = _ticket.Priority switch
+                                {
+                                    "Urgente" => "bg-danger",
+                                    "Alta" => "bg-warning",
+                                    "Media" => "bg-info",
+                                    _ => "bg-secondary"
+                                };
+                                var statusClass = _ticket.Status switch
+                                {
+                                    "Abierto" => "bg-primary",
+                                    "En Progreso" => "bg-warning",
+                                    "En Revisión" => "bg-info",
+                                    "Cerrado" => "bg-success",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @priorityClass fs-6">@_ticket.Priority</span>
+                            <span class="badge @statusClass fs-6">@_ticket.Status</span>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary me-2" @onclick="EditTicket">
+                            <i class="bi bi-pencil-fill"></i> Editar
+                        </button>
+                        <button class="btn btn-danger" @onclick="ConfirmDelete">
+                            <i class="bi bi-trash-fill"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Descripción</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@_ticket.Description</p>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots"></i> Comentarios (@(_ticket.Comments?.Count ?? 0))
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (_ticket.Comments != null && _ticket.Comments.Any())
+                        {
+                            @foreach (var comment in _ticket.Comments.OrderBy(c => c.CreatedAt))
+                            {
+                                <div
+                                    class="border-start border-3 @(comment.IsInternal ? "border-warning" : "border-primary") ps-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <strong>@comment.UserName</strong>
+                                            @if (comment.IsInternal)
+                                            {
+                                                <span class="badge bg-warning text-dark ms-2">Interno</span>
+                                            }
+                                        </div>
+                                        <small
+                                            class="text-muted">@comment.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                                    </div>
+                                    <p class="mb-0">@comment.Comment</p>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-3">No hay comentarios aún.</p>
+                        }
+
+                        <div class="mt-4">
+                            <EditForm Model="_newComment" OnValidSubmit="AddComment">
+                                <DataAnnotationsValidator/>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Agregar Comentario</label>
+                                    <InputTextArea class="form-control" rows="3" @bind-Value="_newComment.Comment"
+                                                   placeholder="Escribe tu comentario aquí..."/>
+                                    <ValidationMessage For="@(() => _newComment.Comment)"/>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button type="submit" class="btn btn-primary" disabled="@_isAddingComment">
+                                        @if (_isAddingComment)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                        <i class="bi bi-send"></i> Agregar Comentario
+                                    </button>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Cambios</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (_ticket.History != null && _ticket.History.Any())
+                        {
+                            <div class="timeline">
+                                @foreach (var history in _ticket.History)
+                                {
+                                    <div class="mb-3">
+                                        <div class="d-flex gap-2 align-items-start">
+                                            <i class="bi bi-circle-fill text-primary"
+                                               style="font-size: 0.5rem; margin-top: 0.5rem;"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <strong>@history.UserName</strong>
+                                                        <span class="text-muted"> - @history.Action</span>
+                                                    </div>
+                                                    <small
+                                                        class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(history.OldValue) || !string.IsNullOrEmpty(history.NewValue))
+                                                {
+                                                    <small class="text-muted">
+                                                        @if (!string.IsNullOrEmpty(history.OldValue))
+                                                        {
+                                                            <span>De: <span
+                                                                    class="text-decoration-line-through">@history.OldValue</span></span>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(history.NewValue))
+                                                        {
+                                                            <span> A: <strong>@history.NewValue</strong></span>
+                                                        }
+                                                    </small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-3">No hay historial disponible.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-building"></i> Cliente y Proyecto</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted">Cliente</small>
+                            <div class="fw-bold">@_ticket.ClientName</div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Proyecto</small>
+                            <div class="fw-bold">@_ticket.ProjectName</div>
+                        </div>
+                        <div>
+                            <small class="text-muted">Servicio</small>
+                            <div class="fw-bold">@_ticket.ServiceName</div>
+                            <small class="text-muted">$@_ticket.HourlyRate.ToString("N2")/hora</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-list-check"></i> Detalles</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted">Creado por</small>
+                            <div>@_ticket.CreatedByUserName</div>
+                            <small class="text-muted">@_ticket.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Asignado a</small>
+                            <div>
+                                @if (!string.IsNullOrEmpty(_ticket.AssignedToUserName))
+                                {
+                                    <span>@_ticket.AssignedToUserName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin asignar</span>
+                                }
+                            </div>
+                        </div>
+                        @if (_ticket.UpdatedAt.HasValue)
+                        {
+                            <div class="mb-3">
+                                <small class="text-muted">Última actualización</small>
+                                <div>@_ticket.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                        }
+                        @if (_ticket.ClosedAt.HasValue)
+                        {
+                            <div>
+                                <small class="text-muted">Cerrado</small>
+                                <div>@_ticket.ClosedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-clock"></i> Tiempo y Costo</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted">Horas Estimadas</small>
+                            <div class="h4 mb-0">@_ticket.EstimatedHours.ToString("0.00")h</div>
+                            <small class="text-muted">
+                                Costo: $@((_ticket.EstimatedHours * _ticket.HourlyRate).ToString("N2"))
+                            </small>
+                        </div>
+                        <div>
+                            <small class="text-muted">Horas Reales</small>
+                            <div class="h4 mb-0">@_ticket.ActualHours.ToString("0.00")h</div>
+                            <small class="text-muted">
+                                Costo: $@((_ticket.ActualHours * _ticket.HourlyRate).ToString("N2"))
+                            </small>
+                        </div>
+                        @if (_ticket.ActualHours > _ticket.EstimatedHours)
+                        {
+                            <div class="alert alert-warning mt-3 mb-0">
+                                <small>
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Excedido por @((_ticket.ActualHours - _ticket.EstimatedHours).ToString("0.00"))h
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col">
+                <button class="btn btn-secondary" @onclick="GoBack">
+                    <i class="bi bi-arrow-left"></i> Volver a Tickets
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Ticket no encontrado.
+        </div>
+    }
+</div>
+
+@inject ITicketApiService TicketApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+
+    private TicketDetailDto? _ticket;
+    private TicketCommentDto _newComment = new();
+    private bool _isLoading = false;
+    private bool _isAddingComment = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTicket();
+    }
+
+    private async Task LoadTicket()
+    {
+        _isLoading = true;
+        try
+        {
+            _ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al cargar el ticket: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AddComment()
+    {
+        _isAddingComment = true;
+        try
+        {
+            var result = await TicketApiService.AddCommentAsync(TicketId, _newComment);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Comentario agregado correctamente.", NotificationSeverity.Success);
+                _newComment = new TicketCommentDto();
+                await LoadTicket();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo agregar el comentario.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isAddingComment = false;
+        }
+    }
+
+    private async Task EditTicket()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "TicketId", TicketId }
+        };
+
+        var result = await DialogService.OpenAsync<TicketForm>("Editar Ticket",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "800px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadTicket();
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar este ticket?",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteTicket();
+        }
+    }
+
+    private async Task DeleteTicket()
+    {
+        try
+        {
+            var result = await TicketApiService.DeleteTicketAsync(TicketId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Ticket eliminado correctamente.", NotificationSeverity.Success);
+                NavigationManager.NavigateTo("/tickets");
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar el ticket.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/tickets");
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+
+}

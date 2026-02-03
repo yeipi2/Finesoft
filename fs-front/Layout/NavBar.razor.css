@@ -1,0 +1,43 @@
+﻿::deep .nav-link {
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+}
+
+::deep .nav-link:hover:not(.active) {
+    background-color: #f0f0f0 !important;
+    color: #000 !important;
+}
+
+::deep .nav-link.active {
+    background-color: #f8f9fa !important;
+    color: #010101 !important;
+    border-radius: 0.5rem;
+}
+
+::deep .nav-link.active i {
+    color: #010101 !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+::deep .hover-bg-light:hover {
+    background-color: #f8f9fa !important;
+    cursor: pointer;
+}
+
+::deep .dropdown-menu-custom {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

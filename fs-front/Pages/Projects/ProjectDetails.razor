@@ -1,0 +1,394 @@
+﻿@page "/proyectos/{ProjectId:int}"
+@using fs_front.DTO
+@using fs_front.Pages.Projects.Shared
+
+<div class="container p-4">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando detalles del proyecto...</p>
+        </div>
+    }
+    else if (_project != null)
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/proyectos">Proyectos</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">@_project.Name</li>
+                    </ol>
+                </nav>
+                
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h1 class="display-6 fw-bold mb-2">@_project.Name</h1>
+                        <p class="text-muted">@_project.Description</p>
+                    </div>
+                    <div>
+                        @if (_project.IsActive)
+                        {
+                            <span class="badge bg-success fs-6">
+                                <i class="bi bi-check-circle"></i> Activo
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary fs-6">
+                                <i class="bi bi-x-circle"></i> Inactivo
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (_project.Client != null)
+        {
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-building"></i> Información del Cliente
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Empresa:</strong> @_project.Client.CompanyName</p>
+                                    <p><strong>RFC:</strong> @_project.Client.RFC</p>
+                                    <p><strong>Contacto:</strong> @_project.Client.ContactName</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Email:</strong> @_project.Client.Email</p>
+                                    <p><strong>Teléfono:</strong> @_project.Client.Phone</p>
+                                    <p><strong>Dirección:</strong> @_project.Client.Address</p>
+                                </div>
+                            </div>
+                            @if (_project.Client.MonthlyRate.HasValue)
+                            {
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="bi bi-info-circle"></i>
+                                            <strong>Modo de Servicio:</strong> @_project.Client.ServiceMode
+                                            @if (_project.Client.MonthlyRate > 0)
+                                            {
+                                                <span> | <strong>Tarifa Mensual:</strong> $@_project.Client.MonthlyRate.Value.ToString("N2")</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-gear"></i> Servicios Asociados
+                        </h5>
+                        <button class="btn btn-light btn-sm" @onclick="ShowAddServiceModal">
+                            <i class="bi bi-plus-lg"></i> Agregar Servicio
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (_project.Services != null && _project.Services.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th>Servicio</th>
+                                        <th>Tipo de Servicio</th>
+                                        <th>Tipo de Actividad</th>
+                                        <th>Tarifa/Hora</th>
+                                        <th>Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach (var service in _project.Services)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">@service.Name</div>
+                                                <div class="text-muted small">@service.Description</div>
+                                            </td>
+                                            <td>@service.TypeServiceName</td>
+                                            <td>@service.TypeActivityName</td>
+                                            <td class="fw-bold text-success">$@service.HourlyRate.ToString("N2")</td>
+                                            <td>
+                                                @if (service.IsActive)
+                                                {
+                                                    <span class="badge bg-success">Activo</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Inactivo</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <button class="btn btn-sm btn-outline-primary me-1" 
+                                                        @onclick="() => EditService(service.Id)" 
+                                                        title="Editar">
+                                                    <i class="bi bi-pencil-fill"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        @onclick="() => ConfirmDeleteService(service)" 
+                                                        title="Eliminar">
+                                                    <i class="bi bi-trash-fill"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <i class="bi bi-inbox fs-1 text-muted"></i>
+                                <p class="text-muted mt-2">No hay servicios asociados a este proyecto.</p>
+                                <button class="btn btn-primary" @onclick="ShowAddServiceModal">
+                                    <i class="bi bi-plus-lg"></i> Agregar Primer Servicio
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-secondary" @onclick="GoBack">
+                        <i class="bi bi-arrow-left"></i> Volver a Proyectos
+                    </button>
+                    <div>
+                        <button class="btn btn-primary me-2" @onclick="EditProject">
+                            <i class="bi bi-pencil-fill"></i> Editar Proyecto
+                        </button>
+                        <button class="btn btn-danger" @onclick="ConfirmDeleteProject">
+                            <i class="bi bi-trash-fill"></i> Eliminar Proyecto
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            Proyecto no encontrado.
+        </div>
+    }
+</div>
+
+@inject IProjectApiService ProjectApiService
+@inject IServiceApiService ServiceApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    private ProjectDetailDto? _project;
+    private bool _isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+    }
+
+    private async Task LoadProject()
+    {
+        _isLoading = true;
+        try
+        {
+            _project = await ProjectApiService.GetProjectByIdAsync(ProjectId);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al cargar el proyecto: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task EditProject()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ProjectId", ProjectId }
+        };
+
+        var result = await DialogService.OpenAsync<ProjectForm>("Editar Proyecto",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "600px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadProject();
+        }
+    }
+
+    private async Task ConfirmDeleteProject()
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar el proyecto '{_project?.Name}'? Esta acción no se puede deshacer.",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteProject();
+        }
+    }
+
+    private async Task DeleteProject()
+    {
+        try
+        {
+            var result = await ProjectApiService.DeleteProjectAsync(ProjectId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Proyecto eliminado correctamente.", NotificationSeverity.Success);
+                NavigationManager.NavigateTo("/proyectos");
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar el proyecto.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al eliminar proyecto: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ShowAddServiceModal()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ProjectId", ProjectId }
+        };
+
+        var result = await DialogService.OpenAsync<ServiceForm>("Agregar Servicio",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "700px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadProject();
+        }
+    }
+
+    private async Task EditService(int serviceId)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ProjectId", ProjectId },
+            { "ServiceId", serviceId }
+        };
+
+        var result = await DialogService.OpenAsync<ServiceForm>("Editar Servicio",
+            parameters,
+            new DialogOptions()
+            {
+                Width = "700px",
+                Resizable = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadProject();
+        }
+    }
+
+    private async Task ConfirmDeleteService(ServiceDetailDto service)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar el servicio '{service.Name}'?",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteService(service.Id);
+        }
+    }
+
+    private async Task DeleteService(int serviceId)
+    {
+        try
+        {
+            var result = await ServiceApiService.DeleteServiceAsync(serviceId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Servicio eliminado correctamente.", NotificationSeverity.Success);
+                await LoadProject();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar el servicio.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al eliminar servicio: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/proyectos");
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}
