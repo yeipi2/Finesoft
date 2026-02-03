@@ -25,6 +25,7 @@ namespace fs_backend.Identity
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<InvoiceItem> InvoiceItems { get; set; }
         public DbSet<InvoicePayment> InvoicePayments { get; set; }
+        public DbSet<TicketActivity> TicketActivities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -131,6 +132,21 @@ namespace fs_backend.Identity
                 .WithMany(i => i.Payments)
                 .HasForeignKey(ip => ip.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TicketActivity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.HoursSpent).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.IsCompleted).IsRequired();
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+
+                entity.HasOne(e => e.Ticket)
+                    .WithMany(t => t.Activities)
+                    .HasForeignKey(e => e.TicketId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }

@@ -1,7 +1,8 @@
-﻿@* @page "/tickets" *@
+﻿@page "/tickets"
 @using fs_front.DTO
+@using Microsoft.AspNetCore.Components.Authorization
 
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "Admin,User")]
 
 <PageTitle>Finesoft - Tickets</PageTitle>
 
@@ -11,14 +12,35 @@
             <div class="d-flex align-items-center">
                 <i class="bi bi-ticket-perforated fs-1 text-primary me-3"></i>
                 <div>
-                    <p class="display-6 fw-bolder mb-2">Sistema de Tickets</p>
-                    <p class="text-muted mb-0">Gestión de solicitudes y soporte técnico</p>
+                    <p class="display-6 fw-bolder mb-2">
+                        @if (_isAdmin)
+                        {
+                            <span>Sistema de Tickets</span>
+                        }
+                        else
+                        {
+                            <span>Mis Tickets Asignados</span>
+                        }
+                    </p>
+                    <p class="text-muted mb-0">
+                        @if (_isAdmin)
+                        {
+                            <span>Gestión completa de solicitudes y soporte técnico</span>
+                        }
+                        else
+                        {
+                            <span>Tickets asignados a ti</span>
+                        }
+                    </p>
                 </div>
             </div>
-            <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
-                <i class="bi bi-plus-lg"></i>
-                Nuevo Ticket
-            </button>
+            @if (_isAdmin)
+            {
+                <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
+                    <i class="bi bi-plus-lg"></i>
+                    Nuevo Ticket
+                </button>
+            }
         </div>
 
         @if (_stats != null)
@@ -85,7 +107,7 @@
 
             <div class="col-md-4">
                 <input type="text" class="form-control" placeholder="Buscar tickets..."
-                       @bind="_searchText" @bind:event="oninput"/>
+                       @bind="_searchText" @bind:event="oninput" />
             </div>
 
             <div class="col-md-2">
@@ -130,119 +152,138 @@
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Título</th>
-                        <th>Cliente / Proyecto</th>
-                        <th>Servicio</th>
-                        <th>Prioridad</th>
-                        <th>Estado</th>
-                        <th>Asignado a</th>
-                        <th>Horas</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
+                        <tr>
+                            <th>ID</th>
+                            <th>Título</th>
+                            <th>Cliente / Proyecto</th>
+                            <th>Servicio</th>
+                            <th>Prioridad</th>
+                            <th>Estado</th>
+                            @if (_isAdmin)
+                            {
+                                <th>Asignado a</th>
+                            }
+                            <th>Horas</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
                     </thead>
 
                     <tbody>
-                    @if (_filteredTickets.Any())
-                    {
-                        @foreach (var ticket in _filteredTickets)
+                        @if (_filteredTickets.Any())
+                        {
+                            @foreach (var ticket in _filteredTickets)
+                            {
+                                <tr>
+                                    <td class="fw-bold">#@ticket.Id</td>
+
+                                    <td>
+                                        <div class="fw-bold">@ticket.Title</div>
+                                        <small class="text-muted">
+                                            @ticket.Description.Substring(0, Math.Min(50, ticket.Description.Length))...
+                                        </small>
+                                    </td>
+
+                                    <td>
+                                        <div><strong>@ticket.ClientName</strong></div>
+                                        <small class="text-muted">@ticket.ProjectName</small>
+                                    </td>
+
+                                    <td>@ticket.ServiceName</td>
+
+                                    <td>
+                                        @{
+                                            var priorityClass = ticket.Priority switch
+                                            {
+                                                "Urgente" => "bg-danger",
+                                                "Alta" => "bg-warning",
+                                                "Media" => "bg-info",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @priorityClass">@ticket.Priority</span>
+                                    </td>
+
+                                    <td>
+                                        @{
+                                            var statusClass = ticket.Status switch
+                                            {
+                                                "Abierto" => "bg-primary",
+                                                "En Progreso" => "bg-warning",
+                                                "En Revisión" => "bg-info",
+                                                "Cerrado" => "bg-success",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @statusClass">@ticket.Status</span>
+                                    </td>
+
+                                    @if (_isAdmin)
+                                    {
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
+                                            {
+                                                <span>@ticket.AssignedToUserName</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Sin asignar</span>
+                                            }
+                                        </td>
+                                    }
+
+                                    <td>
+                                        <div>
+                                            <small class="text-muted">Est:</small> @ticket.EstimatedHours.ToString("0.0")h
+                                        </div>
+                                        <div>
+                                            <small class="text-muted">Real:</small>
+                                            <strong class="text-success">@ticket.ActualHours.ToString("0.0")h</strong>
+                                        </div>
+                                    </td>
+
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => ViewTicketDetails(ticket.Id)"
+                                                title="Ver detalles">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </button>
+
+                                        @if (_isAdmin)
+                                        {
+                                            <button class="btn btn-sm btn-outline-info me-1"
+                                                    @onclick="() => ShowEditModal(ticket.Id)"
+                                                    title="Editar">
+                                                <i class="bi bi-pencil-fill"></i>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    @onclick="() => ConfirmDelete(ticket)"
+                                                    title="Eliminar">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
                         {
                             <tr>
-                                <td class="fw-bold">#@ticket.Id</td>
-
-                                <td>
-                                    <div class="fw-bold">@ticket.Title</div>
-                                    <small class="text-muted">
-                                        @ticket.Description.Substring(0, Math.Min(50, ticket.Description.Length))...
-                                    </small>
-                                </td>
-
-                                <td>
-                                    <div><strong>@ticket.ClientName</strong></div>
-                                    <small class="text-muted">@ticket.ProjectName</small>
-                                </td>
-
-                                <td>@ticket.ServiceName</td>
-
-                                <td>
-                                    @{
-                                        var priorityClass = ticket.Priority switch
+                                <td colspan="@(_isAdmin ? 9 : 8)" class="text-center py-4">
+                                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                                    <p class="text-muted mt-2">
+                                        @if (_isAdmin)
                                         {
-                                            "Urgente" => "bg-danger",
-                                            "Alta" => "bg-warning",
-                                            "Media" => "bg-info",
-                                            _ => "bg-secondary"
-                                        };
-                                    }
-                                    <span class="badge @priorityClass">@ticket.Priority</span>
-                                </td>
-
-                                <td>
-                                    @{
-                                        var statusClass = ticket.Status switch
+                                            <span>No se encontraron tickets.</span>
+                                        }
+                                        else
                                         {
-                                            "Abierto" => "bg-primary",
-                                            "En Progreso" => "bg-warning",
-                                            "En Revisión" => "bg-info",
-                                            "Cerrado" => "bg-success",
-                                            _ => "bg-secondary"
-                                        };
-                                    }
-                                    <span class="badge @statusClass">@ticket.Status</span>
-                                </td>
-
-                                <td>
-                                    @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
-                                    {
-                                        <span>@ticket.AssignedToUserName</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">Sin asignar</span>
-                                    }
-                                </td>
-
-                                <td>
-                                    <div>
-                                        <small class="text-muted">Est:</small> @ticket.EstimatedHours.ToString("0.0")h
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Real:</small> @ticket.ActualHours.ToString("0.0")h
-                                    </div>
-                                </td>
-
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary me-1"
-                                            @onclick="() => ViewTicketDetails(ticket.Id)"
-                                            title="Ver detalles">
-                                        <i class="bi bi-eye-fill"></i>
-                                    </button>
-
-                                    <button class="btn btn-sm btn-outline-info me-1"
-                                            @onclick="() => ShowEditModal(ticket.Id)"
-                                            title="Editar">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </button>
-
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            @onclick="() => ConfirmDelete(ticket)"
-                                            title="Eliminar">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
+                                            <span>No tienes tickets asignados.</span>
+                                        }
+                                    </p>
                                 </td>
                             </tr>
                         }
-                    }
-                    else
-                    {
-                        <tr>
-                            <td colspan="9" class="text-center py-4">
-                                <i class="bi bi-inbox fs-1 text-muted"></i>
-                                <p class="text-muted mt-2">No se encontraron tickets.</p>
-                            </td>
-                        </tr>
-                    }
                     </tbody>
 
                 </table>
@@ -256,6 +297,7 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
     private List<TicketDetailDto>? _tickets;
@@ -264,6 +306,8 @@
     private string _statusFilter = string.Empty;
     private string _priorityFilter = string.Empty;
     private bool _isLoading = false;
+    private bool _isAdmin = false;
+    private string? _currentUserId;
 
     private IEnumerable<TicketDetailDto> _filteredTickets
         => _tickets?
@@ -281,7 +325,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await CheckUserRole();
         await LoadData();
+    }
+
+    private async Task CheckUserRole()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            _currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            _isAdmin = role == "Admin";
+        }
     }
 
     private async Task LoadData()
@@ -289,7 +347,10 @@
         _isLoading = true;
         try
         {
-            var ticketsTask = TicketApiService.GetTicketsAsync();
+            // Si no es admin, filtrar solo tickets asignados al usuario
+            var userId = _isAdmin ? null : _currentUserId;
+
+            var ticketsTask = TicketApiService.GetTicketsAsync(userId: userId);
             var statsTask = TicketApiService.GetTicketStatsAsync();
 
             await Task.WhenAll(ticketsTask, statsTask);

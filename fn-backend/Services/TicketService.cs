@@ -20,7 +20,7 @@ public class TicketService : ITicketService
     }
 
     public async Task<IEnumerable<TicketDetailDto>> GetTicketsAsync(string? status = null, string? priority = null,
-        int? serviceId = null)
+        int? serviceId = null, string? userId = null)
     {
         var query = _context.Tickets
             .Include(t => t.Service)
@@ -28,6 +28,7 @@ public class TicketService : ITicketService
             .ThenInclude(p => p.Client)
             .Include(t => t.Comments)
             .Include(t => t.Attachments)
+            .Include(t => t.Activities)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
@@ -43,6 +44,12 @@ public class TicketService : ITicketService
         if (serviceId.HasValue)
         {
             query = query.Where(t => t.ServiceId == serviceId.Value);
+        }
+
+        // Filtrar por usuario asignado si se proporciona
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(t => t.AssignedToUserId == userId);
         }
 
         var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
@@ -66,6 +73,7 @@ public class TicketService : ITicketService
             .Include(t => t.Comments)
             .Include(t => t.Attachments)
             .Include(t => t.History)
+            .Include(t => t.Activities)
             .FirstOrDefaultAsync(t => t.Id == id);
 
         if (ticket == null)
@@ -331,6 +339,178 @@ public class TicketService : ITicketService
         };
     }
 
+    // ========== MÉTODOS PARA ACTIVIDADES ==========
+
+    public async Task<ServiceResult<TicketActivityDto>> AddActivityAsync(int ticketId, TicketActivityDto activityDto, string userId)
+    {
+        var ticket = await _context.Tickets.FindAsync(ticketId);
+        if (ticket == null)
+        {
+            return ServiceResult<TicketActivityDto>.Failure("Ticket no encontrado");
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return ServiceResult<TicketActivityDto>.Failure("Usuario no encontrado");
+        }
+
+        var activity = new TicketActivity
+        {
+            TicketId = ticketId,
+            Description = activityDto.Description,
+            HoursSpent = activityDto.HoursSpent,
+            IsCompleted = false,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByUserId = userId
+        };
+
+        _context.Set<TicketActivity>().Add(activity);
+
+        var history = new TicketHistory
+        {
+            TicketId = ticketId,
+            UserId = userId,
+            Action = "ActivityAdded",
+            NewValue = $"Actividad agregada: {activityDto.Description}",
+            ChangedAt = DateTime.UtcNow
+        };
+
+        _context.Set<TicketHistory>().Add(history);
+
+        await _context.SaveChangesAsync();
+
+        return ServiceResult<TicketActivityDto>.Success(new TicketActivityDto
+        {
+            Id = activity.Id,
+            TicketId = activity.TicketId,
+            Description = activity.Description,
+            HoursSpent = activity.HoursSpent,
+            IsCompleted = activity.IsCompleted,
+            CreatedAt = activity.CreatedAt,
+            CompletedAt = activity.CompletedAt,
+            CreatedByUserId = userId,
+            CreatedByUserName = user.UserName ?? string.Empty
+        });
+    }
+
+    public async Task<ServiceResult<TicketActivityDto>> UpdateActivityAsync(int ticketId, int activityId, TicketActivityDto activityDto, string userId)
+    {
+        var activity = await _context.Set<TicketActivity>()
+            .FirstOrDefaultAsync(a => a.Id == activityId && a.TicketId == ticketId);
+
+        if (activity == null)
+        {
+            return ServiceResult<TicketActivityDto>.Failure("Actividad no encontrada");
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return ServiceResult<TicketActivityDto>.Failure("Usuario no encontrado");
+        }
+
+        activity.Description = activityDto.Description;
+        activity.HoursSpent = activityDto.HoursSpent;
+
+        _context.Set<TicketActivity>().Update(activity);
+
+        var history = new TicketHistory
+        {
+            TicketId = ticketId,
+            UserId = userId,
+            Action = "ActivityUpdated",
+            NewValue = $"Actividad actualizada: {activityDto.Description}",
+            ChangedAt = DateTime.UtcNow
+        };
+
+        _context.Set<TicketHistory>().Add(history);
+
+        await _context.SaveChangesAsync();
+
+        return ServiceResult<TicketActivityDto>.Success(new TicketActivityDto
+        {
+            Id = activity.Id,
+            TicketId = activity.TicketId,
+            Description = activity.Description,
+            HoursSpent = activity.HoursSpent,
+            IsCompleted = activity.IsCompleted,
+            CreatedAt = activity.CreatedAt,
+            CompletedAt = activity.CompletedAt,
+            CreatedByUserId = activity.CreatedByUserId,
+            CreatedByUserName = user.UserName ?? string.Empty
+        });
+    }
+
+    public async Task<ServiceResult<bool>> DeleteActivityAsync(int ticketId, int activityId)
+    {
+        var activity = await _context.Set<TicketActivity>()
+            .FirstOrDefaultAsync(a => a.Id == activityId && a.TicketId == ticketId);
+
+        if (activity == null)
+        {
+            return ServiceResult<bool>.Failure("Actividad no encontrada");
+        }
+
+        // Si la actividad está completada, restar sus horas del ticket
+        if (activity.IsCompleted)
+        {
+            var ticket = await _context.Tickets.FindAsync(ticketId);
+            if (ticket != null)
+            {
+                ticket.ActualHours -= activity.HoursSpent;
+                _context.Tickets.Update(ticket);
+            }
+        }
+
+        _context.Set<TicketActivity>().Remove(activity);
+        await _context.SaveChangesAsync();
+
+        return ServiceResult<bool>.Success(true);
+    }
+
+    public async Task<ServiceResult<bool>> CompleteActivityAsync(int ticketId, int activityId, string userId)
+    {
+        var activity = await _context.Set<TicketActivity>()
+            .FirstOrDefaultAsync(a => a.Id == activityId && a.TicketId == ticketId);
+
+        if (activity == null)
+        {
+            return ServiceResult<bool>.Failure("Actividad no encontrada");
+        }
+
+        var ticket = await _context.Tickets.FindAsync(ticketId);
+        if (ticket == null)
+        {
+            return ServiceResult<bool>.Failure("Ticket no encontrado");
+        }
+
+        // Marcar como completada
+        activity.IsCompleted = true;
+        activity.CompletedAt = DateTime.UtcNow;
+
+        // Sumar las horas al total de horas reales del ticket
+        ticket.ActualHours += activity.HoursSpent;
+
+        _context.Set<TicketActivity>().Update(activity);
+        _context.Tickets.Update(ticket);
+
+        var history = new TicketHistory
+        {
+            TicketId = ticketId,
+            UserId = userId,
+            Action = "ActivityCompleted",
+            NewValue = $"Actividad completada: {activity.Description} ({activity.HoursSpent}h)",
+            ChangedAt = DateTime.UtcNow
+        };
+
+        _context.Set<TicketHistory>().Add(history);
+
+        await _context.SaveChangesAsync();
+
+        return ServiceResult<bool>.Success(true);
+    }
+
     private async Task<TicketDetailDto> MapToDetailDto(Ticket ticket)
     {
         IdentityUser? assignedUser = null;
@@ -424,6 +604,28 @@ public class TicketService : ITicketService
                     OldValue = history.OldValue,
                     NewValue = history.NewValue,
                     ChangedAt = history.ChangedAt
+                });
+            }
+        }
+
+        //map activities
+        if (ticket.Activities != null && ticket.Activities.Any())
+        {
+            dto.Activities = new List<TicketActivityDto>();
+            foreach (var activity in ticket.Activities.OrderBy(a => a.CreatedAt))
+            {
+                var activityUser = await _userManager.FindByIdAsync(activity.CreatedByUserId);
+                dto.Activities.Add(new TicketActivityDto
+                {
+                    Id = activity.Id,
+                    TicketId = activity.TicketId,
+                    Description = activity.Description,
+                    HoursSpent = activity.HoursSpent,
+                    IsCompleted = activity.IsCompleted,
+                    CreatedAt = activity.CreatedAt,
+                    CompletedAt = activity.CompletedAt,
+                    CreatedByUserId = activity.CreatedByUserId,
+                    CreatedByUserName = activityUser?.UserName ?? string.Empty
                 });
             }
         }

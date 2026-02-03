@@ -32,4 +32,5 @@ public class TicketDetailDto
     public List<TicketCommentDto>? Comments { get; set; }
     public List<TicketAttachmentDto>? Attachments { get; set; }
     public List<TicketHistoryDto>? History { get; set; }
+    public List<TicketActivityDto>? Activities { get; set; }
 }

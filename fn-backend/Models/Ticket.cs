@@ -26,4 +26,5 @@ public class Ticket
     public ICollection<TicketComment> Comments { get; set; } = new List<TicketComment>();
     public ICollection<TicketAttachment> Attachments { get; set; } = new List<TicketAttachment>();
     public ICollection<TicketHistory> History { get; set; } = new List<TicketHistory>();
+    public ICollection<TicketActivity> Activities { get; set; } = new List<TicketActivity>();
 }

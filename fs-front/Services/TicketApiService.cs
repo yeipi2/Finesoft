@@ -13,7 +13,7 @@ public class TicketApiService : ITicketApiService
     }
 
     public async Task<List<TicketDetailDto>?> GetTicketsAsync(string? status = null, string? priority = null,
-        int? serviceId = null)
+        int? serviceId = null, string? userId = null)
     {
         try
         {
@@ -21,6 +21,7 @@ public class TicketApiService : ITicketApiService
             if (!string.IsNullOrEmpty(status)) queryParams.Add($"status={status}");
             if (!string.IsNullOrEmpty(priority)) queryParams.Add($"priority={priority}");
             if (serviceId.HasValue) queryParams.Add($"serviceId={serviceId}");
+            if (!string.IsNullOrEmpty(userId)) queryParams.Add($"userId={userId}");
 
             var query = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
             return await _httpClient.GetFromJsonAsync<List<TicketDetailDto>>($"api/tickets{query}");
@@ -135,6 +136,88 @@ public class TicketApiService : ITicketApiService
         catch (Exception e)
         {
             return (false, null, $"Error: {e.Message}");
+        }
+    }
+
+    // ========== MÉTODOS PARA ACTIVIDADES ==========
+
+    public async Task<(bool Success, TicketActivityDto? AddedActivity, string? ErrorMessage)> AddActivityAsync(
+        int ticketId, TicketActivityDto activity)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/tickets/{ticketId}/activities", activity);
+            if (response.IsSuccessStatusCode)
+            {
+                var added = await response.Content.ReadFromJsonAsync<TicketActivityDto>();
+                return (true, added, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, null, $"Error al agregar actividad: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, null, $"Error: {e.Message}");
+        }
+    }
+
+    public async Task<(bool Success, TicketActivityDto? UpdatedActivity, string? ErrorMessage)> UpdateActivityAsync(
+        int ticketId, int activityId, TicketActivityDto activity)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/tickets/{ticketId}/activities/{activityId}", activity);
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<TicketActivityDto>();
+                return (true, updated, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, null, $"Error al actualizar actividad: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, null, $"Error: {e.Message}");
+        }
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> DeleteActivityAsync(int ticketId, int activityId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/tickets/{ticketId}/activities/{activityId}");
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, $"Error al eliminar actividad: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, $"Error: {e.Message}");
+        }
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> CompleteActivityAsync(int ticketId, int activityId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/tickets/{ticketId}/activities/{activityId}/complete", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, $"Error al completar actividad: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, $"Error: {e.Message}");
         }
     }
 }

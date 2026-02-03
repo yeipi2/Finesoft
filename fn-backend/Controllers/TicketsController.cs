@@ -18,10 +18,13 @@ public class TicketsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTickets([FromQuery] string? status = null, [FromQuery] string? priority = null,
-        [FromQuery] int? serviceId = null)
+    public async Task<IActionResult> GetTickets(
+        [FromQuery] string? status = null,
+        [FromQuery] string? priority = null,
+        [FromQuery] int? serviceId = null,
+        [FromQuery] string? userId = null)
     {
-        var tickets = await _ticketService.GetTicketsAsync(status, priority, serviceId);
+        var tickets = await _ticketService.GetTicketsAsync(status, priority, serviceId, userId);
         return Ok(tickets);
     }
 
@@ -109,5 +112,73 @@ public class TicketsController : ControllerBase
     {
         var stats = await _ticketService.GetTicketStatsAsync();
         return Ok(stats);
+    }
+
+    // ========== ENDPOINTS PARA ACTIVIDADES ==========
+
+    [HttpPost("{id}/activities")]
+    public async Task<IActionResult> AddActivity(int id, TicketActivityDto activityDto)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "Usuario no autenticado" });
+        }
+
+        var result = await _ticketService.AddActivityAsync(id, activityDto, userId);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result.Errors);
+        }
+
+        return Ok(result.Data);
+    }
+
+    [HttpPut("{id}/activities/{activityId}")]
+    public async Task<IActionResult> UpdateActivity(int id, int activityId, TicketActivityDto activityDto)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "Usuario no autenticado" });
+        }
+
+        var result = await _ticketService.UpdateActivityAsync(id, activityId, activityDto, userId);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result.Errors);
+        }
+
+        return Ok(result.Data);
+    }
+
+    [HttpDelete("{id}/activities/{activityId}")]
+    public async Task<IActionResult> DeleteActivity(int id, int activityId)
+    {
+        var result = await _ticketService.DeleteActivityAsync(id, activityId);
+        if (!result.Succeeded)
+        {
+            return NotFound(result.Errors);
+        }
+
+        return Ok(new { message = "Actividad eliminada exitosamente" });
+    }
+
+    [HttpPost("{id}/activities/{activityId}/complete")]
+    public async Task<IActionResult> CompleteActivity(int id, int activityId)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "Usuario no autenticado" });
+        }
+
+        var result = await _ticketService.CompleteActivityAsync(id, activityId, userId);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result.Errors);
+        }
+
+        return Ok(new { message = "Actividad completada exitosamente" });
     }
 }
