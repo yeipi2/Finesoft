@@ -1,5 +1,6 @@
-﻿@* @page "/tickets/{TicketId:int}" *@
+﻿@page "/tickets/{TicketId:int}"
 @using fs_front.DTO
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Ticket #@TicketId</PageTitle>
 
@@ -11,6 +12,13 @@
                 <span class="visually-hidden">Cargando...</span>
             </div>
             <p class="mt-2 text-muted">Cargando detalles del ticket...</p>
+        </div>
+    }
+    else if (!_hasAccess)
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+            No tienes permiso para ver este ticket. Solo el usuario asignado y los administradores pueden acceder.
         </div>
     }
     else if (_ticket != null)
@@ -53,14 +61,17 @@
                             <span class="badge @statusClass fs-6">@_ticket.Status</span>
                         </div>
                     </div>
-                    <div>
-                        <button class="btn btn-primary me-2" @onclick="EditTicket">
-                            <i class="bi bi-pencil-fill"></i> Editar
-                        </button>
-                        <button class="btn btn-danger" @onclick="ConfirmDelete">
-                            <i class="bi bi-trash-fill"></i> Eliminar
-                        </button>
-                    </div>
+                    @if (_isAdmin)
+                    {
+                        <div>
+                            <button class="btn btn-primary me-2" @onclick="EditTicket">
+                                <i class="bi bi-pencil-fill"></i> Editar
+                            </button>
+                            <button class="btn btn-danger" @onclick="ConfirmDelete">
+                                <i class="bi bi-trash-fill"></i> Eliminar
+                            </button>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -76,9 +87,83 @@
                     </div>
                 </div>
 
+                <!-- SECCIÓN DE ACTIVIDADES -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-task"></i> Actividades a Realizar
+                            (@(_ticket.Activities?.Count(a => !a.IsCompleted) ?? 0) pendientes)
+                        </h5>
+                        <button class="btn btn-sm btn-dark" @onclick="ShowAddActivityModal">
+                            <i class="bi bi-plus-lg"></i> Agregar Actividad
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (_ticket.Activities != null && _ticket.Activities.Any())
+                        {
+                            <div class="list-group">
+                                @foreach (var activity in _ticket.Activities.OrderBy(a => a.IsCompleted).ThenBy(a => a.CreatedAt))
+                                {
+                                    <div class="list-group-item @(activity.IsCompleted ? "bg-light" : "")">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center gap-2 mb-2">
+                                                    @if (activity.IsCompleted)
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                                        <span class="text-decoration-line-through text-muted">@activity.Description</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-circle text-muted"></i>
+                                                        <strong>@activity.Description</strong>
+                                                    }
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-clock"></i> @activity.HoursSpent.ToString("0.00")h
+                                                    | <i class="bi bi-person"></i> @activity.CreatedByUserName
+                                                    @if (activity.IsCompleted && activity.CompletedAt.HasValue)
+                                                    {
+                                                        <span> | Completada: @activity.CompletedAt.Value.ToString("dd/MM/yyyy")</span>
+                                                    }
+                                                </small>
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                @if (!activity.IsCompleted)
+                                                {
+                                                    <button class="btn btn-sm btn-success"
+                                                            @onclick="() => CompleteActivity(activity.Id)"
+                                                            title="Marcar como completada">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-primary"
+                                                            @onclick="() => ShowEditActivityModal(activity)"
+                                                            title="Editar">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                }
+                                                <button class="btn btn-sm btn-danger"
+                                                        @onclick="() => ConfirmDeleteActivity(activity)"
+                                                        title="Eliminar">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-3">No hay actividades registradas.</p>
+                        }
+                    </div>
+                </div>
+
                 <div class="card mb-4">
                     <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="bi bi-chat-dots"></i> Comentarios (@(_ticket.Comments?.Count ?? 0))
+                        <h5 class="mb-0">
+                            <i class="bi bi-chat-dots"></i> Comentarios (@(_ticket.Comments?.Count ?? 0))
                         </h5>
                     </div>
                     <div class="card-body">
@@ -86,8 +171,7 @@
                         {
                             @foreach (var comment in _ticket.Comments.OrderBy(c => c.CreatedAt))
                             {
-                                <div
-                                    class="border-start border-3 @(comment.IsInternal ? "border-warning" : "border-primary") ps-3 mb-3">
+                                <div class="border-start border-3 @(comment.IsInternal ? "border-warning" : "border-primary") ps-3 mb-3">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <div>
                                             <strong>@comment.UserName</strong>
@@ -96,8 +180,7 @@
                                                 <span class="badge bg-warning text-dark ms-2">Interno</span>
                                             }
                                         </div>
-                                        <small
-                                            class="text-muted">@comment.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                                        <small class="text-muted">@comment.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</small>
                                     </div>
                                     <p class="mb-0">@comment.Comment</p>
                                 </div>
@@ -110,12 +193,12 @@
 
                         <div class="mt-4">
                             <EditForm Model="_newComment" OnValidSubmit="AddComment">
-                                <DataAnnotationsValidator/>
+                                <DataAnnotationsValidator />
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Agregar Comentario</label>
                                     <InputTextArea class="form-control" rows="3" @bind-Value="_newComment.Comment"
-                                                   placeholder="Escribe tu comentario aquí..."/>
-                                    <ValidationMessage For="@(() => _newComment.Comment)"/>
+                                                   placeholder="Escribe tu comentario aquí..." />
+                                    <ValidationMessage For="@(() => _newComment.Comment)" />
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <button type="submit" class="btn btn-primary" disabled="@_isAddingComment">
@@ -151,16 +234,16 @@
                                                         <strong>@history.UserName</strong>
                                                         <span class="text-muted"> - @history.Action</span>
                                                     </div>
-                                                    <small
-                                                        class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                                                    <small class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
                                                 </div>
                                                 @if (!string.IsNullOrEmpty(history.OldValue) || !string.IsNullOrEmpty(history.NewValue))
                                                 {
                                                     <small class="text-muted">
                                                         @if (!string.IsNullOrEmpty(history.OldValue))
                                                         {
-                                                            <span>De: <span
-                                                                    class="text-decoration-line-through">@history.OldValue</span></span>
+                                                            <span>
+                                                                De: <span class="text-decoration-line-through">@history.OldValue</span>
+                                                            </span>
                                                         }
                                                         @if (!string.IsNullOrEmpty(history.NewValue))
                                                         {
@@ -258,7 +341,7 @@
                         </div>
                         <div>
                             <small class="text-muted">Horas Reales</small>
-                            <div class="h4 mb-0">@_ticket.ActualHours.ToString("0.00")h</div>
+                            <div class="h4 mb-0 text-success">@_ticket.ActualHours.ToString("0.00")h</div>
                             <small class="text-muted">
                                 Costo: $@((_ticket.ActualHours * _ticket.HourlyRate).ToString("N2"))
                             </small>
@@ -298,6 +381,7 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
     [Parameter] public int TicketId { get; set; }
@@ -306,10 +390,53 @@
     private TicketCommentDto _newComment = new();
     private bool _isLoading = false;
     private bool _isAddingComment = false;
+    private bool _hasAccess = false;
+    private bool _isAdmin = false;
+    private string? _currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadTicket();
+        await CheckAccess();
+        if (_hasAccess)
+        {
+            await LoadTicket();
+        }
+    }
+
+    private async Task CheckAccess()
+    {
+        _isLoading = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                _currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                _isAdmin = role == "Admin";
+
+                // Cargar el ticket para verificar acceso
+                var ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
+
+                if (ticket != null)
+                {
+                    // Admin tiene acceso a todo
+                    // Usuario asignado tiene acceso
+                    _hasAccess = _isAdmin || ticket.AssignedToUserId == _currentUserId;
+                    _ticket = ticket;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al verificar acceso: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private async Task LoadTicket()
@@ -326,6 +453,195 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task ShowAddActivityModal()
+    {
+        var newActivity = new TicketActivityDto { TicketId = TicketId };
+
+        var result = await DialogService.OpenAsync("Agregar Actividad", ds =>
+            @<div>
+    <EditForm Model="newActivity" OnValidSubmit="async () => await AddActivity(newActivity, ds)">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción *</label>
+            <InputTextArea class="form-control" rows="3" @bind-Value="newActivity.Description"
+                           placeholder="Describe la actividad a realizar..." />
+            <ValidationMessage For="@(() => newActivity.Description)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Horas Estimadas *</label>
+            <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent"
+                         placeholder="0.00" step="0.25" />
+            <ValidationMessage For="@(() => newActivity.HoursSpent)" />
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Agregar
+            </button>
+        </div>
+    </EditForm>
+</div>
+        , new DialogOptions { Width = "600px" });
+
+        if (result == true)
+        {
+            await LoadTicket();
+        }
+    }
+
+    private async Task AddActivity(TicketActivityDto activity, DialogService ds)
+    {
+        try
+        {
+            var result = await TicketApiService.AddActivityAsync(TicketId, activity);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Actividad agregada correctamente.", NotificationSeverity.Success);
+                ds.Close(true);
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo agregar la actividad.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ShowEditActivityModal(TicketActivityDto activity)
+    {
+        var editActivity = new TicketActivityDto
+        {
+            Id = activity.Id,
+            TicketId = activity.TicketId,
+            Description = activity.Description,
+            HoursSpent = activity.HoursSpent
+        };
+
+        var result = await DialogService.OpenAsync("Editar Actividad", ds =>
+            @<div>
+    <EditForm Model="editActivity" OnValidSubmit="async () => await UpdateActivity(editActivity, ds)">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción *</label>
+            <InputTextArea class="form-control" rows="3" @bind-Value="editActivity.Description" />
+            <ValidationMessage For="@(() => editActivity.Description)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Horas Estimadas *</label>
+            <InputNumber class="form-control" @bind-Value="editActivity.HoursSpent" step="0.25" />
+            <ValidationMessage For="@(() => editActivity.HoursSpent)" />
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg"></i> Actualizar
+            </button>
+        </div>
+    </EditForm>
+</div>
+        , new DialogOptions { Width = "600px" });
+
+        if (result == true)
+        {
+            await LoadTicket();
+        }
+    }
+
+    private async Task UpdateActivity(TicketActivityDto activity, DialogService ds)
+    {
+        try
+        {
+            var result = await TicketApiService.UpdateActivityAsync(TicketId, activity.Id, activity);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Actividad actualizada correctamente.", NotificationSeverity.Success);
+                ds.Close(true);
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo actualizar la actividad.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task ConfirmDeleteActivity(TicketActivityDto activity)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea eliminar esta actividad?{(activity.IsCompleted ? " (Las horas ya sumadas serán restadas del total)" : "")}",
+            "Confirmar Eliminación",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, eliminar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            await DeleteActivity(activity.Id);
+        }
+    }
+
+    private async Task DeleteActivity(int activityId)
+    {
+        try
+        {
+            var result = await TicketApiService.DeleteActivityAsync(TicketId, activityId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Actividad eliminada correctamente.", NotificationSeverity.Success);
+                await LoadTicket();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar la actividad.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task CompleteActivity(int activityId)
+    {
+        var confirmed = await DialogService.Confirm(
+            "¿Marcar esta actividad como completada? Las horas se sumarán al total de horas reales del ticket.",
+            "Confirmar Completar",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, completar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var result = await TicketApiService.CompleteActivityAsync(TicketId, activityId);
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", "Actividad completada. Las horas se han sumado al total.", NotificationSeverity.Success);
+                    await LoadTicket();
+                }
+                else
+                {
+                    ShowNotification("Error", result.ErrorMessage ?? "No se pudo completar la actividad.", NotificationSeverity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+            }
         }
     }
 
@@ -431,5 +747,4 @@
             Duration = 4000
         });
     }
-
 }
