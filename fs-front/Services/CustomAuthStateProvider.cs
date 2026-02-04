@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Blazored.LocalStorage;
 using fs_front.Models;
 using Microsoft.AspNetCore.Components.Authorization;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace fs_front.Services
 {
@@ -25,67 +26,43 @@ namespace fs_front.Services
             }
         }
 
-        public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
         {
-            var user = new ClaimsPrincipal(new ClaimsIdentity());
+            var token = _localStorage.GetItem<string>("accessToken");
+
+            if (string.IsNullOrWhiteSpace(token))
+                return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
 
             try
             {
-                var response = await _httpClient.GetAsync("manage/info");
-                if (response.IsSuccessStatusCode)
-                {
-                    var strResponse = await response.Content.ReadAsStringAsync();
-                    var jsonResponse = JsonNode.Parse(strResponse);
-                    var email = jsonResponse?["email"]?.ToString();
+                var handler = new JwtSecurityTokenHandler();
+                var jwt = handler.ReadJwtToken(token);
 
-                    var claims = new List<Claim>
-                    {
-                        new Claim(ClaimTypes.Name, email ?? ""),
-                        new Claim(ClaimTypes.Email, email ?? "")
-                    };
+                var claims = jwt.Claims.ToList();
 
-                    var userResponse = await _httpClient.GetAsync($"api/users");
-                    if (userResponse.IsSuccessStatusCode)
-                    {
-                        var usersJson = await userResponse.Content.ReadAsStringAsync();
-                        var users = JsonNode.Parse(usersJson)?.AsArray();
+                var identity = new ClaimsIdentity(claims, "jwt");
+                var user = new ClaimsPrincipal(identity);
 
-                        var currentUser = users?.FirstOrDefault(u => u?["email"]?.ToString() == email);
-                        if (currentUser != null)
-                        {
-                            var role = currentUser["roleName"]?.ToString();
-                            if (!string.IsNullOrEmpty(role))
-                            {
-                                claims.Add(new Claim(ClaimTypes.Role, role));
-                            }
+                // asegura header para llamadas al backend
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                            var userId = currentUser["id"]?.ToString();
-                            if (!string.IsNullOrEmpty(userId))
-                            {
-                                claims.Add(new Claim(ClaimTypes.NameIdentifier, userId));
-                            }
-                        }
-                    }
-
-                    var identity = new ClaimsIdentity(claims, "Token");
-                    user = new ClaimsPrincipal(identity);
-                    return new AuthenticationState(user);
-                }
+                return Task.FromResult(new AuthenticationState(user));
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Error en autenticación: {ex.Message}");
+                // token inválido -> limpiar
+                _localStorage.RemoveItem("accessToken");
+                return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
             }
-
-            return new AuthenticationState(user);
         }
+
 
         public async Task<FormResponse> LoginAsync(LoginModel loginModel)
         {
             try
             {
                 var response =
-                    await _httpClient.PostAsJsonAsync("login", new { loginModel.Email, loginModel.Password });
+                    await _httpClient.PostAsJsonAsync("api/auth/login", new { loginModel.Email, loginModel.Password });
 
                 if (response.IsSuccessStatusCode)
                 {

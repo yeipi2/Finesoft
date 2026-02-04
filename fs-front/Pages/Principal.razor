@@ -4,14 +4,14 @@
 
 <div class="landing-page">
     <div class="hero-section">
-        <RadzenRow JustifyContent="JustifyContent.Center" AlignItems="AlignItems.Center" Gap="2rem" class="rz-p-4 rz-p-md-8">
+        <RadzenRow JustifyContent="JustifyContent.Center" AlignItems="AlignItems.Center" Gap="2rem"
+            class="rz-p-4 rz-p-md-8">
             <RadzenColumn Size="12" SizeMD="6" class="rz-text-align-center rz-text-align-md-start order-2 order-md-1">
                 <Animate Animation="Animations.FadeLeft" Duration="TimeSpan.FromSeconds(1)">
                     <RadzenStack Gap="1.5rem">
                         <!-- Logo -->
-                        <RadzenImage Path="images/LogoFinesoft.png"
-                                     AlternateText="Finesoft Logo"
-                                     Style="width: 200px; height: auto;" />
+                        <RadzenImage Path="images/LogoFinesoft.png" AlternateText="Finesoft Logo"
+                            Style="width: 200px; height: auto;" />
 
                         <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">
                             Sistema de Gestión de Soporte Técnico
@@ -28,22 +28,14 @@
                         </RadzenText>
 
                         <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem"
-                                     JustifyContent="JustifyContent.Center"
-                                     class="rz-justify-content-md-start flex-wrap rz-mt-3">
-                            <RadzenButton Text="Iniciar Sesión"
-                                          Icon="login"
-                                          ButtonStyle="ButtonStyle.Primary"
-                                          Size="ButtonSize.Large"
-                                          Click="@NavigateToLogin"
-                                          class="rz-shadow-4"
-                                          Style="padding: 12px 32px;" />
-                            <RadzenButton Text="Crear Cuenta"
-                                          Icon="person_add"
-                                          ButtonStyle="ButtonStyle.Secondary"
-                                          Size="ButtonSize.Large"
-                                          Click="@NavigateToRegister"
-                                          Variant="Variant.Outlined"
-                                          Style="padding: 12px 32px;" />
+                            JustifyContent="JustifyContent.Center"
+                            class="rz-justify-content-md-start flex-wrap rz-mt-3">
+                            <RadzenButton Text="Iniciar Sesión" Icon="login" ButtonStyle="ButtonStyle.Primary"
+                                Size="ButtonSize.Large" Click="@NavigateToLogin" class="rz-shadow-4"
+                                Style="padding: 12px 32px;" />
+                            <RadzenButton Text="Crear Cuenta" Icon="person_add" ButtonStyle="ButtonStyle.Secondary"
+                                Size="ButtonSize.Large" Click="@NavigateToRegister" Variant="Variant.Outlined"
+                                Style="padding: 12px 32px;" />
                         </RadzenStack>
                     </RadzenStack>
                 </Animate>
@@ -52,10 +44,10 @@
             <RadzenColumn Size="12" SizeMD="6" class="order-1 order-md-2">
                 <Animate Animation="Animations.FadeRight" Duration="TimeSpan.FromSeconds(1)">
                     <div class="image-container">
-                        <RadzenImage Path="https://img.freepik.com/free-vector/project-management-concept-illustration_114360-621.jpg"
-                                     class="rz-border-radius-4 rz-shadow-6"
-                                     AlternateText="Gestión de proyectos"
-                                     Style="width: 100%; height: auto; max-width: 500px;" />
+                        <RadzenImage
+                            Path="https://img.freepik.com/free-vector/project-management-concept-illustration_114360-621.jpg"
+                            class="rz-border-radius-4 rz-shadow-6" AlternateText="Gestión de proyectos"
+                            Style="width: 100%; height: auto; max-width: 500px;" />
                     </div>
                 </Animate>
             </RadzenColumn>
@@ -77,7 +69,8 @@
             <RadzenRow Gap="1.5rem" class="rz-justify-content-center">
                 <!-- Feature 1 -->
                 <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.1)">
+                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.1)">
                         <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
                             <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
                                 <div class="icon-wrapper" style="background: rgba(91, 77, 139, 0.1); color: #5b4d8b;">
@@ -96,7 +89,8 @@
 
                 <!-- Feature 2 -->
                 <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.2)">
+                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.2)">
                         <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
                             <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
                                 <div class="icon-wrapper" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
@@ -115,7 +109,8 @@
 
                 <!-- Feature 3 -->
                 <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.3)">
+                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.3)">
                         <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
                             <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
                                 <div class="icon-wrapper" style="background: rgba(251, 146, 60, 0.1); color: #fb923c;">
@@ -134,7 +129,8 @@
 
                 <!-- Feature 4 -->
                 <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.4)">
+                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.4)">
                         <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
                             <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
                                 <div class="icon-wrapper" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
@@ -172,7 +168,8 @@
                 </RadzenColumn>
 
                 <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.1)">
+                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.1)">
                         <RadzenStack Gap="0.5rem">
                             <RadzenText TextStyle="TextStyle.DisplayH3" Style="color: #22c55e; font-weight: bold;">
                                 24/7
@@ -185,7 +182,8 @@
                 </RadzenColumn>
 
                 <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.2)">
+                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.2)">
                         <RadzenStack Gap="0.5rem">
                             <RadzenText TextStyle="TextStyle.DisplayH3" Style="color: #fb923c; font-weight: bold;">
                                 ∞
@@ -198,7 +196,8 @@
                 </RadzenColumn>
 
                 <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(0.3)">
+                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)"
+                        Delay="TimeSpan.FromSeconds(0.3)">
                         <RadzenStack Gap="0.5rem">
                             <RadzenIcon Icon="verified_user" Style="font-size: 3.5rem; color: #3b82f6;" />
                             <RadzenText TextStyle="TextStyle.Body1" Style="color: #d6356c;">
@@ -216,30 +215,21 @@
         <RadzenStack Gap="2rem" class="rz-p-4 rz-p-md-8 rz-text-align-center">
             <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(1)">
                 <RadzenStack Gap="1.5rem">
-                    <RadzenText TextStyle="TextStyle.DisplayH4" TagName="TagName.H2" Style="color: white; font-weight: bold;">
+                    <RadzenText TextStyle="TextStyle.DisplayH4" TagName="TagName.H2"
+                        Style="color: white; font-weight: bold;">
                         ¿Listo para comenzar?
                     </RadzenText>
                     <RadzenText TextStyle="TextStyle.H6" Style="color: white;">
                         Únete a Finesoft y lleva tu negocio al siguiente nivel
                     </RadzenText>
-                    <RadzenStack Orientation="Orientation.Horizontal"
-                                 Gap="1rem"
-                                 JustifyContent="JustifyContent.Center"
-                                 class="flex-wrap rz-mt-2">
-                        <RadzenButton Text="CREAR CUENTA GRATIS"
-                                      Icon="person_add"
-                                      ButtonStyle="ButtonStyle.Light"
-                                      Size="ButtonSize.Large"
-                                      Click="@NavigateToRegister"
-                                      class="rz-shadow-5"
-                                      Style="padding: 12px 32px; font-weight: bold;" />
-                        <RadzenButton Text="YA TENGO CUENTA"
-                                      Icon="login"
-                                      ButtonStyle="ButtonStyle.Light"
-                                      Size="ButtonSize.Large"
-                                      Click="@NavigateToLogin"
-                                      Variant="Variant.Outlined"
-                                      Style="padding: 12px 32px; color: white; border-color: white; font-weight: bold;" />
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.Center"
+                        class="flex-wrap rz-mt-2">
+                        <RadzenButton Text="CREAR CUENTA GRATIS" Icon="person_add" ButtonStyle="ButtonStyle.Light"
+                            Size="ButtonSize.Large" Click="@NavigateToRegister" class="rz-shadow-5"
+                            Style="padding: 12px 32px; font-weight: bold;" />
+                        <RadzenButton Text="YA TENGO CUENTA" Icon="login" ButtonStyle="ButtonStyle.Light"
+                            Size="ButtonSize.Large" Click="@NavigateToLogin" Variant="Variant.Outlined"
+                            Style="padding: 12px 32px; color: white; border-color: white; font-weight: bold;" />
                     </RadzenStack>
                 </RadzenStack>
             </Animate>
@@ -294,9 +284,9 @@
         padding: 2rem 0;
     }
 
-        .footer-section .rz-color-secondary {
-            color: #94a3b8 !important;
-        }
+    .footer-section .rz-color-secondary {
+        color: #94a3b8 !important;
+    }
 
     .feature-card {
         transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -304,10 +294,10 @@
         border: 1px solid #e2e8f0;
     }
 
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-        }
+    .feature-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    }
 
     .icon-wrapper {
         width: 70px;
@@ -338,9 +328,9 @@
         transition: all 0.3s ease;
     }
 
-        .rz-button:hover {
-            transform: translateY(-2px);
-        }
+    .rz-button:hover {
+        transform: translateY(-2px);
+    }
 
     /* Responsive */
     @@media (max-width: 768px) {

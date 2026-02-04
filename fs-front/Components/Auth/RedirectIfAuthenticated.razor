@@ -10,8 +10,8 @@
         var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
 
         // Solo redirige si no está autenticado Y no está ya en la página de login
-        if ((authState.User.Identity == null || !authState.User.Identity.IsAuthenticated) 
-            && !currentUri.StartsWith("iniciar-sesion"))
+        if ((authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
+        && !currentUri.StartsWith("iniciar-sesion"))
         {
             Navigation.NavigateTo(RedirectTo, true);
         }
