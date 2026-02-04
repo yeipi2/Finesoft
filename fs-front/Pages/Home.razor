@@ -1,215 +1,259 @@
 ﻿@page "/dashboard"
 @using fs_front.DTO
 @using fs_front.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
 @inject IReportApiService ReportService
 @inject NavigationManager NavigationManager
-@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject AuthenticationStateProvider AuthStateProvider
 
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "Admin,User")]
 
-<PageTitle>Finesoft - Sistema de Gestión de Soporte Técnico</PageTitle>
+<PageTitle>Finesoft - Dashboard</PageTitle>
 
 <div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold text-primary mb-1">
-                <i class="bi bi-speedometer2 me-2"></i>Panel de Administración
-            </h2>
-            <p class="text-muted mb-0">Resumen general y accesos rápidos a la plataforma.</p>
-        </div>
-        <div class="d-none d-md-block">
-            <span class="badge bg-light text-dark border p-2">
-                <i class="bi bi-calendar3 me-1"></i> @DateTime.Now.ToString("dd MMMM, yyyy")
-            </span>
-        </div>
-    </div>
 
-    @if (isLoading)
+    @if (!_ready)
     {
         <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
-            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
+            <div class="spinner-border text-primary" role="status"></div>
         </div>
     }
     else
     {
-        <div class="row g-3 mb-5">
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                    <div class="card-body p-4 position-relative">
-                        <div class="d-flex justify-content-between align-items-start z-1 position-relative">
-                            <div>
-                                <p class="text-uppercase text-muted small fw-bold mb-1">Ingresos Mensuales</p>
-                                <h3 class="fw-bold text-primary mb-0">$@stats?.MonthlyRevenue.ToString("N2")</h3>
-                            </div>
-                            <div class="bg-primary bg-opacity-10 p-2 rounded-3 text-primary">
-                                <i class="bi bi-currency-dollar fs-4"></i>
-                            </div>
-                        </div>
-                    </div>
+        @if (_isAdmin)
+        {
+            <!-- ================== ADMIN DASHBOARD ================== -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-primary mb-1">
+                        <i class="bi bi-speedometer2 me-2"></i>Panel de Administración
+                    </h2>
+                    <p class="text-muted mb-0">Resumen general y accesos rápidos a la plataforma.</p>
+                </div>
+                <div class="d-none d-md-block">
+                    <span class="badge bg-light text-dark border p-2">
+                        <i class="bi bi-calendar3 me-1"></i> @DateTime.Now.ToString("dd MMMM, yyyy")
+                    </span>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                    <div class="card-body p-4 position-relative">
-                        <div class="d-flex justify-content-between align-items-start z-1 position-relative">
-                            <div>
-                                <p class="text-uppercase text-muted small fw-bold mb-1">Tickets Abiertos</p>
-                                <h3 class="fw-bold text-warning mb-0">@stats?.OpenTickets</h3>
-                            </div>
-                            <div class="bg-warning bg-opacity-10 p-2 rounded-3 text-warning">
-                                <i class="bi bi-ticket-detailed fs-4"></i>
-                            </div>
-                        </div>
+            @if (isLoading)
+            {
+                <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                    <div class="card-body p-4 position-relative">
-                        <div class="d-flex justify-content-between align-items-start z-1 position-relative">
-                            <div>
-                                <p class="text-uppercase text-muted small fw-bold mb-1">Proyectos Activos</p>
-                                <h3 class="fw-bold text-success mb-0">@stats?.ActiveProjects</h3>
-                            </div>
-                            <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success">
-                                <i class="bi bi-kanban fs-4"></i>
+            }
+            else
+            {
+                <!-- Tus cards de stats -->
+                <div class="row g-3 mb-5">
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                            <div class="card-body p-4 position-relative">
+                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                                    <div>
+                                        <p class="text-uppercase text-muted small fw-bold mb-1">Ingresos Mensuales</p>
+                                        <h3 class="fw-bold text-primary mb-0">$@stats?.MonthlyRevenue.ToString("N2")</h3>
+                                    </div>
+                                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 text-primary">
+                                        <i class="bi bi-currency-dollar fs-4"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                    <div class="card-body p-4 position-relative">
-                        <div class="d-flex justify-content-between align-items-start z-1 position-relative">
-                            <div>
-                                <p class="text-uppercase text-muted small fw-bold mb-1">Total Clientes</p>
-                                <h3 class="fw-bold text-info mb-0">@stats?.TotalClients</h3>
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                            <div class="card-body p-4 position-relative">
+                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                                    <div>
+                                        <p class="text-uppercase text-muted small fw-bold mb-1">Tickets Abiertos</p>
+                                        <h3 class="fw-bold text-warning mb-0">@stats?.OpenTickets</h3>
+                                    </div>
+                                    <div class="bg-warning bg-opacity-10 p-2 rounded-3 text-warning">
+                                        <i class="bi bi-ticket-detailed fs-4"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="bg-info bg-opacity-10 p-2 rounded-3 text-info">
-                                <i class="bi bi-people fs-4"></i>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                            <div class="card-body p-4 position-relative">
+                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                                    <div>
+                                        <p class="text-uppercase text-muted small fw-bold mb-1">Proyectos Activos</p>
+                                        <h3 class="fw-bold text-success mb-0">@stats?.ActiveProjects</h3>
+                                    </div>
+                                    <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success">
+                                        <i class="bi bi-kanban fs-4"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                            <div class="card-body p-4 position-relative">
+                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                                    <div>
+                                        <p class="text-uppercase text-muted small fw-bold mb-1">Total Clientes</p>
+                                        <h3 class="fw-bold text-info mb-0">@stats?.TotalClients</h3>
+                                    </div>
+                                    <div class="bg-info bg-opacity-10 p-2 rounded-3 text-info">
+                                        <i class="bi bi-people fs-4"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-grid-fill me-2"></i>Módulos de Gestión</h5>
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                <h5 class="fw-bold text-secondary mb-3">
+                    <i class="bi bi-grid-fill me-2"></i>Módulos de Gestión
+                </h5>
 
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("clientes")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-people fs-3"></i>
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("clientes")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-people fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Clientes</h5>
+                                <p class="card-text text-muted small">Administra empresas, contactos y servicios contratados.</p>
+                                <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Ver Directorio</span>
+                            </div>
                         </div>
-                        <h5 class="card-title fw-bold">Clientes</h5>
-                        <p class="card-text text-muted small">Administra empresas, contactos y servicios
-                            contratados.</p>
-                        <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Ver Directorio</span>
                     </div>
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("proyectos")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-kanban fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Proyectos</h5>
+                                <p class="card-text text-muted small">Gestiona el desarrollo, entregables y horas asignadas.</p>
+                                <span class="btn btn-outline-success btn-sm rounded-pill px-3">Ver Tablero</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-ticket-detailed fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Soporte</h5>
+                                <p class="card-text text-muted small">Atiende incidencias, tickets de soporte y dudas.</p>
+                                <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver Tickets</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("cotizaciones")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-file-earmark-text fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Cotizaciones</h5>
+                                <p class="card-text text-muted small">Crea y envía presupuestos para nuevos servicios.</p>
+                                <span class="btn btn-outline-secondary btn-sm rounded-pill px-3">Gestionar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("facturas")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-receipt fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Facturación</h5>
+                                <p class="card-text text-muted small">Control de facturas emitidas, pagos y vencimientos.</p>
+                                <span class="btn btn-outline-dark btn-sm rounded-pill px-3">Ver Finanzas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("reportes")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-bar-chart-line fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Reportes</h5>
+                                <p class="card-text text-muted small">Análisis detallado de rendimiento y métricas.</p>
+                                <span class="btn btn-outline-info btn-sm rounded-pill px-3 text-white">Ver Analytics</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("usuarios")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3"
+                                    style="width: 60px; height: 60px;">
+                                    <i class="bi bi-shield-lock fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Usuarios</h5>
+                                <p class="card-text text-muted small">Gestión de acceso y roles del sistema.</p>
+                                <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Administrar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            }
+        }
+        else
+        {
+            <!-- ================== USER DASHBOARD (SOLO TICKETS) ================== -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-primary mb-1">
+                        <i class="bi bi-ticket-detailed me-2"></i>Panel de Usuario
+                    </h2>
+                    <p class="text-muted mb-0">Aquí puedes revisar tus tickets asignados.</p>
                 </div>
             </div>
 
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("proyectos")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-kanban fs-3"></i>
+            <div class="row g-4">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3"
+                                style="width: 60px; height: 60px;">
+                                <i class="bi bi-ticket-detailed fs-3"></i>
+                            </div>
+                            <h5 class="card-title fw-bold">Tickets</h5>
+                            <p class="card-text text-muted small">Consulta y da seguimiento a tus tickets.</p>
+                            <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver mis tickets</span>
                         </div>
-                        <h5 class="card-title fw-bold">Proyectos</h5>
-                        <p class="card-text text-muted small">Gestiona el desarrollo, entregables y horas asignadas.</p>
-                        <span class="btn btn-outline-success btn-sm rounded-pill px-3">Ver Tablero</span>
                     </div>
                 </div>
             </div>
-
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-ticket-detailed fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Soporte</h5>
-                        <p class="card-text text-muted small">Atiende incidencias, tickets de soporte y dudas.</p>
-                        <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver Tickets</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("cotizaciones")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-file-earmark-text fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Cotizaciones</h5>
-                        <p class="card-text text-muted small">Crea y envía presupuestos para nuevos servicios.</p>
-                        <span class="btn btn-outline-secondary btn-sm rounded-pill px-3">Gestionar</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("facturas")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-receipt fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Facturación</h5>
-                        <p class="card-text text-muted small">Control de facturas emitidas, pagos y vencimientos.</p>
-                        <span class="btn btn-outline-dark btn-sm rounded-pill px-3">Ver Finanzas</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("reportes")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-bar-chart-line fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Reportes</h5>
-                        <p class="card-text text-muted small">Análisis detallado de rendimiento y métricas.</p>
-                        <span class="btn btn-outline-info btn-sm rounded-pill px-3 text-white">Ver Analytics</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col">
-                <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("usuarios")'>
-                    <div class="card-body text-center p-4">
-                        <div
-                            class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <i class="bi bi-shield-lock fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Usuarios</h5>
-                        <p class="card-text text-muted small">Gestión de acceso y roles del sistema.</p>
-                        <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Administrar</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        }
     }
+
 </div>
 
 <style>
@@ -232,26 +276,31 @@
     private DashboardStatsDto? stats;
     private bool isLoading = true;
 
+    private bool _isAdmin = false;
+    private bool _ready = false;
+
     protected override async Task OnInitializedAsync()
     {
-        try
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        _isAdmin = user.IsInRole("Admin");
+        _ready = true;
+
+        if (_isAdmin)
         {
-            // Reutilizamos el servicio de reportes para obtener la data del dashboard
-            stats = await ReportService.GetDashboardStatsAsync();
+            try
+            {
+                stats = await ReportService.GetDashboardStatsAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error cargando dashboard: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error cargando dashboard: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-        }
+
+        isLoading = false;
     }
 
-    private void NavigateTo(string page)
-    {
-        NavigationManager.NavigateTo(page);
-    }
-
+    private void NavigateTo(string page) => NavigationManager.NavigateTo(page);
 }

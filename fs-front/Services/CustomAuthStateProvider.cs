@@ -56,35 +56,33 @@ namespace fs_front.Services
             }
         }
 
-
         public async Task<FormResponse> LoginAsync(LoginModel loginModel)
         {
             try
             {
-                var response =
-                    await _httpClient.PostAsJsonAsync("api/auth/login", new { loginModel.Email, loginModel.Password });
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/login",
+                    new { loginModel.Email, loginModel.Password });
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var strResponse = await response.Content.ReadAsStringAsync();
-                    var jsonResponse = JsonNode.Parse(strResponse);
-                    var accessToken = jsonResponse?["accessToken"]?.ToString();
-                    var refreshToken = jsonResponse?["refreshToken"]?.ToString();
-
-                    _localStorage.SetItem("accessToken", accessToken);
-                    _localStorage.SetItem("refreshToken", refreshToken);
-
-                    _httpClient.DefaultRequestHeaders.Authorization =
-                        new AuthenticationHeaderValue("Bearer", accessToken);
-
-                    NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-
-                    return new FormResponse { Succeeded = true };
-                }
-                else
-                {
+                if (!response.IsSuccessStatusCode)
                     return new FormResponse { Succeeded = false, Errors = ["Correo o contraseña incorrecto"] };
-                }
+
+                var strResponse = await response.Content.ReadAsStringAsync();
+                var jsonResponse = JsonNode.Parse(strResponse);
+                var accessToken = jsonResponse?["accessToken"]?.ToString();
+
+                if (string.IsNullOrWhiteSpace(accessToken))
+                    return new FormResponse { Succeeded = false, Errors = ["No se recibió token"] };
+
+                _localStorage.SetItem("accessToken", accessToken);
+                _localStorage.RemoveItem("refreshToken"); // por si quedaba basura anterior
+
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", accessToken);
+
+                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+
+                return new FormResponse { Succeeded = true };
             }
             catch (Exception ex)
             {

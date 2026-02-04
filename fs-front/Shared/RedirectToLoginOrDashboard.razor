@@ -1,0 +1,32 @@
+@using System.Security.Claims
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        // No autenticado -> login
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo("/iniciar-sesion", true);
+            return;
+        }
+
+        // Autenticado pero sin rol -> pending
+        var hasRole =
+        user.IsInRole("Admin") || user.IsInRole("User") || user.IsInRole("Technician") ||
+        user.Claims.Any(c => c.Type == ClaimTypes.Role);
+
+        if (!hasRole)
+        {
+            Nav.NavigateTo("/pending", true);
+            return;
+        }
+
+        // Autenticado con rol -> dashboard (si intentó entrar a algo no permitido)
+        Nav.NavigateTo("/dashboard", true);
+    }
+}
