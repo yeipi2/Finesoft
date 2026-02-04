@@ -27,11 +27,13 @@ public class ReportService : IReportService
             TotalClients = await _context.Clients.CountAsync(c => c.IsActive),
             ActiveProjects = await _context.Projects.CountAsync(p => p.IsActive),
             OpenTickets = await _context.Tickets.CountAsync(t => t.Status != "Cerrado"),
-            TotalRevenue = await _context.Invoices.Where(i => i.Status == "Paid").SumAsync(i => i.Total),
+            // CORREGIDO: Usar "Pagada" en lugar de "Paid"
+            TotalRevenue = await _context.Invoices.Where(i => i.Status == "Pagada").SumAsync(i => (decimal?)i.Total) ?? 0,
             MonthlyRevenue = await _context.Invoices
-                .Where(i => i.Status == "Paid" && i.PaidDate >= startOfMonth)
-                .SumAsync(i => i.Total),
-            PendingPayments = await _context.Invoices.Where(i => i.Status == "Pending").SumAsync(i => i.Total),
+                .Where(i => i.Status == "Pagada" && i.PaidDate >= startOfMonth)
+                .SumAsync(i => (decimal?)i.Total) ?? 0,
+            // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
+            PendingPayments = await _context.Invoices.Where(i => i.Status == "Pendiente").SumAsync(i => (decimal?)i.Total) ?? 0,
             TotalInvoices = await _context.Invoices.CountAsync(),
             TotalQuotes = await _context.Quotes.CountAsync()
         };
@@ -81,7 +83,7 @@ public class ReportService : IReportService
 
     public async Task<List<ClientReportDto>> GetReportsByClientAsync(DateTime? startDate, DateTime? endDate)
     {
-        var clients = await _context.Clients.ToListAsync();
+        var clients = await _context.Clients.Where(c => c.IsActive).ToListAsync();
         var reports = new List<ClientReportDto>();
 
         foreach (var client in clients)
@@ -118,8 +120,10 @@ public class ReportService : IReportService
                 TotalTickets = tickets.Count,
                 OpenTickets = tickets.Count(t => t.Status != "Cerrado"),
                 TotalBilled = invoices.Sum(i => i.Total),
-                TotalPaid = invoices.Where(i => i.Status == "Paid").Sum(i => i.Total),
-                PendingAmount = invoices.Where(i => i.Status == "Pending").Sum(i => i.Total)
+                // CORREGIDO: Usar "Pagada" en lugar de "Paid"
+                TotalPaid = invoices.Where(i => i.Status == "Pagada").Sum(i => i.Total),
+                // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
+                PendingAmount = invoices.Where(i => i.Status == "Pendiente").Sum(i => i.Total)
             });
         }
 
@@ -187,9 +191,15 @@ public class ReportService : IReportService
         var invoices = await invoicesQuery.ToListAsync();
         var now = DateTime.UtcNow;
 
-        var paidInvoices = invoices.Where(i => i.Status == "Paid").ToList();
-        var pendingInvoices = invoices.Where(i => i.Status == "Pending").ToList();
-        var overdueInvoices = invoices.Where(i => i.Status == "Pending" && i.DueDate.HasValue && i.DueDate.Value < now)
+        // CORREGIDO: Usar "Pagada" en lugar de "Paid"
+        var paidInvoices = invoices.Where(i => i.Status == "Pagada").ToList();
+        // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
+        var pendingInvoices = invoices.Where(i => i.Status == "Pendiente").ToList();
+        // CORREGIDO: Considerar tanto "Pendiente" como "Vencida"
+        var overdueInvoices = invoices.Where(i =>
+            (i.Status == "Pendiente" || i.Status == "Vencida") &&
+            i.DueDate.HasValue &&
+            i.DueDate.Value < now)
             .ToList();
 
         var avgPaymentTime = 0m;
@@ -265,11 +275,11 @@ public class ReportService : IReportService
             var startOfMonth = new DateTime(date.Year, date.Month, 1);
             var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
 
+            // CORREGIDO: Usar "Pagada" en lugar de "Paid" y usar InvoiceDate en lugar de PaidDate
             var monthInvoices = await _context.Invoices
-                .Where(i => i.Status == "Paid" &&
-                            i.PaidDate.HasValue &&
-                            i.PaidDate.Value >= startOfMonth &&
-                            i.PaidDate.Value <= endOfMonth)
+                .Where(i => i.Status == "Pagada" &&
+                            i.InvoiceDate >= startOfMonth &&
+                            i.InvoiceDate <= endOfMonth)
                 .ToListAsync();
 
             trends.Add(new RevenueTrendDto
@@ -308,13 +318,14 @@ public class ReportService : IReportService
 
     public async Task<List<TopClientDto>> GetTopClientsAsync(int top)
     {
-        var clients = await _context.Clients.ToListAsync();
+        var clients = await _context.Clients.Where(c => c.IsActive).ToListAsync();
         var topClients = new List<TopClientDto>();
 
         foreach (var client in clients)
         {
+            // CORREGIDO: Usar "Pagada" en lugar de "Paid"
             var invoices = await _context.Invoices
-                .Where(i => i.ClientId == client.Id && i.Status == "Paid")
+                .Where(i => i.ClientId == client.Id && i.Status == "Pagada")
                 .ToListAsync();
 
             topClients.Add(new TopClientDto
