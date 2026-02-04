@@ -271,11 +271,15 @@
         try
         {
             var pdfBytes = await QuoteApiService.GenerateQuotePdfAsync(quoteId);
-            if (pdfBytes != null)
+            if (pdfBytes != null && pdfBytes.Length > 0)
             {
                 var base64 = Convert.ToBase64String(pdfBytes);
-                await JSRuntime.InvokeVoidAsync("downloadFile", $"Cotizacion-{quoteId}.pdf", base64);
-                ShowNotification("Éxito", "PDF generado correctamente.", NotificationSeverity.Success);
+                var fileName = $"Cotizacion-{quoteId}.pdf";
+
+                // Llamar con solo 2 parámetros
+                await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64);
+
+                ShowNotification("Éxito", "PDF descargado correctamente.", NotificationSeverity.Success);
             }
             else
             {
