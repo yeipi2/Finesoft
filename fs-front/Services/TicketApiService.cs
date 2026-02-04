@@ -46,11 +46,16 @@ public class TicketApiService : ITicketApiService
         }
     }
 
-    public async Task<TicketStatsDto?> GetTicketStatsAsync()
+    public async Task<TicketStatsDto?> GetTicketStatsAsync(string? userId = null)
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<TicketStatsDto>("api/tickets/stats");
+            var url = "api/tickets/stats";
+            if (!string.IsNullOrEmpty(userId))
+            {
+                url += $"?userId={userId}";
+            }
+            return await _httpClient.GetFromJsonAsync<TicketStatsDto>(url);
         }
         catch (Exception e)
         {

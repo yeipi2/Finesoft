@@ -351,7 +351,7 @@
             var userId = _isAdmin ? null : _currentUserId;
 
             var ticketsTask = TicketApiService.GetTicketsAsync(userId: userId);
-            var statsTask = TicketApiService.GetTicketStatsAsync();
+            var statsTask = TicketApiService.GetTicketStatsAsync(userId); // 👈 CAMBIO AQUÍ
 
             await Task.WhenAll(ticketsTask, statsTask);
 

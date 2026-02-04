@@ -1,297 +1,266 @@
 ﻿@page "/facturas"
 @using fs_front.DTO
+@using fs_front.Services
+@using Radzen
+@using Radzen.Blazor
 
 @attribute [Authorize(Roles = "Admin")]
 
-<PageTitle>Finesoft - Facturas</PageTitle>
+<PageTitle>Facturación</PageTitle>
 
-<container class="p-4">
-    <section class="container-fluid p-xl-5">
-        <div class="d-flex justify-content-between align-items-start mb-4">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-receipt-cutoff fs-1 text-primary me-3"></i>
-                <div>
-                    <p class="display-6 fw-bolder mb-2">Facturación</p>
-                    <p class="text-muted mb-0">Gestión de facturas y cobros</p>
-                </div>
+<section class="p-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-receipt fs-3 text-primary"></i>
+                <h2 class="mb-0">Facturación</h2>
             </div>
-            <div class="d-flex gap-2">
-                <button @onclick="GenerateMonthlyInvoices"
-                        class="btn btn-outline-primary d-flex align-items-center gap-2">
-                    <i class="bi bi-calendar-month"></i>
-                    Generar Mensuales
-                </button>
-                <div class="position-relative">
-                    <button class="btn btn-primary d-flex align-items-center gap-2"
-                            @onclick="ToggleInvoiceDropdown">
-                        <i class="bi bi-plus-lg"></i>
-                        Nueva Factura
-                    </button>
-
-                    @if (_isInvoiceDropdownOpen)
-                    {
-                        <div class="position-absolute bg-white border rounded shadow-sm mt-2 end-0"
-                             style="min-width: 220px; z-index: 1000;">
-                            <div class="p-2">
-                                <a class="d-block px-3 py-2 text-decoration-none text-dark rounded hover-bg"
-                                   style="cursor:pointer"
-                                   @onclick="ShowCreateModal">
-                                    <i class="bi bi-file-earmark-plus me-2"></i>
-                                    Factura Manual
-                                </a>
-
-                                <a class="d-block px-3 py-2 text-decoration-none text-dark rounded hover-bg"
-                                   style="cursor:pointer"
-                                   @onclick="ShowCreateFromQuoteModal">
-                                    <i class="bi bi-receipt me-2"></i>
-                                    Desde Cotización
-                                </a>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
+            <p class="text-muted mb-0">Gestión de facturas y cobros</p>
         </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" @onclick="GenerateMonthlyInvoices" disabled="@_isGenerating">
+                @if (_isGenerating)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-calendar-month"></i>
+                Generar Mensuales
+            </button>
+            <button class="btn btn-primary" @onclick="OpenNewInvoiceDialog">
+                <i class="bi bi-plus-lg"></i>
+                Nueva Factura
+            </button>
+        </div>
+    </div>
 
-        @if (_stats != null)
-        {
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="card border-start border-warning border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-muted mb-1">Pendientes</h6>
-                                    <h3 class="mb-0 fw-bold">@_stats.PendingInvoices</h3>
-                                    <small class="text-muted">$@_stats.TotalPending.ToString("N2")</small>
-                                </div>
-                                <i class="bi bi-hourglass-split fs-2 text-warning"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-success border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-muted mb-1">Pagadas</h6>
-                                    <h3 class="mb-0 fw-bold">@_stats.PaidInvoices</h3>
-                                    <small class="text-muted">$@_stats.TotalPaid.ToString("N2")</small>
-                                </div>
-                                <i class="bi bi-check-circle fs-2 text-success"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-danger border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-muted mb-1">Vencidas</h6>
-                                    <h3 class="mb-0 fw-bold">@_stats.OverdueInvoices</h3>
-                                    <small class="text-muted">$@_stats.TotalOverdue.ToString("N2")</small>
-                                </div>
-                                <i class="bi bi-exclamation-triangle fs-2 text-danger"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-primary border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-muted mb-1">Total Facturado</h6>
-                                    <h3 class="mb-0 fw-bold">@_stats.TotalInvoices</h3>
-                                    <small class="text-muted">$@_stats.TotalBilled.ToString("N2")</small>
-                                </div>
-                                <i class="bi bi-cash-stack fs-2 text-primary"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
-
+    <!-- Estadísticas -->
+    @if (_stats != null)
+    {
         <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <input type="text" class="form-control" placeholder="Buscar facturas..."
-                       @bind="_searchText" @bind:event="oninput"/>
+            <div class="col-md-3">
+                <div class="card border-warning shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-muted mb-1">Pendientes</h6>
+                                <h3 class="mb-0">@_stats.PendingInvoices</h3>
+                                <small class="text-muted">@_stats.TotalPending.ToString("C")</small>
+                            </div>
+                            <div class="bg-warning bg-opacity-10 p-2 rounded">
+                                <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-2">
-                <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
-                    <option value="">Todos los estados</option>
-                    <option value="Pending">Pendiente</option>
-                    <option value="Paid">Pagada</option>
-                    <option value="Overdue">Vencida</option>
-                    <option value="Cancelled">Cancelada</option>
-                </select>
+
+            <div class="col-md-3">
+                <div class="card border-success shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-muted mb-1">Pagadas</h6>
+                                <h3 class="mb-0">@_stats.PaidInvoices</h3>
+                                <small class="text-muted">@_stats.TotalPaid.ToString("C")</small>
+                            </div>
+                            <div class="bg-success bg-opacity-10 p-2 rounded">
+                                <i class="bi bi-check-circle fs-4 text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-2">
-                <select class="form-select" @bind="_typeFilter" @bind:event="onchange">
-                    <option value="">Todos los tipos</option>
-                    <option value="Event">Por Evento</option>
-                    <option value="Monthly">Mensual</option>
-                </select>
+
+            <div class="col-md-3">
+                <div class="card border-danger shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-muted mb-1">Vencidas</h6>
+                                <h3 class="mb-0">@_stats.OverdueInvoices</h3>
+                                <small class="text-muted">@_stats.TotalOverdue.ToString("C")</small>
+                            </div>
+                            <div class="bg-danger bg-opacity-10 p-2 rounded">
+                                <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-2">
-                <select class="form-select" @bind="_clientFilter" @bind:event="onchange">
-                    <option value="0">Todos los clientes</option>
-                    @if (_clients != null)
-                    {
-                        @foreach (var client in _clients)
-                        {
-                            <option value="@client.Id">@client.CompanyName</option>
-                        }
-                    }
-                </select>
-            </div>
-            <div class="col-md-2 d-flex justify-content-end">
-                <button class="btn btn-outline-secondary" @onclick="ClearFilters">
-                    <i class="bi bi-x-circle"></i> Limpiar
-                </button>
+
+            <div class="col-md-3">
+                <div class="card border-primary shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-muted mb-1">Total Facturado</h6>
+                                <h3 class="mb-0">@_stats.TotalInvoices</h3>
+                                <small class="text-muted">@_stats.TotalBilled.ToString("C")</small>
+                            </div>
+                            <div class="bg-primary bg-opacity-10 p-2 rounded">
+                                <i class="bi bi-wallet2 fs-4 text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </section>
+    }
 
-    <section class="container-fluid p-xl-5">
-        @if (_isLoading)
-        {
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-2 text-muted">Cargando facturas...</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                    <tr>
-                        <th>Número</th>
-                        <th>Cliente</th>
-                        <th>Fecha</th>
-                        <th>Vencimiento</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th>Total</th>
-                        <th>Saldo</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @if (_filteredInvoices.Any())
-                    {
-                        @foreach (var invoice in _filteredInvoices)
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" placeholder="Buscar facturas..."
+                           @bind="_searchTerm" @bind:event="oninput" @bind:after="FilterInvoices" />
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_selectedStatus" @bind:after="FilterInvoices">
+                        <option value="">Todos los estados</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Pagada">Pagada</option>
+                        <option value="Vencida">Vencida</option>
+                        <option value="Cancelada">Cancelada</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_selectedType" @bind:after="FilterInvoices">
+                        <option value="">Todos los tipos</option>
+                        <option value="Event">Evento</option>
+                        <option value="Monthly">Mensual</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_selectedClientId" @bind:after="FilterInvoices">
+                        <option value="0">Todos los clientes</option>
+                        @if (_clients != null)
                         {
-                            <tr>
-                                <td class="fw-bold">@invoice.InvoiceNumber</td>
-                                <td>
-                                    <div class="fw-bold">@invoice.ClientName</div>
-                                    <small class="text-muted">@invoice.ClientRFC</small>
-                                </td>
-                                <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
-                                <td>
-                                    @if (invoice.DueDate.HasValue)
-                                    {
-                                        <span>@invoice.DueDate.Value.ToString("dd/MM/yyyy")</span>
-                                        @if (invoice.DueDate.Value < DateTime.Now && invoice.Status != "Paid")
-                                        {
-                                            <span class="badge bg-danger ms-1">Vencida</span>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">-</span>
-                                    }
-                                </td>
-                                <td>
-                                    @{
-                                        var typeClass = invoice.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary";
-                                    }
-                                    <span
-                                        class="badge @typeClass">@(invoice.InvoiceType == "Monthly" ? "Mensual" : "Evento")</span>
-                                </td>
-                                <td>
-                                    @{
-                                        var statusClass = invoice.Status switch
-                                        {
-                                            "Pending" => "bg-warning",
-                                            "Paid" => "bg-success",
-                                            "Overdue" => "bg-danger",
-                                            "Cancelled" => "bg-secondary",
-                                            _ => "bg-secondary"
-                                        };
-                                        var statusText = invoice.Status switch
-                                        {
-                                            "Pending" => "Pendiente",
-                                            "Paid" => "Pagada",
-                                            "Overdue" => "Vencida",
-                                            "Cancelled" => "Cancelada",
-                                            _ => invoice.Status
-                                        };
-                                    }
-                                    <span class="badge @statusClass">@statusText</span>
-                                </td>
-                                <td class="fw-bold text-success">$@invoice.Total.ToString("N2")</td>
-                                <td>
-                                    @if (invoice.Balance > 0)
-                                    {
-                                        <span class="text-danger fw-bold">$@invoice.Balance.ToString("N2")</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-success">$0.00</span>
-                                    }
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary me-1"
-                                            @onclick="() => ViewInvoiceDetails(invoice.Id)"
-                                            title="Ver detalles">
-                                        <i class="bi bi-eye-fill"></i>
-                                    </button>
-                                    @if (invoice.Status != "Paid")
-                                    {
-                                        <button class="btn btn-sm btn-outline-info me-1"
-                                                @onclick="() => ShowEditModal(invoice.Id)"
-                                                title="Editar">
-                                            <i class="bi bi-pencil-fill"></i>
-                                        </button>
-                                    }
-                                    <button class="btn btn-sm btn-outline-success me-1"
-                                            @onclick="() => DownloadPdf(invoice.Id)"
-                                            title="Descargar PDF">
-                                        <i class="bi bi-file-earmark-pdf-fill"></i>
-                                    </button>
-                                    @if (invoice.Payments.Count == 0)
-                                    {
-                                        <button class="btn btn-sm btn-outline-danger"
-                                                @onclick="() => ConfirmDelete(invoice)"
-                                                title="Eliminar">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    }
-                                </td>
-                            </tr>
+                            @foreach (var client in _clients)
+                            {
+                                <option value="@client.Id">@client.CompanyName</option>
+                            }
                         }
-                    }
-                    else
-                    {
-                        <tr>
-                            <td colspan="9" class="text-center py-4">
-                                <i class="bi bi-inbox fs-1 text-muted"></i>
-                                <p class="text-muted mt-2">No se encontraron facturas.</p>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+                    </select>
+                </div>
             </div>
-        }
-    </section>
-</container>
+            @if (!string.IsNullOrEmpty(_selectedStatus) || !string.IsNullOrEmpty(_selectedType) || _selectedClientId > 0 || !string.IsNullOrEmpty(_searchTerm))
+            {
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearFilters">
+                        <i class="bi bi-x-circle"></i>
+                        Limpiar
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Tabla de Facturas -->
+    <div class="card">
+        <div class="card-body">
+            @if (_isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando facturas...</p>
+                </div>
+            }
+            else if (_filteredInvoices == null || !_filteredInvoices.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="mt-2 text-muted">No se encontraron facturas</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Vencimiento</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Saldo</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var invoice in _filteredInvoices)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@invoice.InvoiceNumber</strong><br />
+                                        <small class="text-muted">@invoice.ClientRFC</small>
+                                    </td>
+                                    <td>@invoice.ClientName</td>
+                                    <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        @if (invoice.DueDate.HasValue)
+                                        {
+                                            @invoice.DueDate.Value.ToString("dd/MM/yyyy")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @(invoice.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary")">
+                                            @(invoice.InvoiceType == "Monthly" ? "Mensual" : "Evento")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(invoice.Status)">
+                                            @GetStatusLabel(invoice.Status)
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-success">@invoice.Total.ToString("C")</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="@(invoice.Balance > 0 ? "text-danger" : "text-success")">
+                                            @invoice.Balance.ToString("C")
+                                        </strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" @onclick="() => ViewInvoiceDetails(invoice.Id)"
+                                                    title="Ver detalles">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-secondary" @onclick="() => OpenEditDialog(invoice.Id)"
+                                                    title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success" @onclick="() => DownloadPdf(invoice.Id)"
+                                                    title="Descargar PDF">
+                                                <i class="bi bi-download"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(invoice.Id)"
+                                                    title="Eliminar">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</section>
 
 @inject IInvoiceApiService InvoiceApiService
 @inject IClientApiService ClientApiService
@@ -302,28 +271,17 @@
 
 @code {
     private List<InvoiceDetailDto>? _invoices;
+    private List<InvoiceDetailDto>? _filteredInvoices;
     private List<ClientDto>? _clients;
     private InvoiceStatsDto? _stats;
-    private string _searchText = string.Empty;
-    private string _statusFilter = string.Empty;
-    private string _typeFilter = string.Empty;
-    private int _clientFilter = 0;
-    private bool _isLoading = false;
 
-    private bool _isInvoiceDropdownOpen;
+    private string _searchTerm = string.Empty;
+    private string _selectedStatus = string.Empty;
+    private string _selectedType = string.Empty;
+    private int _selectedClientId = 0;
 
-    private IEnumerable<InvoiceDetailDto> _filteredInvoices
-        => _invoices?
-               .Where(i =>
-                   (string.IsNullOrWhiteSpace(_searchText) ||
-                    i.InvoiceNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                    i.ClientName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
-                   && (string.IsNullOrEmpty(_statusFilter) || i.Status == _statusFilter)
-                   && (string.IsNullOrEmpty(_typeFilter) || i.InvoiceType == _typeFilter)
-                   && (_clientFilter == 0 || i.ClientId == _clientFilter)
-               )
-               .OrderByDescending(i => i.InvoiceDate)
-           ?? Enumerable.Empty<InvoiceDetailDto>();
+    private bool _isLoading = true;
+    private bool _isGenerating = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -336,14 +294,16 @@
         try
         {
             var invoicesTask = InvoiceApiService.GetInvoicesAsync();
-            var clientsTask = ClientApiService.GetClientsAsync();
             var statsTask = InvoiceApiService.GetInvoiceStatsAsync();
+            var clientsTask = ClientApiService.GetClientsAsync();
 
-            await Task.WhenAll(invoicesTask, clientsTask, statsTask);
+            await Task.WhenAll(invoicesTask, statsTask, clientsTask);
 
             _invoices = await invoicesTask;
-            _clients = await clientsTask;
             _stats = await statsTask;
+            _clients = await clientsTask;
+
+            FilterInvoices();
         }
         catch (Exception ex)
         {
@@ -354,20 +314,49 @@
             _isLoading = false;
         }
     }
-    
-    private void ToggleInvoiceDropdown()
-        => _isInvoiceDropdownOpen = !_isInvoiceDropdownOpen;
 
-    private async Task ShowCreateModal()
+    private void FilterInvoices()
     {
+        if (_invoices == null)
+        {
+            _filteredInvoices = new List<InvoiceDetailDto>();
+            return;
+        }
+
+        _filteredInvoices = _invoices
+            .Where(i =>
+                (string.IsNullOrEmpty(_searchTerm) ||
+                 i.InvoiceNumber.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                 i.ClientName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                 i.ClientRFC.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrEmpty(_selectedStatus) || i.Status == _selectedStatus) &&
+                (string.IsNullOrEmpty(_selectedType) || i.InvoiceType == _selectedType) &&
+                (_selectedClientId == 0 || i.ClientId == _selectedClientId))
+            .ToList();
+    }
+
+    private void ClearFilters()
+    {
+        _searchTerm = string.Empty;
+        _selectedStatus = string.Empty;
+        _selectedType = string.Empty;
+        _selectedClientId = 0;
+        FilterInvoices();
+    }
+
+    private async Task OpenNewInvoiceDialog()
+    {
+        var options = new DialogOptions
+        {
+            Width = "900px",
+            Height = "80vh",
+            Resizable = false,
+            Draggable = true
+        };
+
         var result = await DialogService.OpenAsync<InvoiceForm>("Nueva Factura",
-            options: new DialogOptions()
-            {
-                Width = "900px",
-                Height = "600px",
-                Resizable = true,
-                Draggable = false
-            });
+            new Dictionary<string, object>(),
+            options);
 
         if (result == true)
         {
@@ -375,38 +364,19 @@
         }
     }
 
-    private async Task ShowCreateFromQuoteModal()
+    private async Task OpenEditDialog(int invoiceId)
     {
-        var result = await DialogService.OpenAsync<InvoiceFromQuoteForm>("Factura desde Cotización",
-            options: new DialogOptions()
-            {
-                Width = "600px",
-                Resizable = false,
-                Draggable = false
-            });
-
-        if (result == true)
+        var options = new DialogOptions
         {
-            await LoadData();
-        }
-    }
-
-    private async Task ShowEditModal(int invoiceId)
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            { "InvoiceId", invoiceId }
+            Width = "900px",
+            Height = "80vh",
+            Resizable = false,
+            Draggable = true
         };
 
         var result = await DialogService.OpenAsync<InvoiceForm>("Editar Factura",
-            parameters,
-            new DialogOptions()
-            {
-                Width = "900px",
-                Height = "600px",
-                Resizable = true,
-                Draggable = false
-            });
+            new Dictionary<string, object> { { "InvoiceId", invoiceId } },
+            options);
 
         if (result == true)
         {
@@ -419,6 +389,32 @@
         NavigationManager.NavigateTo($"/facturas/{invoiceId}");
     }
 
+    private async Task GenerateMonthlyInvoices()
+    {
+        _isGenerating = true;
+        try
+        {
+            var result = await InvoiceApiService.GenerateMonthlyInvoicesAsync();
+            if (result.Success)
+            {
+                ShowNotification("Éxito", "Facturas mensuales generadas correctamente.", NotificationSeverity.Success);
+                await LoadData();
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "Error al generar facturas", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+        }
+    }
+
     private async Task DownloadPdf(int invoiceId)
     {
         try
@@ -427,67 +423,28 @@
             if (pdfBytes != null)
             {
                 var base64 = Convert.ToBase64String(pdfBytes);
+                // Usando la función que ya funcionaba
                 await JSRuntime.InvokeVoidAsync("downloadFile", $"Factura-{invoiceId}.pdf", base64);
-                ShowNotification("Éxito", "PDF generado correctamente.", NotificationSeverity.Success);
-            }
-            else
-            {
-                ShowNotification("Error", "No se pudo generar el PDF.", NotificationSeverity.Error);
+                ShowNotification("Éxito", "PDF descargado correctamente", NotificationSeverity.Success);
             }
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error al generar PDF: {ex.Message}", NotificationSeverity.Error);
+            ShowNotification("Error", $"Error al descargar PDF: {ex.Message}", NotificationSeverity.Error);
         }
     }
 
-    private async Task GenerateMonthlyInvoices()
+    private async Task ConfirmDelete(int invoiceId)
     {
         var confirmed = await DialogService.Confirm(
-            "¿Está seguro que desea generar las facturas mensuales? Se crearán facturas para todos los clientes con modalidad de mensualidad.",
-            "Generar Facturas Mensuales",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, generar",
-                CancelButtonText = "Cancelar"
-            });
-
-        if (confirmed == true)
-        {
-            try
-            {
-                var result = await InvoiceApiService.GenerateMonthlyInvoicesAsync();
-                if (result.Success)
-                {
-                    ShowNotification("Éxito", "Facturas mensuales generadas correctamente.", NotificationSeverity.Success);
-                    await LoadData();
-                }
-                else
-                {
-                    ShowNotification("Error", result.ErrorMessage ?? "No se pudieron generar las facturas.", NotificationSeverity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
-            }
-        }
-    }
-
-    private async Task ConfirmDelete(InvoiceDetailDto invoice)
-    {
-        var confirmed = await DialogService.Confirm(
-            $"¿Está seguro que desea eliminar la factura '{invoice.InvoiceNumber}'?",
+            "¿Está seguro de que desea eliminar esta factura?",
             "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" }
+        );
 
         if (confirmed == true)
         {
-            await DeleteInvoice(invoice.Id);
+            await DeleteInvoice(invoiceId);
         }
     }
 
@@ -498,12 +455,12 @@
             var result = await InvoiceApiService.DeleteInvoiceAsync(invoiceId);
             if (result.Success)
             {
-                ShowNotification("Éxito", "Factura eliminada correctamente.", NotificationSeverity.Success);
+                ShowNotification("Éxito", "Factura eliminada correctamente", NotificationSeverity.Success);
                 await LoadData();
             }
             else
             {
-                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar la factura.", NotificationSeverity.Error);
+                ShowNotification("Error", result.ErrorMessage ?? "Error al eliminar", NotificationSeverity.Error);
             }
         }
         catch (Exception ex)
@@ -512,13 +469,29 @@
         }
     }
 
-    private async Task ClearFilters()
+    private string GetStatusBadgeClass(string status)
     {
-        _searchText = string.Empty;
-        _statusFilter = string.Empty;
-        _typeFilter = string.Empty;
-        _clientFilter = 0;
-        await LoadData();
+        return status switch
+        {
+            "Pagada" => "bg-success",
+            "Pendiente" => "bg-warning text-dark",
+            "Vencida" => "bg-danger",
+            "Cancelada" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusLabel(string status)
+    {
+        // Ya está devolviendo el mismo status, esto está correcto
+        return status switch
+        {
+            "Pagada" => "Pagada",
+            "Pendiente" => "Pendiente",
+            "Vencida" => "Vencida",
+            "Cancelada" => "Cancelada",
+            _ => status
+        };
     }
 
     private void ShowNotification(string title, string message, NotificationSeverity severity)
@@ -531,5 +504,4 @@
             Duration = 4000
         });
     }
-
 }

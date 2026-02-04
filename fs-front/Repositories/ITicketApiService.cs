@@ -6,7 +6,7 @@ public interface ITicketApiService
 {
     Task<List<TicketDetailDto>?> GetTicketsAsync(string? status = null, string? priority = null, int? serviceId = null, string? userId = null);
     Task<TicketDetailDto?> GetTicketByIdAsync(int id);
-    Task<TicketStatsDto?> GetTicketStatsAsync();
+    Task<TicketStatsDto?> GetTicketStatsAsync(string? userId = null);
     Task<(bool Success, TicketDetailDto? CreatedTicket, string? ErrorMessage)> CreateTicketAsync(TicketDto ticket);
     Task<(bool Success, string? ErrorMessage)> UpdateTicketAsync(int id, TicketDto ticket);
     Task<(bool Success, string? ErrorMessage)> DeleteTicketAsync(int id);

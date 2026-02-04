@@ -446,25 +446,31 @@ public class InvoiceService : IInvoiceService
         return ServiceResult<bool>.Success(true);
     }
 
+    // En tu archivo: fn-backend/Services/InvoiceService.cs
+    // Encuentra el método GetInvoiceStatsAsync() y reemplázalo con este:
+
     public async Task<InvoiceStatsDto> GetInvoiceStatsAsync()
     {
-        var invoices = await _context.Invoices
-            .Include(i => i.Payments)
-            .ToListAsync();
-
+        var invoices = await _context.Invoices.ToListAsync();
         var now = DateTime.UtcNow;
 
-        return new InvoiceStatsDto
+        var stats = new InvoiceStatsDto
         {
+            // Estados en español
+            PaidInvoices = invoices.Count(i => i.Status == "Pagada"),
+            TotalPaid = invoices.Where(i => i.Status == "Pagada").Sum(i => (decimal?)i.Total) ?? 0,
+
+            PendingInvoices = invoices.Count(i => i.Status == "Pendiente"),
+            TotalPending = invoices.Where(i => i.Status == "Pendiente").Sum(i => (decimal?)i.Total) ?? 0,
+
+            OverdueInvoices = invoices.Count(i => i.Status == "Vencida"),
+            TotalOverdue = invoices.Where(i => i.Status == "Vencida").Sum(i => (decimal?)i.Total) ?? 0,
+
             TotalInvoices = invoices.Count,
-            PendingInvoices = invoices.Count(i => i.Status == "Pending"),
-            PaidInvoices = invoices.Count(i => i.Status == "Paid"),
-            OverdueInvoices = invoices.Count(i => i.Status == "Overdue" || (i.Status == "Pending" && i.DueDate.HasValue && i.DueDate.Value < now)),
-            TotalBilled = invoices.Sum(i => i.Total),
-            TotalPaid = invoices.Where(i => i.Status == "Paid").Sum(i => i.Total),
-            TotalPending = invoices.Where(i => i.Status == "Pending").Sum(i => i.Total),
-            TotalOverdue = invoices.Where(i => i.Status == "Overdue" || (i.Status == "Pending" && i.DueDate.HasValue && i.DueDate.Value < now)).Sum(i => i.Total)
+            TotalBilled = invoices.Sum(i => (decimal?)i.Total) ?? 0
         };
+
+        return stats;
     }
 
     public async Task<byte[]> GenerateInvoicePdfAsync(int id)

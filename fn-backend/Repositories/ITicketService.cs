@@ -13,7 +13,7 @@ public interface ITicketService
     Task<ServiceResult<bool>> UpdateTicketAsync(int id, TicketDto ticketDto, string userId);
     Task<ServiceResult<bool>> DeleteTicketAsync(int id);
     Task<ServiceResult<TicketCommentDto>> AddCommentAsync(int ticketId, TicketCommentDto commentDto, string userId);
-    Task<TicketStatsDto> GetTicketStatsAsync();
+    Task<TicketStatsDto> GetTicketStatsAsync(string? userId = null);
 
     // Nuevos métodos para actividades
     Task<ServiceResult<TicketActivityDto>> AddActivityAsync(int ticketId, TicketActivityDto activityDto, string userId);

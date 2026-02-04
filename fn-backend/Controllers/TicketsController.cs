@@ -108,9 +108,9 @@ public class TicketsController : ControllerBase
     }
 
     [HttpGet("stats")]
-    public async Task<IActionResult> GetTicketStats()
+    public async Task<IActionResult> GetTicketStats([FromQuery] string? userId = null)
     {
-        var stats = await _ticketService.GetTicketStatsAsync();
+        var stats = await _ticketService.GetTicketStatsAsync(userId);
         return Ok(stats);
     }
 

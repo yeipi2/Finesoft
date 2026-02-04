@@ -323,9 +323,17 @@ public class TicketService : ITicketService
         });
     }
 
-    public async Task<TicketStatsDto> GetTicketStatsAsync()
+    public async Task<TicketStatsDto> GetTicketStatsAsync(string? userId = null)
     {
-        var tickets = await _context.Tickets.ToListAsync();
+        var query = _context.Tickets.AsQueryable();
+
+        // Si se proporciona userId, filtrar solo tickets asignados a ese usuario
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(t => t.AssignedToUserId == userId);
+        }
+
+        var tickets = await query.ToListAsync();
 
         return new TicketStatsDto
         {
