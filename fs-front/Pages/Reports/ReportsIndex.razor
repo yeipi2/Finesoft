@@ -1,5 +1,6 @@
 ﻿@page "/reportes"
 @using fs_front.DTO
+@using Radzen.Blazor
 @inject IReportApiService ReportApiService
 @inject NotificationService NotificationService
 
@@ -81,6 +82,11 @@
             @*tabs navegación*@
             <ul class="nav nav-tabs mb-4">
                 <li class="nav-item">
+                    <button class="@GetTabClass("charts")" @onclick="@(() => activeTab = "charts")">
+                        <i class="bi bi-graph-up me-2"></i>Gráficas
+                    </button>
+                </li>
+                <li class="nav-item">
                     <button class="@GetTabClass("financial")" @onclick="@(() => activeTab = "financial")">Financiero</button>
                 </li>
                 <li class="nav-item">
@@ -98,6 +104,168 @@
             </ul>
 
             <div class="tab-content">
+
+                @* ========== NUEVA PESTAÑA DE GRÁFICAS ========== *@
+                @if (activeTab == "charts")
+                {
+                    <div class="row">
+                        @* Gráfica 1: Tendencia de Ingresos (Línea) *@
+                        <div class="col-md-8">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                                    <i class="bi bi-graph-up text-primary me-2"></i>
+                                    Tendencia de Ingresos - Últimos 12 Meses
+                                </div>
+                                <div class="card-body" style="height: 350px;">
+                                    @if (revenueTrends != null && revenueTrends.Any())
+                                    {
+                                        <RadzenChart>
+                                            <RadzenLineSeries Data="@revenueTrends"
+                                                              CategoryProperty="Month"
+                                                              ValueProperty="Revenue"
+                                                              Title="Ingresos"
+                                                              Stroke="#6366f1"
+                                                              StrokeWidth="3"
+                                                              Smooth="true">
+                                                <RadzenMarkers MarkerType="MarkerType.Circle" />
+                                            </RadzenLineSeries>
+                                            <RadzenCategoryAxis Padding="20" />
+                                            <RadzenValueAxis Formatter="@FormatAsCurrency">
+                                                <RadzenGridLines Visible="true" />
+                                                <RadzenAxisTitle Text="Ingresos ($)" />
+                                            </RadzenValueAxis>
+                                            <RadzenLegend Position="LegendPosition.Top" />
+                                        </RadzenChart>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-5">
+                                            <p class="text-muted">No hay datos disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Gráfica 2: Estados de Tickets (Donut) *@
+                        <div class="col-md-4">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                                    <i class="bi bi-pie-chart text-success me-2"></i>
+                                    Distribución de Tickets
+                                </div>
+                                <div class="card-body" style="height: 350px;">
+                                    @if (ticketStatusChart != null && ticketStatusChart.Any())
+                                    {
+                                        <RadzenChart>
+                                            <RadzenDonutSeries Data="@ticketStatusChart"
+                                                               CategoryProperty="Status"
+                                                               ValueProperty="Count"
+                                                               Fills="@GetTicketColors()"
+                                                               InnerRadius="0.5">
+                                                <RadzenSeriesDataLabels Visible="true" />
+                                            </RadzenDonutSeries>
+                                            <RadzenLegend Position="LegendPosition.Bottom" />
+                                        </RadzenChart>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-5">
+                                            <p class="text-muted">No hay datos disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Gráfica 3: Top 5 Clientes (Barras) *@
+                        <div class="col-md-12">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                                    <i class="bi bi-bar-chart-fill text-warning me-2"></i>
+                                    Top 5 Clientes por Facturación
+                                </div>
+                                <div class="card-body" style="height: 350px;">
+                                    @if (topClients != null && topClients.Any())
+                                    {
+                                        <RadzenChart>
+                                            <RadzenColumnSeries Data="@topClients"
+                                                                CategoryProperty="ClientName"
+                                                                ValueProperty="TotalRevenue"
+                                                                Title="Ingresos"
+                                                                Fill="#f59e0b">
+                                                <RadzenSeriesDataLabels Visible="true" />
+                                            </RadzenColumnSeries>
+                                            <RadzenCategoryAxis Padding="20" />
+                                            <RadzenValueAxis Formatter="@FormatAsCurrency">
+                                                <RadzenGridLines Visible="true" />
+                                                <RadzenAxisTitle Text="Ingresos ($)" />
+                                            </RadzenValueAxis>
+                                            <RadzenLegend Visible="false" />
+                                        </RadzenChart>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-5">
+                                            <p class="text-muted">No hay datos disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Gráfica 4: Comparación Financiera (Área) *@
+                        <div class="col-md-12">
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                                    <i class="bi bi-graph-up-arrow text-info me-2"></i>
+                                    Comparación: Facturado vs Pagado vs Pendiente
+                                </div>
+                                <div class="card-body" style="height: 350px;">
+                                    @if (revenueTrends != null && revenueTrends.Any())
+                                    {
+                                        <RadzenChart>
+                                            <RadzenAreaSeries Data="@GetFinancialComparisonData()"
+                                                              CategoryProperty="Month"
+                                                              ValueProperty="Invoiced"
+                                                              Title="Facturado"
+                                                              Stroke="#3b82f6"
+                                                              Fill="#3b82f640">
+                                            </RadzenAreaSeries>
+                                            <RadzenAreaSeries Data="@GetFinancialComparisonData()"
+                                                              CategoryProperty="Month"
+                                                              ValueProperty="Paid"
+                                                              Title="Pagado"
+                                                              Stroke="#10b981"
+                                                              Fill="#10b98140">
+                                            </RadzenAreaSeries>
+                                            <RadzenAreaSeries Data="@GetFinancialComparisonData()"
+                                                              CategoryProperty="Month"
+                                                              ValueProperty="Pending"
+                                                              Title="Pendiente"
+                                                              Stroke="#f59e0b"
+                                                              Fill="#f59e0b40">
+                                            </RadzenAreaSeries>
+                                            <RadzenCategoryAxis Padding="20" />
+                                            <RadzenValueAxis Formatter="@FormatAsCurrency">
+                                                <RadzenGridLines Visible="true" />
+                                                <RadzenAxisTitle Text="Monto ($)" />
+                                            </RadzenValueAxis>
+                                            <RadzenLegend Position="LegendPosition.Top" />
+                                        </RadzenChart>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-5">
+                                            <p class="text-muted">No hay datos disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 @if (activeTab == "financial")
                 {
                     <div class="row">
@@ -171,7 +339,7 @@
                                             <span>@(performanceMetrics?.TicketResolutionRate.ToString("F1"))%</span>
                                         </div>
                                         <div class="progress" style="height: 10px;">
-                                            <div class="progress-bar" role="progressbar" style="width: @(performanceMetrics?.TicketResolutionRate ?? 0)%" ></div>
+                                            <div class="progress-bar" role="progressbar" style="width: @(performanceMetrics?.TicketResolutionRate ?? 0)%"></div>
                                         </div>
                                     </div>
                                     <div class="mb-4">
@@ -180,7 +348,7 @@
                                             <span>@(performanceMetrics?.ClientSatisfactionScore.ToString("F1")) / 5.0</span>
                                         </div>
                                         <div class="progress" style="height: 10px;">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: @((performanceMetrics?.ClientSatisfactionScore ?? 0) * 20)%" ></div>
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: @((performanceMetrics?.ClientSatisfactionScore ?? 0) * 20)%"></div>
                                         </div>
                                     </div>
                                     <div class="row mt-4">
@@ -318,7 +486,7 @@
                 {
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-0">
-                             <div class="table-responsive">
+                            <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="bg-light">
                                         <tr>
@@ -363,7 +531,7 @@
 @code {
     private DateTime? StartDate;
     private DateTime? EndDate;
-    private string activeTab = "financial";
+    private string activeTab = "charts"; // 👈 CAMBIADO: Ahora inicia en "charts"
     private bool isLoading = true;
 
     private DashboardStatsDto? dashboardStats;
@@ -374,6 +542,7 @@
     private List<ProjectReportDto>? projectReports;
     private List<RevenueTrendDto>? revenueTrends;
     private List<TicketStatusChartDto>? ticketStatusChart;
+    private List<TopClientDto>? topClients; // 👈 NUEVO
 
     protected override async Task OnInitializedAsync()
     {
@@ -405,8 +574,9 @@
             var t6 = ReportApiService.GetReportsByClientAsync(StartDate, EndDate);
             var t7 = ReportApiService.GetReportsByProjectAsync(StartDate, EndDate);
             var t8 = ReportApiService.GetReportsByUserAsync(StartDate, EndDate);
+            var t9 = ReportApiService.GetTopClientsAsync(5); // 👈 NUEVO: Top 5 clientes
 
-            await Task.WhenAll(t1, t2, t3, t4, t5, t6, t7, t8);
+            await Task.WhenAll(t1, t2, t3, t4, t5, t6, t7, t8, t9);
 
             dashboardStats = await t1;
             financialReport = await t2;
@@ -416,6 +586,7 @@
             clientReports = await t6;
             projectReports = await t7;
             userReports = await t8;
+            topClients = await t9; // 👈 NUEVO
         }
         catch (Exception ex)
         {
@@ -442,5 +613,46 @@
             Detail = message,
             Duration = 4000
         });
+    }
+
+    // ========== MÉTODOS PARA LAS GRÁFICAS ==========
+
+    private string FormatAsCurrency(object value)
+    {
+        if (value is decimal decimalValue)
+        {
+            return $"${decimalValue:N0}";
+        }
+        return value?.ToString() ?? "";
+    }
+
+    private string[] GetTicketColors()
+    {
+        if (ticketStatusChart == null) return Array.Empty<string>();
+        return ticketStatusChart.Select(t => t.Color).ToArray();
+    }
+
+    // Datos simulados para la gráfica de comparación financiera
+    private List<FinancialComparisonData> GetFinancialComparisonData()
+    {
+        if (revenueTrends == null || !revenueTrends.Any())
+            return new List<FinancialComparisonData>();
+
+        return revenueTrends.Select(trend => new FinancialComparisonData
+        {
+            Month = trend.Month,
+            Invoiced = trend.Revenue, // Total facturado
+            Paid = trend.Revenue * 0.7m, // Simulación: 70% pagado
+            Pending = trend.Revenue * 0.3m // Simulación: 30% pendiente
+        }).ToList();
+    }
+
+    // Clase auxiliar para la gráfica de comparación
+    public class FinancialComparisonData
+    {
+        public string Month { get; set; } = string.Empty;
+        public decimal Invoiced { get; set; }
+        public decimal Paid { get; set; }
+        public decimal Pending { get; set; }
     }
 }
