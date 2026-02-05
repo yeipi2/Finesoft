@@ -30,8 +30,8 @@ public class ReportService : IReportService
             // CORREGIDO: Usar "Pagada" en lugar de "Paid"
             TotalRevenue = await _context.Invoices.Where(i => i.Status == "Pagada").SumAsync(i => (decimal?)i.Total) ?? 0,
             MonthlyRevenue = await _context.Invoices
-                .Where(i => i.Status == "Pagada" && i.PaidDate >= startOfMonth)
-                .SumAsync(i => (decimal?)i.Total) ?? 0,
+            .Where(i => i.Status == "Pagada" && i.InvoiceDate >= startOfMonth)
+            .SumAsync(i => (decimal?)i.Total) ?? 0,
             // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
             PendingPayments = await _context.Invoices.Where(i => i.Status == "Pendiente").SumAsync(i => (decimal?)i.Total) ?? 0,
             TotalInvoices = await _context.Invoices.CountAsync(),
