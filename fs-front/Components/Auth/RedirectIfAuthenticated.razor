@@ -2,18 +2,23 @@
 @inject AuthenticationStateProvider AuthStateProvider
 
 @code {
-    [Parameter] public string RedirectTo { get; set; } = "/iniciar-sesion";
+    [Parameter] public string RedirectTo { get; set; } = "/dashboard";
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var isAuth = authState.User.Identity?.IsAuthenticated == true;
 
-        // Solo redirige si no está autenticado Y no está ya en la página de login
-        if ((authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
-        && !currentUri.StartsWith("iniciar-sesion"))
+        if (isAuth)
         {
-            Navigation.NavigateTo(RedirectTo, true);
+            var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+            // Evita loop si ya estás en el destino
+            var target = RedirectTo.TrimStart('/');
+            if (!currentUri.StartsWith(target, StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo(RedirectTo, forceLoad: true);
+            }
         }
     }
 }

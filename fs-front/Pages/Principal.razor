@@ -1,5 +1,9 @@
 ﻿@page "/"
 @layout LayoutPrincipal
+@using fs_front.Components.Auth
+<RedirectIfAuthenticated RedirectTo="/dashboard" />
+
+
 <PageTitle>Finesoft - Sistema de Gestión de Soporte Técnico</PageTitle>
 
 <div class="landing-page">

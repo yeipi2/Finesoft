@@ -7,10 +7,17 @@
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuth = authState.User.Identity?.IsAuthenticated == true;
 
-        if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
+        if (!isAuth)
         {
-            Navigation.NavigateTo(RedirectTo, true);
+            var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+            // Evita loop si ya está en login
+            if (!currentUri.StartsWith("iniciar-sesion", StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo(RedirectTo, forceLoad: true);
+            }
         }
     }
 }
