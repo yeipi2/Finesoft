@@ -9,20 +9,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+// 1) Crear el builder de la aplicación
 var builder = WebApplication.CreateBuilder(args);
 
+// 2) Configurar licencia de QuestPDF (Community)
 QuestPDF.Settings.License = LicenseType.Community;
 
-// Add services to the container.
-
+// 3) Servicios base (MVC, Swagger, Razor Pages)
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddRazorPages();
 
-// registro de servicios
+// 4) Registro de servicios propios (DI)
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
@@ -34,11 +33,11 @@ builder.Services.AddScoped<IQuoteService, QuoteService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
-// conexión a la base de datos
+// 5) Conexión a base de datos
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
-
 builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(conn));
 
+// 6) Configuración JWT
 var jwt = builder.Configuration.GetSection("Jwt");
 var key = jwt["Key"]!;
 
@@ -64,13 +63,16 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// 7) Servicio para emitir JWT
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
+// 8) Identity + Roles + EF Core
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<IdentityUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+// 9) Construir la app
 var app = builder.Build();
 
 // ============================================
@@ -92,7 +94,7 @@ using (var scope = app.Services.CreateScope())
             if (!await roleManager.RoleExistsAsync(role))
             {
                 await roleManager.CreateAsync(new IdentityRole(role));
-                Console.WriteLine($"✅ Rol '{role}' creado exitosamente");
+                Console.WriteLine($"âœ… Rol '{role}' creado exitosamente");
             }
         }
 
@@ -114,13 +116,13 @@ using (var scope = app.Services.CreateScope())
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(newAdmin, "Admin");
-                Console.WriteLine("✅ Usuario Admin creado exitosamente");
+                Console.WriteLine("âœ… Usuario Admin creado exitosamente");
                 Console.WriteLine($"   Email: {adminEmail}");
                 Console.WriteLine("   Password: Admin123!");
             }
             else
             {
-                Console.WriteLine("❌ Error al crear usuario admin:");
+                Console.WriteLine("âŒ Error al crear usuario admin:");
                 foreach (var error in result.Errors)
                 {
                     Console.WriteLine($"   - {error.Description}");
@@ -129,16 +131,17 @@ using (var scope = app.Services.CreateScope())
         }
         else
         {
-            Console.WriteLine("ℹ️  Usuario Admin ya existe");
+            Console.WriteLine("â„¹ï¸  Usuario Admin ya existe");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Error en seed de datos: {ex.Message}");
+        Console.WriteLine($"âŒ Error en seed de datos: {ex.Message}");
     }
 }
 // ============================================
 
+// 10) Configuración CORS (permitir cualquier origen)
 app.UseCors(policy =>
 {
     policy.AllowAnyHeader();
@@ -146,7 +149,7 @@ app.UseCors(policy =>
     policy.AllowAnyOrigin();
 });
 
-// Configure the HTTP request pipeline.
+// 11) Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -156,9 +159,11 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 12) Mapear endpoints
 app.MapControllers();
 app.MapIdentityApi<IdentityUser>();
 
 app.UseHttpsRedirection();
 
+// 13) Ejecutar la app
 app.Run();

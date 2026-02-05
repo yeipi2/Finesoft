@@ -4,6 +4,7 @@
 <PageTitle>Iniciar Sesión - Finesoft</PageTitle>
 
 <main>
+    @* Formulario de login con validaciones por DataAnnotations *@
     <EditForm Model="_login" OnValidSubmit="LoginAsync" FormName="LoginForm">
         <DataAnnotationsValidator />
 
@@ -32,6 +33,7 @@
             <ValidationMessage For="@(() => _login.Password)" class="text-danger small" />
         </div>
 
+        @* Botón con estado de carga *@
         @if (_isLoading)
         {
             <button type="submit" class="btn w-100 py-2" style="background: #272e3f; color: white;">
@@ -48,24 +50,30 @@
     </EditForm>
 </main>
 
+@* Dependencias para autenticación, navegación y notificaciones *@
 @inject AuthenticationStateProvider provider
 @inject NavigationManager navigation
 @inject NotificationService NotificationService
 
 @code {
+    // Modelo ligado al formulario (email y password)
     public LoginModel _login = new();
+    // Bandera para mostrar el estado de carga
     private bool _isLoading = false;
 
+    // Ejecuta el login y redirige según rol
     private async Task LoginAsync()
     {
         _isLoading = true;
         StateHasChanged();
 
+        // Usar el provider personalizado para loguear
         var auth = (CustomAuthStateProvider)provider;
         var formResult = await auth.LoginAsync(_login);
 
         if (formResult.Succeeded)
         {
+            // Leer el usuario autenticado y su rol
             var authState = await provider.GetAuthenticationStateAsync();
             var user = authState.User;
 
@@ -91,6 +99,7 @@
 
         else
         {
+            // Mostrar mensaje de error al usuario
             NotificationService.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,

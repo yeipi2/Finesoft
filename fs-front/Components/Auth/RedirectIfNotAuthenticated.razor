@@ -1,9 +1,12 @@
-﻿@inject NavigationManager Navigation
+@* Servicios necesarios para navegación y estado de autenticación *@
+@inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
 @code {
+    // Ruta a la que se redirige si NO está autenticado
     [Parameter] public string RedirectTo { get; set; } = "/iniciar-sesion";
 
+    // Al inicializar, verifica si el usuario NO está autenticado
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -16,6 +19,7 @@
             // Evita loop si ya está en login
             if (!currentUri.StartsWith("iniciar-sesion", StringComparison.OrdinalIgnoreCase))
             {
+                // Redirige forzando carga completa
                 Navigation.NavigateTo(RedirectTo, forceLoad: true);
             }
         }

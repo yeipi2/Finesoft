@@ -1,20 +1,27 @@
-﻿<CascadingAuthenticationState>
+@* Provee el estado de autenticación a toda la app *@
+<CascadingAuthenticationState>
+    @* Enrutador principal de Blazor *@
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
+            @* Renderiza la ruta con autorización y layout por defecto *@
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                 <Authorizing>
+                    @* Mientras se valida la sesión *@
                     <div style="padding:16px;">Validando sesión...</div>
                 </Authorizing>
 
                 <NotAuthorized>
+                    @* Si no está autorizado, redirige según estado *@
                     <RedirectToLoginOrDashboard />
                 </NotAuthorized>
             </AuthorizeRouteView>
 
+            @* Enfoca el primer h1 al navegar *@
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
 
         <NotFound>
+            @* Ruta no encontrada: redirige según estado *@
             <RedirectToLoginOrDashboard />
         </NotFound>
     </Router>

@@ -1,10 +1,13 @@
 @using System.Security.Claims
+@* Servicios para navegación y estado de autenticación *@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthProvider
 
 @code {
+    // Evita ejecutar más de una vez el redirect
     private bool _checked = false;
 
+    // Se ejecuta después del primer render para poder navegar
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _checked) return;
