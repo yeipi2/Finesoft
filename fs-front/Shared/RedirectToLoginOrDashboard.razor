@@ -15,18 +15,24 @@
             return;
         }
 
-        // Autenticado pero sin rol -> pending
-        var hasRole =
-        user.IsInRole("Admin") || user.IsInRole("User") || user.IsInRole("Technician") ||
-        user.Claims.Any(c => c.Type == ClaimTypes.Role);
+        // Leer rol (si existe)
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
 
-        if (!hasRole)
+        // Sin rol -> pending
+        if (string.IsNullOrWhiteSpace(role))
         {
             Nav.NavigateTo("/pending", true);
             return;
         }
 
-        // Autenticado con rol -> dashboard (si intentó entrar a algo no permitido)
+        // Technician -> pending (por ahora)
+        if (role == "Technician")
+        {
+            Nav.NavigateTo("/pending", true);
+            return;
+        }
+
+        // Admin/User -> dashboard
         Nav.NavigateTo("/dashboard", true);
     }
 }

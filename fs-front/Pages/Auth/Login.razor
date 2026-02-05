@@ -5,7 +5,7 @@
 
 <main>
     <EditForm Model="_login" OnValidSubmit="LoginAsync" FormName="LoginForm">
-        <DataAnnotationsValidator/>
+        <DataAnnotationsValidator />
 
         <div class="mb-2">
             <label for="email" class="form-label small fw-bolder">Correo electrónico</label>
@@ -14,9 +14,9 @@
                     <i class="bi bi-envelope"></i>
                 </span>
                 <InputText @bind-Value="_login.Email" id="email" placeholder="micorreo@empresa.mx"
-                           class="form-control"/>
+                    class="form-control" />
             </div>
-            <ValidationMessage For="@(() => _login.Email)" class="text-danger small"/>
+            <ValidationMessage For="@(() => _login.Email)" class="text-danger small" />
         </div>
 
 
@@ -26,10 +26,10 @@
                 <span class="input-group-text">
                     <i class="bi bi-lock"></i>
                 </span>
-                <InputText type="password" @bind-Value="_login.Password" id="password"
-                           placeholder="••••••••••••••••" class="form-control"/>
+                <InputText type="password" @bind-Value="_login.Password" id="password" placeholder="••••••••••••••••"
+                    class="form-control" />
             </div>
-            <ValidationMessage For="@(() => _login.Password)" class="text-danger small"/>
+            <ValidationMessage For="@(() => _login.Password)" class="text-danger small" />
         </div>
 
         @if (_isLoading)
@@ -66,8 +66,29 @@
 
         if (formResult.Succeeded)
         {
+            var authState = await provider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+            // si no tiene rol -> pending
+            if (string.IsNullOrWhiteSpace(role))
+            {
+                navigation.NavigateTo("/pending");
+                return;
+            }
+
+            // si es Technician -> pending (por ahora)
+            if (role == "Technician")
+            {
+                navigation.NavigateTo("/pending");
+                return;
+            }
+
+            // Admin/User -> dashboard
             navigation.NavigateTo("/dashboard");
         }
+
         else
         {
             NotificationService.Notify(new NotificationMessage
