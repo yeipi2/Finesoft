@@ -1,0 +1,571 @@
+/* =========================
+   Auth Shell (container)
+========================= */
+.auth-shell{
+  width: min(980px, 100%);
+  height: 520px;
+  border-radius: 22px;
+  position: relative;
+  overflow: hidden;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  background:
+    radial-gradient(900px 520px at 80% 20%, rgba(59,130,246,.28), transparent 60%),
+    radial-gradient(700px 460px at 20% 80%, rgba(124,58,237,.22), transparent 55%),
+    linear-gradient(135deg, #f8fafc, #eef2ff);
+
+  box-shadow: 0 30px 60px rgba(15, 23, 42, .18);
+  border: 1px solid rgba(255,255,255,.55);
+}
+
+/* =========================
+   Overlay (panel azul)
+========================= */
+/* =========================
+   Overlay MEJORADO
+========================= */
+.overlay{
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(59,130,246,.25), transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(14,165,233,.20), transparent 50%),
+    linear-gradient(135deg, #0f3460 0%, #16213e 50%, #0a2647 100%);
+  
+  color: #fff;
+  transition: transform .55s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  z-index: 10;
+  
+  box-shadow: inset 0 0 100px rgba(0,0,0,.15);
+}
+
+.overlay::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .03;
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
+  pointer-events: none;
+}
+
+.overlay::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), transparent);
+  pointer-events: none;
+}
+
+.auth-shell.is-register .overlay{
+  transform: translateX(100%);
+}
+
+.overlay-content{
+  width: 100%;
+  max-width: 340px;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-logo{
+  width: 170px;
+  height: auto;
+  margin-bottom: 24px;
+  filter: 
+    drop-shadow(0 10px 25px rgba(0,0,0,.3))
+    drop-shadow(0 0 15px rgba(255,255,255,.1));
+  transition: transform .3s ease;
+}
+
+.overlay h2{
+  font-weight: 800;
+  margin: 0 0 12px;
+  font-size: 1.75rem;
+  text-shadow: 0 2px 10px rgba(0,0,0,.2);
+}
+
+.overlay p{
+  opacity: .85;
+  margin: 0 0 20px;
+  font-size: .95rem;
+}
+
+.ghost{
+  border: 2px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  color: #fff;
+  border-radius: 12px;
+  padding: 11px 20px;
+  font-weight: 700;
+  cursor: pointer;
+  
+  transition: all .3s ease;
+  
+  box-shadow: 
+    0 4px 15px rgba(0,0,0,.15),
+    inset 0 1px 0 rgba(255,255,255,.15);
+}
+
+.ghost:hover{
+  background: rgba(255,255,255,.18);
+  border-color: rgba(255,255,255,.55);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.25);
+}
+
+.overlay-foot{
+  margin-top: 28px;
+  opacity: .65;
+  font-size: .82rem;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,.15);
+}
+
+/* =========================
+   Form Panel
+========================= */
+.form-panel{
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.form-box{
+  height: 520px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 44px;
+
+  background: rgba(255,255,255,.28);
+  border-left: 1px solid rgba(255,255,255,.45);
+
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+
+  box-shadow:
+    0 24px 60px rgba(2,6,23,.12),
+    inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.auth-shell .form-box{ grid-column: 2; }
+.auth-shell.is-register .form-box{ grid-column: 1; }
+
+.title{
+  font-weight: 800;
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+.subtitle{
+  margin: 0 0 28px;
+  color: #64748b;
+}
+
+/* =========================
+   FLOATING LABEL
+========================= */
+.field-float{
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.float-label{
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  z-index: 2;
+
+  padding: 0 .55rem;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .2px;
+
+  color: rgba(15,23,42,.72);
+
+  background: rgba(255,255,255,.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border: 1px solid rgba(255,255,255,.60);
+  border-radius: 999px;
+
+  box-shadow: 0 8px 18px rgba(2,6,23,.08);
+}
+
+/* =========================
+   INPUT GLASS WRAPPER
+========================= */
+.input-glass{
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+
+  padding: 0.85rem 1.15rem;
+  border-radius: 16px;
+
+  background: rgba(255,255,255,.22);
+  border: 1px solid rgba(255,255,255,.55);
+
+  backdrop-filter: blur(26px) saturate(1.35);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35);
+
+  box-shadow:
+    0 18px 40px rgba(2,6,23,.10),
+    inset 0 1px 0 rgba(255,255,255,.65);
+
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  min-height: 56px;
+}
+
+.input-glass::before{
+  content:"";
+  position:absolute;
+  inset: 1px;
+  border-radius: 15px;
+  pointer-events:none;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,.55),
+    rgba(255,255,255,.10) 40%,
+    rgba(255,255,255,.05)
+  );
+  opacity: .55;
+  z-index: 0;
+}
+
+.input-glass i{
+  position: relative;
+  font-size: 1.05rem;
+  color: rgba(15,23,42,.55);
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+/* =========================
+   INPUT NATIVO - 100% TRANSPARENTE
+========================= */
+.glass-input{
+  position: relative;
+  flex: 1;
+  z-index: 1;
+  
+  /* FORZAR TRANSPARENCIA TOTAL */
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  
+  box-shadow: none !important;
+  
+  padding: 0 !important;
+  margin: 0 !important;
+  
+  font-size: .98rem;
+  color: #0f172a;
+  line-height: 1.5;
+  font-family: inherit;
+  
+  width: 100%;
+  height: auto;
+}
+
+.glass-input::placeholder{
+  color: rgba(15,23,42,.42);
+}
+
+/* TODOS los estados - forzar transparencia */
+.glass-input:focus,
+.glass-input:active,
+.glass-input:hover,
+.glass-input:focus-visible{
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Password toggle */
+.toggle-password{
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  color: rgba(15,23,42,.55);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-password:hover{
+  color: rgba(59,130,246,.85);
+}
+
+.toggle-password i{
+  font-size: 1.15rem;
+}
+
+/* Focus del wrapper */
+.input-glass:focus-within{
+  transform: translateY(-1px);
+  border-color: rgba(59,130,246,.35);
+  box-shadow:
+    0 22px 50px rgba(2,6,23,.14),
+    0 0 0 4px rgba(59,130,246,.10),
+    inset 0 1px 0 rgba(255,255,255,.75);
+}
+
+.input-glass:focus-within i{
+  color: rgba(59,130,246,.85);
+  transform: scale(1.06);
+}
+
+/* =========================
+   VALIDACIONES
+========================= */
+.validation-message{
+  display: block;
+  margin-top: .5rem;
+  font-size: .82rem;
+  color: #dc2626;
+  padding-left: 4px;
+}
+
+/* =========================
+   BOTÓN GLASS
+========================= */
+.btn-glass{
+  width: 100%;
+  border-radius: 14px;
+  padding: 13px 18px;
+  font-weight: 800;
+  font-size: .95rem;
+  margin-top: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  background: 
+    linear-gradient(135deg, rgba(124,58,237,.15), rgba(59,130,246,.12)),
+    rgba(255,255,255,.25);
+  
+  border: 1px solid rgba(255,255,255,.45);
+  color: #5b21b6;
+
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+
+  box-shadow:
+    0 16px 34px rgba(2,6,23,.18),
+    inset 0 1px 0 rgba(255,255,255,.55);
+
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.btn-glass i{
+  font-size: 1.1rem;
+}
+
+.btn-glass:hover:not(:disabled){
+  transform: translateY(-2px);
+  
+  background: 
+    linear-gradient(135deg, rgba(124,58,237,.22), rgba(59,130,246,.18)),
+    rgba(255,255,255,.32);
+  
+  border-color: rgba(124,58,237,.35);
+  
+  box-shadow:
+    0 22px 48px rgba(2,6,23,.24),
+    0 0 0 4px rgba(124,58,237,.12),
+    inset 0 1px 0 rgba(255,255,255,.65);
+}
+
+.btn-glass:active:not(:disabled){
+  transform: translateY(0) scale(.98);
+}
+
+.btn-glass:disabled{
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =========================
+   MOBILE
+========================= */
+.switch-mobile{
+  display: none;
+  margin-top: 20px;
+  color: #64748b;
+  font-size: .9rem;
+}
+
+.switch-mobile .link{
+  border: 0;
+  background: transparent;
+  color: #7c3aed;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.switch-mobile .link:hover{
+  text-decoration: underline;
+}
+
+@media (max-width: 900px){
+  .auth-shell{
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .overlay{ display: none; }
+
+  .form-panel{ grid-template-columns: 1fr; }
+
+  .form-box{
+    height: auto;
+    padding: 26px;
+    grid-column: 1;
+  }
+
+  .field-float{
+    margin-bottom: 20px;
+  }
+
+  .switch-mobile{
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.brand-svg svg{
+  width: 400px;  /* ajusta */
+  height: auto;
+  display: block;
+}
+
+
+/* Estado inicial (oculto) */
+.brand-animate .fs-tag,
+.brand-animate .fs-ch,
+.brand-animate .fs-swoosh{
+  opacity: 0;
+}
+
+/* Letras */
+.brand-animate .fs-ch{
+  animation: fsPop .35s ease forwards;
+  transform: translateY(8px);
+}
+
+/* delays letra por letra */
+.brand-animate .c1{ animation-delay: .05s; }
+.brand-animate .c2{ animation-delay: .11s; }
+.brand-animate .c3{ animation-delay: .17s; }
+.brand-animate .c4{ animation-delay: .23s; }
+.brand-animate .c5{ animation-delay: .29s; }
+.brand-animate .c6{ animation-delay: .35s; }
+.brand-animate .c7{ animation-delay: .41s; }
+.brand-animate .c8{ animation-delay: .47s; }
+
+/* tagline aparece casi al inicio */
+.brand-animate .fs-tag{
+  animation: fsFade .35s ease forwards;
+  animation-delay: .02s;
+}
+
+/* swoosh sale al final */
+.brand-animate .fs-swoosh{
+  transform-origin: left center;
+  transform: translateY(6px) scaleX(.8);
+  animation: fsSwoosh .45s ease forwards;
+  animation-delay: .62s;
+}
+
+@keyframes fsPop{
+  to{ opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fsFade{
+  to{ opacity: .95; }
+}
+
+@keyframes fsSwoosh{
+  to{ opacity: .95; transform: translateY(0) scaleX(1); }
+}
+
+/* Respeta usuarios con reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .brand-animate .fs-tag,
+  .brand-animate .fs-ch,
+  .brand-animate .fs-swoosh{
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Input nativo dentro del glass */
+.glass-input{
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: .98rem;
+  color: #0f172a;
+}
+
+/* Botón ojo */
+.toggle-password{
+  border: 0;
+  background: transparent;
+  padding: .25rem .35rem;
+  border-radius: 10px;
+  color: rgba(15,23,42,.55);
+  cursor: pointer;
+}
+
+.toggle-password:hover{
+  background: rgba(15,23,42,.06);
+}

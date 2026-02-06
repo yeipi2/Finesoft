@@ -1,0 +1,307 @@
+@page "/iniciar-sesion"
+@page "/registrarme"
+@layout AuthLayout
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Radzen
+
+@inject NavigationManager Nav
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthProvider
+@inject NotificationService NotificationService
+
+<PageTitle>@(IsRegister ? "Registrarme - Finesoft" : "Iniciar Sesión - Finesoft")</PageTitle>
+
+<section class="auth-shell @(IsRegister ? "is-register" : "")">
+    <!-- PANEL AZUL (overlay) -->
+    <div class="overlay">
+        <div class="overlay-content">
+
+            <!-- LOGO (se reinicia con @key) -->
+            <div class="brand-svg brand-animate" @key="LogoKey" aria-label="Finesoft">
+                <svg viewBox="0 0 640 150" role="img" aria-label="Finesoft logo">
+                    <defs>
+                        <linearGradient id="fsPurple" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stop-color="#7b4b86" />
+                            <stop offset=".55" stop-color="#3b2146" />
+                            <stop offset="1" stop-color="#1f1027" />
+                        </linearGradient>
+
+                        <linearGradient id="fsOrange" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0" stop-color="#ffb000" />
+                            <stop offset=".55" stop-color="#ff7a00" />
+                            <stop offset="1" stop-color="#ff4d00" />
+                        </linearGradient>
+
+                        <filter id="fsShadow" x="-20%" y="-20%" width="140%" height="160%">
+                            <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="rgba(0,0,0,.25)" />
+                        </filter>
+                    </defs>
+
+                    <!-- tagline -->
+                    <text x="18" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700"
+                          letter-spacing="4" fill="#ff9a1f" opacity=".95" class="fs-tag">
+                        CERTIFIED HIGH SOLUTIONS
+                    </text>
+
+                    <!-- palabra letra por letra -->
+                    <g filter="url(#fsShadow)">
+                        <text x="18" y="104" font-family="Montserrat, Segoe UI, Arial, sans-serif" font-size="92"
+                              font-weight="900" letter-spacing="-10" fill=" url(#fsPurple)" class="fs-word">
+                            <tspan class="fs-ch c1">F</tspan>
+                            <tspan class="fs-ch c2">i</tspan>
+                            <tspan class="fs-ch c3">n</tspan>
+                            <tspan class="fs-ch c4">e</tspan>
+                            <tspan class="fs-ch c5">S</tspan>
+                            <tspan class="fs-ch c6">o</tspan>
+                            <tspan class="fs-ch c7">f</tspan>
+                            <tspan class="fs-ch c8">t</tspan>
+                        </text>
+                    </g>
+
+                    <!-- swoosh al final -->
+                    <path class="fs-swoosh" d="M145 118
+                    C250 140, 395 140, 525 118
+                    C470 128, 355 134, 235 128
+                    C190 126, 165 122, 145 118 Z" fill="url(#fsOrange)" />
+                </svg>
+            </div>
+
+            @if (!IsRegister)
+            {
+                <h2>Hola, Bienvenido!</h2>
+                <p>¿No tienes una cuenta?</p>
+                <button class="ghost" @onclick="GoRegister">Registrarse</button>
+            }
+            else
+            {
+                <h2>¡Qué bueno verte!</h2>
+                <p>¿Ya tienes una cuenta?</p>
+                <button class="ghost" @onclick="GoLogin">Iniciar sesión</button>
+            }
+
+            <div class="overlay-foot">
+                <small>Finesoft • Blvd. Juan de Dios Batiz #145 PTE • (668) 817-1400</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORM CONTAINER -->
+    <div class="form-panel">
+        @if (!IsRegister)
+        {
+            <!-- LOGIN -->
+            <div class="form-box">
+                <h3 class="title">Iniciar sesión</h3>
+                <p class="subtitle">Accede al sistema con tu cuenta</p>
+
+                <EditForm Model="@Login" OnValidSubmit="@LoginAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="field-float">
+                        <label class="float-label">Correo electrónico</label>
+                        <div class="input-glass">
+                            <i class="bi bi-envelope"></i>
+                            <input type="email" @bind="Login.Email" placeholder="micorreo@empresa.mx" class="glass-input" />
+                        </div>
+                        <ValidationMessage For="@(() => Login.Email)" />
+                    </div>
+
+                    <div class="field-float">
+                        <label class="float-label">Contraseña</label>
+                        <div class="input-glass">
+                            <i class="bi bi-lock"></i>
+                            <input type="@(ShowPassword ? "text" : "password")" @bind="Login.Password"
+                                   placeholder="Mínimo 8 caracteres" class="glass-input" />
+
+                            <button type="button" class="toggle-password" @onclick="() => ShowPassword = !ShowPassword">
+                                <i class="bi @(ShowPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                        <ValidationMessage For="@(() => Login.Password)" />
+                    </div>
+
+                    <button type="submit" class="btn-glass" disabled="@Loading">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        @(Loading ? "Iniciando..." : "Iniciar sesión")
+                    </button>
+                </EditForm>
+
+                <div class="switch-mobile">
+                    <span>¿No tienes cuenta?</span>
+                    <button type="button" class="link" @onclick="GoRegister">Regístrate</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- REGISTER -->
+            <div class="form-box">
+                <h3 class="title">Crear cuenta</h3>
+                <p class="subtitle">Regístrate para comenzar</p>
+
+                <EditForm Model="@Register" OnValidSubmit="@RegisterAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="field-float">
+                        <label class="float-label">Correo electrónico</label>
+                        <div class="input-glass">
+                            <i class="bi bi-envelope"></i>
+                            <input type="email" @bind="Register.Email" placeholder="micorreo@empresa.mx"
+                                   class="glass-input" />
+                        </div>
+                        <ValidationMessage For="@(() => Register.Email)" />
+                    </div>
+
+                    <div class="field-float">
+                        <label class="float-label">Contraseña</label>
+                        <div class="input-glass">
+                            <i class="bi bi-lock"></i>
+                            <input type="@(ShowPasswordReg ? "text" : "password")" @bind="Register.Password"
+                                   placeholder="Mínimo 8 caracteres" class="glass-input" />
+
+                            <button type="button" class="toggle-password"
+                                    @onclick="() => ShowPasswordReg = !ShowPasswordReg">
+                                <i class="bi @(ShowPasswordReg ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                        <ValidationMessage For="@(() => Register.Password)" />
+                    </div>
+
+                    <div class="field-float">
+                        <label class="float-label">Confirmar contraseña</label>
+                        <div class="input-glass">
+                            <i class="bi bi-lock"></i>
+                            <input type="@(ShowPasswordConfirm ? "text" : "password")" @bind="Register.ConfirmPassword"
+                                   placeholder="Mínimo 8 caracteres" class="glass-input" />
+
+                            <button type="button" class="toggle-password"
+                                    @onclick="() => ShowPasswordConfirm = !ShowPasswordConfirm">
+                                <i class="bi @(ShowPasswordConfirm ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                        <ValidationMessage For="@(() => Register.ConfirmPassword)" />
+                    </div>
+
+                    <button type="submit" class="btn-glass" disabled="@Loading">
+                        <i class="bi bi-person-plus"></i>
+                        @(Loading ? "Registrando..." : "Registrarme")
+                    </button>
+                </EditForm>
+
+                <div class="switch-mobile">
+                    <span>¿Ya tienes cuenta?</span>
+                    <button type="button" class="link" @onclick="GoLogin">Inicia sesión</button>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private bool IsRegister;
+    private bool Loading;
+
+    private bool ShowPassword;
+    private bool ShowPasswordReg;
+    private bool ShowPasswordConfirm;
+
+    private string LogoKey = Guid.NewGuid().ToString();
+
+    private LoginModel Login = new();
+    private RegisterModel Register = new();
+
+    protected override void OnInitialized()
+    {
+        SyncModeFromRoute();
+        Nav.LocationChanged += (_, __) =>
+        {
+            SyncModeFromRoute();
+            StateHasChanged();
+        };
+    }
+
+    private void SyncModeFromRoute()
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri).ToLowerInvariant();
+        var newIsRegister = path.StartsWith("registrarme");
+
+        if (newIsRegister != IsRegister)
+        {
+            IsRegister = newIsRegister;
+            LogoKey = Guid.NewGuid().ToString(); // reinicia animación
+            return;
+        }
+
+        IsRegister = newIsRegister;
+    }
+
+    private void GoRegister() => Nav.NavigateTo("/registrarme");
+    private void GoLogin() => Nav.NavigateTo("/iniciar-sesion");
+
+    private async Task LoginAsync()
+    {
+        Loading = true;
+
+        var result = await AuthService.LoginAsync(Login);
+        if (!result.Succeeded)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error de inicio de sesión",
+                Detail = result.Errors.FirstOrDefault() ?? "Error desconocido",
+                Duration = 5000
+            });
+            Loading = false;
+            return;
+        }
+
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        Loading = false;
+
+        if (string.IsNullOrWhiteSpace(role) || role == "Technician")
+            Nav.NavigateTo("/pending");
+        else
+            Nav.NavigateTo("/dashboard");
+    }
+
+    private async Task RegisterAsync()
+    {
+        Loading = true;
+
+        var auth = (fs_front.Services.CustomAuthStateProvider)AuthProvider;
+        var result = await auth.RegisterAsync(Register);
+
+        Loading = false;
+
+        if (!result.Succeeded)
+        {
+            foreach (var e in result.Errors)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error de registro",
+                    Detail = e,
+                    Duration = 5000
+                });
+            }
+            return;
+        }
+
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Registro exitoso",
+            Detail = "Tu cuenta ha sido creada correctamente.",
+            Duration = 2500
+        });
+
+        Nav.NavigateTo("/dashboard");
+    }
+}
