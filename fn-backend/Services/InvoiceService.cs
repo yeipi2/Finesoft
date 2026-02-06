@@ -30,7 +30,8 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Client)
             .Include(i => i.Quote)
             .Include(i => i.Items)
-            .ThenInclude(item => item.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(item => item.Service)
             .Include(i => i.Items)
             .ThenInclude(item => item.Ticket)
             .Include(i => i.Payments)
@@ -68,7 +69,8 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Client)
             .Include(i => i.Quote)
             .Include(i => i.Items)
-            .ThenInclude(item => item.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(item => item.Service)
             .Include(i => i.Items)
             .ThenInclude(item => item.Ticket)
             .Include(i => i.Payments)
@@ -118,7 +120,8 @@ public class InvoiceService : IInvoiceService
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
-                ServiceId = itemDto.ServiceId,
+                // CÓDIGO FUTURO - ServiceId deshabilitado
+                // ServiceId = itemDto.ServiceId,
                 TicketId = itemDto.TicketId
             };
 
@@ -143,7 +146,8 @@ public class InvoiceService : IInvoiceService
         var quote = await _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            .ThenInclude(i => i.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(i => i.Service)
             .FirstOrDefaultAsync(q => q.Id == dto.QuoteId);
 
         if (quote == null)
@@ -188,8 +192,9 @@ public class InvoiceService : IInvoiceService
                 Description = quoteItem.Description,
                 Quantity = quoteItem.Quantity,
                 UnitPrice = quoteItem.UnitPrice,
-                Subtotal = quoteItem.Subtotal,
-                ServiceId = quoteItem.ServiceId
+                Subtotal = quoteItem.Subtotal
+                // CÓDIGO FUTURO - ServiceId deshabilitado
+                // ServiceId = quoteItem.ServiceId
             };
 
             invoice.Items.Add(invoiceItem);
@@ -256,7 +261,8 @@ public class InvoiceService : IInvoiceService
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
-                ServiceId = itemDto.ServiceId,
+                // CÓDIGO FUTURO - ServiceId deshabilitado
+                // ServiceId = itemDto.ServiceId,
                 TicketId = itemDto.TicketId
             };
 
@@ -400,9 +406,9 @@ public class InvoiceService : IInvoiceService
         foreach (var client in monthlyClients)
         {
             var existingInvoice = await _context.Invoices
-                .AnyAsync(i => i.ClientId == client.Id && 
-                              i.InvoiceType == "Monthly" && 
-                              i.InvoiceDate.Month == currentMonth.Month && 
+                .AnyAsync(i => i.ClientId == client.Id &&
+                              i.InvoiceType == "Monthly" &&
+                              i.InvoiceDate.Month == currentMonth.Month &&
                               i.InvoiceDate.Year == currentMonth.Year);
 
             if (existingInvoice)
@@ -446,26 +452,18 @@ public class InvoiceService : IInvoiceService
         return ServiceResult<bool>.Success(true);
     }
 
-    // En tu archivo: fn-backend/Services/InvoiceService.cs
-    // Encuentra el método GetInvoiceStatsAsync() y reemplázalo con este:
-
     public async Task<InvoiceStatsDto> GetInvoiceStatsAsync()
     {
         var invoices = await _context.Invoices.ToListAsync();
-        var now = DateTime.UtcNow;
 
         var stats = new InvoiceStatsDto
         {
-            // Estados en español
             PaidInvoices = invoices.Count(i => i.Status == "Pagada"),
             TotalPaid = invoices.Where(i => i.Status == "Pagada").Sum(i => (decimal?)i.Total) ?? 0,
-
             PendingInvoices = invoices.Count(i => i.Status == "Pendiente"),
             TotalPending = invoices.Where(i => i.Status == "Pendiente").Sum(i => (decimal?)i.Total) ?? 0,
-
             OverdueInvoices = invoices.Count(i => i.Status == "Vencida"),
             TotalOverdue = invoices.Where(i => i.Status == "Vencida").Sum(i => (decimal?)i.Total) ?? 0,
-
             TotalInvoices = invoices.Count,
             TotalBilled = invoices.Sum(i => (decimal?)i.Total) ?? 0
         };
@@ -478,7 +476,8 @@ public class InvoiceService : IInvoiceService
         var invoice = await _context.Invoices
             .Include(i => i.Client)
             .Include(i => i.Items)
-            .ThenInclude(item => item.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(item => item.Service)
             .Include(i => i.Payments)
             .FirstOrDefaultAsync(i => i.Id == id);
 
@@ -806,8 +805,11 @@ public class InvoiceService : IInvoiceService
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 Subtotal = i.Subtotal,
-                ServiceId = i.ServiceId,
-                ServiceName = i.Service?.Name,
+                // CÓDIGO FUTURO - ServiceId y ServiceName deshabilitados
+                ServiceId = null,
+                ServiceName = null,
+                // ServiceId = i.ServiceId,
+                // ServiceName = i.Service?.Name,
                 TicketId = i.TicketId,
                 TicketTitle = i.Ticket?.Title
             }).ToList();

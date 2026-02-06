@@ -30,7 +30,8 @@ public class QuoteService : IQuoteService
         var query = _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            .ThenInclude(i => i.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(i => i.Service)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
@@ -59,7 +60,8 @@ public class QuoteService : IQuoteService
         var quote = await _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            .ThenInclude(i => i.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(i => i.Service)
             .FirstOrDefaultAsync(q => q.Id == id);
 
         return quote == null ? null : await MapToDetailDto(quote);
@@ -102,8 +104,9 @@ public class QuoteService : IQuoteService
                 Description = itemDto.Description,
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
-                Subtotal = itemSubtotal,
-                ServiceId = itemDto.ServiceId
+                Subtotal = itemSubtotal
+                // CÓDIGO FUTURO - ServiceId deshabilitado
+                // ServiceId = itemDto.ServiceId
             };
 
             quote.Items.Add(item);
@@ -165,8 +168,9 @@ public class QuoteService : IQuoteService
                 Description = itemDto.Description,
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
-                Subtotal = itemSubtotal,
-                ServiceId = itemDto.ServiceId
+                Subtotal = itemSubtotal
+                // CÓDIGO FUTURO - ServiceId deshabilitado
+                // ServiceId = itemDto.ServiceId
             };
 
             quote.Items.Add(item);
@@ -225,7 +229,8 @@ public class QuoteService : IQuoteService
         var quote = await _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            .ThenInclude(i => i.Service)
+            // CÓDIGO FUTURO - Include de Service deshabilitado
+            // .ThenInclude(i => i.Service)
             .FirstOrDefaultAsync(q => q.Id == id);
 
         if (quote == null)
@@ -493,8 +498,11 @@ public class QuoteService : IQuoteService
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 Subtotal = i.Subtotal,
-                ServiceId = i.ServiceId,
-                ServiceName = i.Service?.Name
+                // CÓDIGO FUTURO - ServiceId y ServiceName deshabilitados
+                ServiceId = null,
+                ServiceName = null
+                // ServiceId = i.ServiceId,
+                // ServiceName = i.Service?.Name
             }).ToList() ?? new List<QuoteItemDetailDto>()
         };
     }

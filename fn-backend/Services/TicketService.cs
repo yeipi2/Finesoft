@@ -23,9 +23,8 @@ public class TicketService : ITicketService
         int? serviceId = null, string? userId = null)
     {
         var query = _context.Tickets
-            .Include(t => t.Service)
-            .ThenInclude(s => s.Project)
-            .ThenInclude(p => p.Client)
+            .Include(t => t.Project)
+                .ThenInclude(p => p.Client)
             .Include(t => t.Comments)
             .Include(t => t.Attachments)
             .Include(t => t.Activities)
@@ -41,12 +40,6 @@ public class TicketService : ITicketService
             query = query.Where(t => t.Priority == priority);
         }
 
-        if (serviceId.HasValue)
-        {
-            query = query.Where(t => t.ServiceId == serviceId.Value);
-        }
-
-        // Filtrar por usuario asignado si se proporciona
         if (!string.IsNullOrEmpty(userId))
         {
             query = query.Where(t => t.AssignedToUserId == userId);
@@ -67,9 +60,8 @@ public class TicketService : ITicketService
     public async Task<TicketDetailDto?> GetTicketByIdAsync(int id)
     {
         var ticket = await _context.Tickets
-            .Include(t => t.Service)
-            .ThenInclude(s => s.Project)
-            .ThenInclude(p => p.Client)
+            .Include(t => t.Project)
+                .ThenInclude(p => p.Client)
             .Include(t => t.Comments)
             .Include(t => t.Attachments)
             .Include(t => t.History)
@@ -86,10 +78,11 @@ public class TicketService : ITicketService
 
     public async Task<ServiceResult<TicketDetailDto>> CreateTicketAsync(TicketDto ticketDto, string createdByUserId)
     {
-        var serviceExists = await _context.Services.AnyAsync(s => s.Id == ticketDto.ServiceId);
-        if (!serviceExists)
+        // Validar que el proyecto existe
+        var projectExists = await _context.Projects.AnyAsync(p => p.Id == ticketDto.ProjectId);
+        if (!projectExists)
         {
-            return ServiceResult<TicketDetailDto>.Failure("El servicio especificado no existe");
+            return ServiceResult<TicketDetailDto>.Failure("El proyecto especificado no existe");
         }
 
         if (!string.IsNullOrEmpty(ticketDto.AssignedToUserId))
@@ -105,7 +98,8 @@ public class TicketService : ITicketService
         {
             Title = ticketDto.Title,
             Description = ticketDto.Description,
-            ServiceId = ticketDto.ServiceId,
+            ProjectId = ticketDto.ProjectId,
+            ServiceId = ticketDto.ServiceId > 0 ? ticketDto.ServiceId : null,
             Status = ticketDto.Status,
             Priority = ticketDto.Priority,
             AssignedToUserId = ticketDto.AssignedToUserId,
@@ -130,12 +124,10 @@ public class TicketService : ITicketService
 
         await _context.SaveChangesAsync();
 
-        //load relationships
         await _context.Entry(ticket)
-            .Reference(t => t.Service)
+            .Reference(t => t.Project)
             .Query()
-            .Include(s => s.Project)
-            .ThenInclude(p => p.Client)
+            .Include(p => p.Client)
             .LoadAsync();
 
         return ServiceResult<TicketDetailDto>.Success(await MapToDetailDto(ticket));
@@ -144,7 +136,7 @@ public class TicketService : ITicketService
     public async Task<ServiceResult<bool>> UpdateTicketAsync(int id, TicketDto ticketDto, string userId)
     {
         var ticket = await _context.Tickets
-            .Include(t => t.Service)
+            .Include(t => t.Project)
             .FirstOrDefaultAsync(t => t.Id == id);
 
         if (ticket == null)
@@ -152,10 +144,10 @@ public class TicketService : ITicketService
             return ServiceResult<bool>.Failure("Ticket no encontrado");
         }
 
-        var serviceExists = await _context.Services.AnyAsync(s => s.Id == ticketDto.ServiceId);
-        if (!serviceExists)
+        var projectExists = await _context.Projects.AnyAsync(p => p.Id == ticketDto.ProjectId);
+        if (!projectExists)
         {
-            return ServiceResult<bool>.Failure("El servicio especificado no existe");
+            return ServiceResult<bool>.Failure("El proyecto especificado no existe");
         }
 
         if (!string.IsNullOrEmpty(ticketDto.AssignedToUserId))
@@ -167,7 +159,6 @@ public class TicketService : ITicketService
             }
         }
 
-        //track changes for history
         var changes = new List<TicketHistory>();
 
         if (ticket.Title != ticketDto.Title)
@@ -195,7 +186,6 @@ public class TicketService : ITicketService
                 ChangedAt = DateTime.UtcNow
             });
 
-            //if closed, set closed date
             if (ticketDto.Status == "Cerrado")
             {
                 ticket.ClosedAt = DateTime.UtcNow;
@@ -237,7 +227,8 @@ public class TicketService : ITicketService
 
         ticket.Title = ticketDto.Title;
         ticket.Description = ticketDto.Description;
-        ticket.ServiceId = ticketDto.ServiceId;
+        ticket.ProjectId = ticketDto.ProjectId;
+        ticket.ServiceId = ticketDto.ServiceId > 0 ? ticketDto.ServiceId : null;
         ticket.Status = ticketDto.Status;
         ticket.Priority = ticketDto.Priority;
         ticket.AssignedToUserId = ticketDto.AssignedToUserId;
@@ -327,7 +318,6 @@ public class TicketService : ITicketService
     {
         var query = _context.Tickets.AsQueryable();
 
-        // Si se proporciona userId, filtrar solo tickets asignados a ese usuario
         if (!string.IsNullOrEmpty(userId))
         {
             query = query.Where(t => t.AssignedToUserId == userId);
@@ -460,7 +450,6 @@ public class TicketService : ITicketService
             return ServiceResult<bool>.Failure("Actividad no encontrada");
         }
 
-        // Si la actividad está completada, restar sus horas del ticket
         if (activity.IsCompleted)
         {
             var ticket = await _context.Tickets.FindAsync(ticketId);
@@ -493,11 +482,9 @@ public class TicketService : ITicketService
             return ServiceResult<bool>.Failure("Ticket no encontrado");
         }
 
-        // Marcar como completada
         activity.IsCompleted = true;
         activity.CompletedAt = DateTime.UtcNow;
 
-        // Sumar las horas al total de horas reales del ticket
         ticket.ActualHours += activity.HoursSpent;
 
         _context.Set<TicketActivity>().Update(activity);
@@ -539,11 +526,11 @@ public class TicketService : ITicketService
             Id = ticket.Id,
             Title = ticket.Title,
             Description = ticket.Description,
-            ServiceId = ticket.ServiceId,
-            ServiceName = ticket.Service?.Name ?? string.Empty,
-            ProjectId = ticket.Service?.ProjectId ?? 0,
-            ProjectName = ticket.Service?.Project?.Name ?? string.Empty,
-            ClientName = ticket.Service?.Project?.Client?.CompanyName ?? string.Empty,
+            ServiceId = ticket.ServiceId ?? 0,
+            ServiceName = string.Empty,
+            ProjectId = ticket.ProjectId,
+            ProjectName = ticket.Project?.Name ?? string.Empty,
+            ClientName = ticket.Project?.Client?.CompanyName ?? string.Empty,
             Status = ticket.Status,
             Priority = ticket.Priority,
             AssignedToUserId = ticket.AssignedToUserId,
@@ -555,88 +542,53 @@ public class TicketService : ITicketService
             ClosedAt = ticket.ClosedAt,
             EstimatedHours = ticket.EstimatedHours,
             ActualHours = ticket.ActualHours,
-            HourlyRate = ticket.Service?.HourlyRate ?? 0
+            HourlyRate = 0,
+
+            // ⭐ MAPEAR LOS COMENTARIOS
+            Comments = ticket.Comments?.Select(c => new TicketCommentDto
+            {
+                Id = c.Id,
+                Comment = c.Comment,
+                IsInternal = c.IsInternal,
+                UserId = c.UserId,
+                UserName = _userManager.FindByIdAsync(c.UserId).Result?.UserName ?? string.Empty,
+                CreatedAt = c.CreatedAt
+            }).ToList() ?? new List<TicketCommentDto>(),
+
+            // ⭐ MAPEAR LOS ATTACHMENTS
+            Attachments = ticket.Attachments?.Select(a => new TicketAttachmentDto
+            {
+                Id = a.Id,
+                FileName = a.FileName,
+               
+                UploadedAt = a.UploadedAt
+            }).ToList() ?? new List<TicketAttachmentDto>(),
+
+            // ⭐ MAPEAR EL HISTORIAL
+            History = ticket.History?.Select(h => new TicketHistoryDto
+            {
+                Id = h.Id,
+                Action = h.Action,
+                OldValue = h.OldValue,
+                NewValue = h.NewValue,
+                UserName = _userManager.FindByIdAsync(h.UserId).Result?.UserName ?? string.Empty,
+                ChangedAt = h.ChangedAt
+            }).ToList() ?? new List<TicketHistoryDto>(),
+
+            // ⭐⭐⭐ AGREGAR ESTE MAPEO DE ACTIVIDADES ⭐⭐⭐
+            Activities = ticket.Activities?.Select(a => new TicketActivityDto
+            {
+                Id = a.Id,
+                TicketId = a.TicketId,
+                Description = a.Description,
+                HoursSpent = a.HoursSpent,
+                IsCompleted = a.IsCompleted,
+                CreatedAt = a.CreatedAt,
+                CompletedAt = a.CompletedAt,
+                CreatedByUserId = a.CreatedByUserId,
+                CreatedByUserName = _userManager.FindByIdAsync(a.CreatedByUserId).Result?.UserName ?? string.Empty
+            }).ToList() ?? new List<TicketActivityDto>()
         };
-
-        //map comments
-        if (ticket.Comments != null && ticket.Comments.Any())
-        {
-            dto.Comments = new List<TicketCommentDto>();
-            foreach (var comment in ticket.Comments.OrderBy(c => c.CreatedAt))
-            {
-                var commentUser = await _userManager.FindByIdAsync(comment.UserId);
-                dto.Comments.Add(new TicketCommentDto
-                {
-                    Id = comment.Id,
-                    Comment = comment.Comment,
-                    IsInternal = comment.IsInternal,
-                    UserId = comment.UserId,
-                    UserName = commentUser?.UserName,
-                    CreatedAt = comment.CreatedAt
-                });
-            }
-        }
-
-        //map attachments
-        if (ticket.Attachments != null && ticket.Attachments.Any())
-        {
-            dto.Attachments = new List<TicketAttachmentDto>();
-            foreach (var attachment in ticket.Attachments)
-            {
-                var uploadUser = await _userManager.FindByIdAsync(attachment.UploadedByUserId);
-                dto.Attachments.Add(new TicketAttachmentDto
-                {
-                    Id = attachment.Id,
-                    FileName = attachment.FileName,
-                    FilePath = attachment.FilePath,
-                    FileType = attachment.FileType,
-                    FileSize = attachment.FileSize,
-                    UploadedByUserName = uploadUser?.UserName ?? string.Empty,
-                    UploadedAt = attachment.UploadedAt
-                });
-            }
-        }
-
-        //map history
-        if (ticket.History != null && ticket.History.Any())
-        {
-            dto.History = new List<TicketHistoryDto>();
-            foreach (var history in ticket.History.OrderByDescending(h => h.ChangedAt))
-            {
-                var historyUser = await _userManager.FindByIdAsync(history.UserId);
-                dto.History.Add(new TicketHistoryDto
-                {
-                    Id = history.Id,
-                    UserName = historyUser?.UserName ?? string.Empty,
-                    Action = history.Action,
-                    OldValue = history.OldValue,
-                    NewValue = history.NewValue,
-                    ChangedAt = history.ChangedAt
-                });
-            }
-        }
-
-        //map activities
-        if (ticket.Activities != null && ticket.Activities.Any())
-        {
-            dto.Activities = new List<TicketActivityDto>();
-            foreach (var activity in ticket.Activities.OrderBy(a => a.CreatedAt))
-            {
-                var activityUser = await _userManager.FindByIdAsync(activity.CreatedByUserId);
-                dto.Activities.Add(new TicketActivityDto
-                {
-                    Id = activity.Id,
-                    TicketId = activity.TicketId,
-                    Description = activity.Description,
-                    HoursSpent = activity.HoursSpent,
-                    IsCompleted = activity.IsCompleted,
-                    CreatedAt = activity.CreatedAt,
-                    CompletedAt = activity.CompletedAt,
-                    CreatedByUserId = activity.CreatedByUserId,
-                    CreatedByUserName = activityUser?.UserName ?? string.Empty
-                });
-            }
-        }
 
         return dto;
     }

@@ -1,77 +1,77 @@
-﻿using fn_backend.DTO;
-using fs_backend.Repositories;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿//using fn_backend.DTO;
+//using fs_backend.Repositories;
+//using Microsoft.AspNetCore.Authorization;
+//using Microsoft.AspNetCore.Mvc;
+//using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace fs_backend.Controllers;
+//namespace fs_backend.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+//[ApiController]
+//[Route("api/[controller]")]
+//[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
 
 
-public class TypeActivitiesController : ControllerBase
-{
-    private readonly ITypeActivityService _typeActivityService;
+//public class TypeActivitiesController : ControllerBase
+//{
+//    private readonly ITypeActivityService _typeActivityService;
 
-    public TypeActivitiesController(ITypeActivityService typeActivityService)
-    {
-        _typeActivityService = typeActivityService;
-    }
+//    public TypeActivitiesController(ITypeActivityService typeActivityService)
+//    {
+//        _typeActivityService = typeActivityService;
+//    }
 
-    [HttpGet]
-    public async Task<IActionResult> GetTypeActivities()
-    {
-        var typeActivities = await _typeActivityService.GetTypeActivitiesAsync();
-        return Ok(typeActivities);
-    }
+//    [HttpGet]
+//    public async Task<IActionResult> GetTypeActivities()
+//    {
+//        var typeActivities = await _typeActivityService.GetTypeActivitiesAsync();
+//        return Ok(typeActivities);
+//    }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetTypeActivityById(int id)
-    {
-        var typeActivity = await _typeActivityService.GetTypeActivityByIdAsync(id);
-        if (typeActivity == null)
-        {
-            return NotFound(new { message = "Tipo de actividad no encontrado" });
-        }
+//    [HttpGet("{id}")]
+//    public async Task<IActionResult> GetTypeActivityById(int id)
+//    {
+//        var typeActivity = await _typeActivityService.GetTypeActivityByIdAsync(id);
+//        if (typeActivity == null)
+//        {
+//            return NotFound(new { message = "Tipo de actividad no encontrado" });
+//        }
 
-        return Ok(typeActivity);
-    }
+//        return Ok(typeActivity);
+//    }
 
-    [HttpPost]
-    public async Task<IActionResult> CreateTypeActivity(TypeActivityDto dto)
-    {
-        var result = await _typeActivityService.CreateTypeActivityAsync(dto);
-        if (!result.Succeeded)
-        {
-            return BadRequest(result.Errors);
-        }
+//    [HttpPost]
+//    public async Task<IActionResult> CreateTypeActivity(TypeActivityDto dto)
+//    {
+//        var result = await _typeActivityService.CreateTypeActivityAsync(dto);
+//        if (!result.Succeeded)
+//        {
+//            return BadRequest(result.Errors);
+//        }
 
-        return CreatedAtAction(nameof(GetTypeActivityById), new { id = result.Data!.Id }, result.Data);
-    }
+//        return CreatedAtAction(nameof(GetTypeActivityById), new { id = result.Data!.Id }, result.Data);
+//    }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTypeActivity(int id, TypeActivityDto dto)
-    {
-        var result = await _typeActivityService.UpdateTypeActivityAsync(id, dto);
-        if (!result.Succeeded)
-        {
-            return NotFound(result.Errors);
-        }
+//    [HttpPut("{id}")]
+//    public async Task<IActionResult> UpdateTypeActivity(int id, TypeActivityDto dto)
+//    {
+//        var result = await _typeActivityService.UpdateTypeActivityAsync(id, dto);
+//        if (!result.Succeeded)
+//        {
+//            return NotFound(result.Errors);
+//        }
 
-        return Ok(new { message = "Tipo de actividad actualizado exitosamente" });
-    }
+//        return Ok(new { message = "Tipo de actividad actualizado exitosamente" });
+//    }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTypeActivity(int id)
-    {
-        var result = await _typeActivityService.DeleteTypeActivityAsync(id);
-        if (!result.Succeeded)
-        {
-            return BadRequest(result.Errors);
-        }
+//    [HttpDelete("{id}")]
+//    public async Task<IActionResult> DeleteTypeActivity(int id)
+//    {
+//        var result = await _typeActivityService.DeleteTypeActivityAsync(id);
+//        if (!result.Succeeded)
+//        {
+//            return BadRequest(result.Errors);
+//        }
 
-        return Ok(new { message = "Tipo de actividad eliminado exitosamente" });
-    }
-}
+//        return Ok(new { message = "Tipo de actividad eliminado exitosamente" });
+//    }
+//}

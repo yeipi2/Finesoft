@@ -10,5 +10,7 @@ public class ProjectDetailDto
 
     public ClientDto? Client { get; set; }
 
-    public List<ServiceDetailDto>? Services { get; set; }
+    // CÓDIGO FUTURO - Servicios deshabilitados temporalmente
+    // Descomentar cuando se requiera reactivar la funcionalidad de servicios
+    // public List<ServiceDetailDto>? Services { get; set; }
 }

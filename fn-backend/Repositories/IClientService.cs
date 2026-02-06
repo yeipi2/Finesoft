@@ -11,4 +11,6 @@ public interface IClientService
     Task<ServiceResult<Client>> CreateClientAsync(ClientDto userDto);
     Task<bool> UpdateClientAsync(int id, ClientDto dto);
     Task<bool> DeleteClientAsync(int id);
+    // Agregar este método a la interfaz IClientService
+    Task<List<ClientDto>> SearchClientsAsync(string query);
 }

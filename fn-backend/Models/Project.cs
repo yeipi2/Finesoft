@@ -10,5 +10,7 @@ public class Project
 
     public Client? Client { get; set; }
 
-    public ICollection<Service> Services { get; set; } = new List<Service>();
+    // CÓDIGO FUTURO - Relación con servicios deshabilitada
+    // Descomentar cuando se requiera reactivar la funcionalidad de servicios
+    // public ICollection<Service> Services { get; set; } = new List<Service>();
 }

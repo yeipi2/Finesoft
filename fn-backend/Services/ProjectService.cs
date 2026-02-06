@@ -19,10 +19,11 @@ public class ProjectService : IProjectService
     {
         var projects = await _context.Projects
             .Include(p => p.Client)
-            .Include(p => p.Services)
-            .ThenInclude(s => s.TypeService)
-            .Include(p => p.Services)
-            .ThenInclude(s => s.TypeActivity)
+            // CÓDIGO FUTURO - Include de servicios deshabilitado
+            // .Include(p => p.Services)
+            // .ThenInclude(s => s.TypeService)
+            // .Include(p => p.Services)
+            // .ThenInclude(s => s.TypeActivity)
             .ToListAsync();
 
         return projects.Select(MapToDetailDto);
@@ -32,10 +33,11 @@ public class ProjectService : IProjectService
     {
         var project = await _context.Projects
             .Include(p => p.Client)
-            .Include(p => p.Services)
-            .ThenInclude(s => s.TypeService)
-            .Include(p => p.Services)
-            .ThenInclude(s => s.TypeActivity)
+            // CÓDIGO FUTURO - Include de servicios deshabilitado
+            // .Include(p => p.Services)
+            // .ThenInclude(s => s.TypeService)
+            // .Include(p => p.Services)
+            // .ThenInclude(s => s.TypeActivity)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         return project == null ? null : MapToDetailDto(project);
@@ -71,7 +73,6 @@ public class ProjectService : IProjectService
             return ServiceResult<bool>.Failure("Proyecto no encontrado");
         }
 
-        // Verificar que el cliente existe
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == updateProjectDto.ClientId);
         if (!clientExists)
         {
@@ -126,21 +127,24 @@ public class ProjectService : IProjectService
                     ServiceMode = project.Client.ServiceMode,
                     MonthlyRate = project.Client.MonthlyRate,
                     IsActive = project.Client.IsActive
-                },
-            Services = project.Services?.Select(s => new ServiceDetailDto
-            {
-                Id = s.Id,
-                Name = s.Name,
-                Description = s.Description,
-                HourlyRate = s.HourlyRate,
-                IsActive = s.IsActive,
-                ProjectId = s.ProjectId,
-                ProjectName = project.Name,
-                TypeServiceId = s.TypeServiceId,
-                TypeServiceName = s.TypeService?.Name ?? string.Empty,
-                TypeActivityId = s.TypeActivityId,
-                TypeActivityName = s.TypeActivity?.Name ?? string.Empty
-            }).ToList()
+                }
+                // CÓDIGO FUTURO - Mapeo de servicios deshabilitado
+                /*
+                ,Services = project.Services?.Select(s => new ServiceDetailDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Description = s.Description,
+                    HourlyRate = s.HourlyRate,
+                    IsActive = s.IsActive,
+                    ProjectId = s.ProjectId,
+                    ProjectName = project.Name,
+                    TypeServiceId = s.TypeServiceId,
+                    TypeServiceName = s.TypeService?.Name ?? string.Empty,
+                    TypeActivityId = s.TypeActivityId,
+                    TypeActivityName = s.TypeActivity?.Name ?? string.Empty
+                }).ToList()
+                */
         };
     }
 }

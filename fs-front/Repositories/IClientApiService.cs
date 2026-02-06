@@ -1,7 +1,5 @@
 ﻿using fs_front.DTO;
 
-namespace fs_front.Services;
-
 public interface IClientApiService
 {
     Task<List<ClientDto>?> GetClientsAsync();
@@ -9,4 +7,5 @@ public interface IClientApiService
     Task<(bool Success, ClientDto? CreatedClient, string? ErrorMessage)> CreateClientAsync(ClientDto client);
     Task<(bool Success, string? ErrorMessage)> UpdateClientAsync(int id, ClientDto client);
     Task<(bool Success, string? ErrorMessage)> DeleteClientAsync(int? id);
+    Task<List<ClientDto>> SearchClientsAsync(string query);
 }

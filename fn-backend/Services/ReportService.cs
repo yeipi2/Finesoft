@@ -27,12 +27,10 @@ public class ReportService : IReportService
             TotalClients = await _context.Clients.CountAsync(c => c.IsActive),
             ActiveProjects = await _context.Projects.CountAsync(p => p.IsActive),
             OpenTickets = await _context.Tickets.CountAsync(t => t.Status != "Cerrado"),
-            // CORREGIDO: Usar "Pagada" en lugar de "Paid"
             TotalRevenue = await _context.Invoices.Where(i => i.Status == "Pagada").SumAsync(i => (decimal?)i.Total) ?? 0,
             MonthlyRevenue = await _context.Invoices
-            .Where(i => i.Status == "Pagada" && i.InvoiceDate >= startOfMonth)
-            .SumAsync(i => (decimal?)i.Total) ?? 0,
-            // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
+                .Where(i => i.Status == "Pagada" && i.InvoiceDate >= startOfMonth)
+                .SumAsync(i => (decimal?)i.Total) ?? 0,
             PendingPayments = await _context.Invoices.Where(i => i.Status == "Pendiente").SumAsync(i => (decimal?)i.Total) ?? 0,
             TotalInvoices = await _context.Invoices.CountAsync(),
             TotalQuotes = await _context.Quotes.CountAsync()
@@ -56,8 +54,10 @@ public class ReportService : IReportService
             var closedTickets = userTickets.Count(t => t.Status == "Cerrado");
             var totalHours = userTickets.Sum(t => t.ActualHours);
 
-            //calcular revenue basado en tickets
+            // CÓDIGO FUTURO - Cálculo de revenue basado en servicios deshabilitado
+            // El revenue ahora se calcula directamente desde las facturas
             var revenue = 0m;
+            /*
             foreach (var ticket in userTickets)
             {
                 var service = await _context.Services.FindAsync(ticket.ServiceId);
@@ -66,6 +66,7 @@ public class ReportService : IReportService
                     revenue += ticket.ActualHours * service.HourlyRate;
                 }
             }
+            */
 
             reports.Add(new UserReportDto
             {
@@ -91,12 +92,18 @@ public class ReportService : IReportService
             var projects = await _context.Projects.Where(p => p.ClientId == client.Id).ToListAsync();
             var projectIds = projects.Select(p => p.Id).ToList();
 
+            // CÓDIGO FUTURO - Filtrado por servicios deshabilitado
+            // Los tickets ahora se consultan directamente por proyecto
+            var ticketsQuery = _context.Tickets.AsQueryable();
+            /*
             var services = await _context.Services
                 .Where(s => projectIds.Contains(s.ProjectId))
                 .Select(s => s.Id)
                 .ToListAsync();
 
             var ticketsQuery = _context.Tickets.Where(t => services.Contains(t.ServiceId));
+            */
+
             if (startDate.HasValue)
                 ticketsQuery = ticketsQuery.Where(t => t.CreatedAt >= startDate.Value);
             if (endDate.HasValue)
@@ -120,9 +127,7 @@ public class ReportService : IReportService
                 TotalTickets = tickets.Count,
                 OpenTickets = tickets.Count(t => t.Status != "Cerrado"),
                 TotalBilled = invoices.Sum(i => i.Total),
-                // CORREGIDO: Usar "Pagada" en lugar de "Paid"
                 TotalPaid = invoices.Where(i => i.Status == "Pagada").Sum(i => i.Total),
-                // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
                 PendingAmount = invoices.Where(i => i.Status == "Pendiente").Sum(i => i.Total)
             });
         }
@@ -134,16 +139,20 @@ public class ReportService : IReportService
     {
         var projects = await _context.Projects
             .Include(p => p.Client)
-            .Include(p => p.Services)
+            // CÓDIGO FUTURO - Include de servicios deshabilitado
+            // .Include(p => p.Services)
             .ToListAsync();
 
         var reports = new List<ProjectReportDto>();
 
         foreach (var project in projects)
         {
-            var serviceIds = project.Services.Select(s => s.Id).ToList();
+            // CÓDIGO FUTURO - Filtrado por servicios deshabilitado
+            // var serviceIds = project.Services.Select(s => s.Id).ToList();
+            // var ticketsQuery = _context.Tickets.Where(t => serviceIds.Contains(t.ServiceId));
 
-            var ticketsQuery = _context.Tickets.Where(t => serviceIds.Contains(t.ServiceId));
+            var ticketsQuery = _context.Tickets.AsQueryable();
+
             if (startDate.HasValue)
                 ticketsQuery = ticketsQuery.Where(t => t.CreatedAt >= startDate.Value);
             if (endDate.HasValue)
@@ -153,8 +162,9 @@ public class ReportService : IReportService
             var totalHours = tickets.Sum(t => t.ActualHours);
             var estimatedHours = tickets.Sum(t => t.EstimatedHours);
 
-            //calcular revenue
+            // CÓDIGO FUTURO - Cálculo de revenue basado en servicios deshabilitado
             var revenue = 0m;
+            /*
             foreach (var ticket in tickets)
             {
                 var service = project.Services.FirstOrDefault(s => s.Id == ticket.ServiceId);
@@ -163,6 +173,7 @@ public class ReportService : IReportService
                     revenue += ticket.ActualHours * service.HourlyRate;
                 }
             }
+            */
 
             reports.Add(new ProjectReportDto
             {
@@ -191,11 +202,8 @@ public class ReportService : IReportService
         var invoices = await invoicesQuery.ToListAsync();
         var now = DateTime.UtcNow;
 
-        // CORREGIDO: Usar "Pagada" en lugar de "Paid"
         var paidInvoices = invoices.Where(i => i.Status == "Pagada").ToList();
-        // CORREGIDO: Usar "Pendiente" en lugar de "Pending"
         var pendingInvoices = invoices.Where(i => i.Status == "Pendiente").ToList();
-        // CORREGIDO: Considerar tanto "Pendiente" como "Vencida"
         var overdueInvoices = invoices.Where(i =>
             (i.Status == "Pendiente" || i.Status == "Vencida") &&
             i.DueDate.HasValue &&
@@ -247,7 +255,6 @@ public class ReportService : IReportService
             avgResolutionTime = (decimal)(totalHours / resolvedTickets.Count);
         }
 
-        //calcular billing efficiency: actual vs estimated
         var totalEstimated = tickets.Sum(t => t.EstimatedHours);
         var totalActual = tickets.Sum(t => t.ActualHours);
         var billingEfficiency = totalEstimated > 0 ? (totalActual / totalEstimated) * 100 : 0;
@@ -256,9 +263,9 @@ public class ReportService : IReportService
         {
             TicketResolutionRate = resolutionRate,
             AverageResolutionTime = avgResolutionTime,
-            ClientSatisfactionScore = 85m, //esto podría calcularse con encuestas
+            ClientSatisfactionScore = 85m,
             BillingEfficiency = billingEfficiency,
-            ResourceUtilization = 78m, //esto requiere más datos
+            ResourceUtilization = 78m,
             TotalTicketsResolved = resolvedTickets.Count,
             TotalTicketsCreated = tickets.Count
         };
@@ -275,7 +282,6 @@ public class ReportService : IReportService
             var startOfMonth = new DateTime(date.Year, date.Month, 1);
             var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
 
-            // CORREGIDO: Usar "Pagada" en lugar de "Paid" y usar InvoiceDate en lugar de PaidDate
             var monthInvoices = await _context.Invoices
                 .Where(i => i.Status == "Pagada" &&
                             i.InvoiceDate >= startOfMonth &&
@@ -323,7 +329,6 @@ public class ReportService : IReportService
 
         foreach (var client in clients)
         {
-            // CORREGIDO: Usar "Pagada" en lugar de "Paid"
             var invoices = await _context.Invoices
                 .Where(i => i.ClientId == client.Id && i.Status == "Pagada")
                 .ToListAsync();

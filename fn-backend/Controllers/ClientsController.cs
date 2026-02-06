@@ -72,4 +72,18 @@ public class ClientsController : ControllerBase
 
         return Ok(new { message = "Cliente eliminado exitosamente" });
     }
+    // Agregar este método al ClientsController existente
+
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchClients([FromQuery] string query)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+        {
+            return Ok(new List<ClientDto>());
+        }
+
+        var clients = await _clientService.SearchClientsAsync(query);
+        return Ok(clients);
+    }
+
 }

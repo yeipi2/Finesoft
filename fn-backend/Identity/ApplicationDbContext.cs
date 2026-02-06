@@ -13,9 +13,13 @@ namespace fs_backend.Identity
 
         public DbSet<Client> Clients { get; set; }
         public DbSet<Project> Projects { get; set; }
-        public DbSet<Service> Services { get; set; }
-        public DbSet<TypeService> TypeServices { get; set; }
-        public DbSet<TypeActivity> TypeActivities { get; set; }
+
+        // CÓDIGO FUTURO - Tablas de servicios y actividades deshabilitadas
+        // Descomentar cuando se requiera reactivar estas funcionalidades
+        // public DbSet<Service> Services { get; set; }
+        // public DbSet<TypeService> TypeServices { get; set; }
+        // public DbSet<TypeActivity> TypeActivities { get; set; }
+
         public DbSet<Ticket> Tickets { get; set; }
         public DbSet<TicketComment> TicketComments { get; set; }
         public DbSet<TicketAttachment> TicketAttachments { get; set; }
@@ -37,6 +41,9 @@ namespace fs_backend.Identity
                 .HasForeignKey(p => p.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // CÓDIGO FUTURO - Configuración de servicios y actividades deshabilitada
+            // Descomentar cuando se requiera reactivar estas funcionalidades
+            /*
             modelBuilder.Entity<Service>()
                 .HasOne(s => s.Project)
                 .WithMany(p => p.Services)
@@ -60,6 +67,7 @@ namespace fs_backend.Identity
                 .WithMany()
                 .HasForeignKey(t => t.ServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
+            */
 
             modelBuilder.Entity<TicketComment>()
                 .HasOne(tc => tc.Ticket)
@@ -91,11 +99,14 @@ namespace fs_backend.Identity
                 .HasForeignKey(qi => qi.QuoteId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // CÓDIGO FUTURO - Relación QuoteItem con Service deshabilitada
+            /*
             modelBuilder.Entity<QuoteItem>()
                 .HasOne(qi => qi.Service)
                 .WithMany()
                 .HasForeignKey(qi => qi.ServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
+            */
 
             modelBuilder.Entity<Invoice>()
                 .HasOne(i => i.Client)
@@ -115,11 +126,14 @@ namespace fs_backend.Identity
                 .HasForeignKey(ii => ii.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // CÓDIGO FUTURO - Relación InvoiceItem con Service deshabilitada
+            /*
             modelBuilder.Entity<InvoiceItem>()
                 .HasOne(ii => ii.Service)
                 .WithMany()
                 .HasForeignKey(ii => ii.ServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
+            */
 
             modelBuilder.Entity<InvoiceItem>()
                 .HasOne(ii => ii.Ticket)

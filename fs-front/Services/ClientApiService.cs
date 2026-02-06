@@ -99,4 +99,31 @@ public class ClientApiService : IClientApiService
             return (false, $"Error: {e.Message}");
         }
     }
+    // Agregar este método a la clase ClientApiService
+
+    public async Task<List<ClientDto>> SearchClientsAsync(string query)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            {
+                return new List<ClientDto>();
+            }
+
+            var encodedQuery = Uri.EscapeDataString(query);
+            var response = await _httpClient.GetAsync($"api/clients/search?query={encodedQuery}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<ClientDto>>() ?? new List<ClientDto>();
+            }
+
+            return new List<ClientDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al buscar clientes: {ex.Message}");
+            return new List<ClientDto>();
+        }
+    }
 }

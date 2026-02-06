@@ -81,4 +81,32 @@ public class ClientService : IClientService
         await _context.SaveChangesAsync();
         return true;
     }
+    // Agregar este método a la clase ClientService
+
+    public async Task<List<ClientDto>> SearchClientsAsync(string query)
+    {
+        var clients = await _context.Clients
+            .Where(c => c.IsActive &&
+                       (c.CompanyName.Contains(query) ||
+                        c.ContactName.Contains(query) ||
+                        c.Email.Contains(query) ||
+                        c.RFC.Contains(query)))
+            .OrderBy(c => c.CompanyName)
+            .Take(10)
+            .ToListAsync();
+
+        return clients.Select(c => new ClientDto
+        {
+            Id = c.Id,
+            CompanyName = c.CompanyName,
+            ContactName = c.ContactName,
+            Email = c.Email,
+            Phone = c.Phone,
+            RFC = c.RFC,
+            Address = c.Address,
+            ServiceMode = c.ServiceMode,
+            MonthlyRate = c.MonthlyRate,
+            IsActive = c.IsActive
+        }).ToList();
+    }
 }

@@ -104,7 +104,6 @@
 
     <section class="container-fluid p-xl-5">
         <div class="row g-3 mb-4">
-
             <div class="col-md-4">
                 <input type="text" class="form-control" placeholder="Buscar tickets..."
                        @bind="_searchText" @bind:event="oninput" />
@@ -135,7 +134,6 @@
                     <i class="bi bi-x-circle"></i> Limpiar Filtros
                 </button>
             </div>
-
         </div>
     </section>
 
@@ -156,7 +154,6 @@
                             <th>ID</th>
                             <th>Título</th>
                             <th>Cliente / Proyecto</th>
-                            <th>Servicio</th>
                             <th>Prioridad</th>
                             <th>Estado</th>
                             @if (_isAdmin)
@@ -179,7 +176,7 @@
                                     <td>
                                         <div class="fw-bold">@ticket.Title</div>
                                         <small class="text-muted">
-                                            @ticket.Description.Substring(0, Math.Min(50, ticket.Description.Length))...
+                                            @(ticket.Description?.Length > 50 ? ticket.Description.Substring(0, 50) + "..." : ticket.Description)
                                         </small>
                                     </td>
 
@@ -187,8 +184,6 @@
                                         <div><strong>@ticket.ClientName</strong></div>
                                         <small class="text-muted">@ticket.ProjectName</small>
                                     </td>
-
-                                    <td>@ticket.ServiceName</td>
 
                                     <td>
                                         @{
@@ -269,7 +264,7 @@
                         else
                         {
                             <tr>
-                                <td colspan="@(_isAdmin ? 9 : 8)" class="text-center py-4">
+                                <td colspan="@(_isAdmin ? 8 : 7)" class="text-center py-4">
                                     <i class="bi bi-inbox fs-1 text-muted"></i>
                                     <p class="text-muted mt-2">
                                         @if (_isAdmin)
@@ -285,12 +280,10 @@
                             </tr>
                         }
                     </tbody>
-
                 </table>
             </div>
         }
     </section>
-
 </container>
 
 @inject ITicketApiService TicketApiService
@@ -314,9 +307,9 @@
             .Where(t =>
                 (string.IsNullOrWhiteSpace(_searchText) ||
                 t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                t.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                t.ClientName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                t.ProjectName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
                 && (string.IsNullOrEmpty(_statusFilter) || t.Status == _statusFilter)
                 && (string.IsNullOrEmpty(_priorityFilter) || t.Priority == _priorityFilter)
             )
@@ -347,11 +340,10 @@
         _isLoading = true;
         try
         {
-            // Si no es admin, filtrar solo tickets asignados al usuario
             var userId = _isAdmin ? null : _currentUserId;
 
             var ticketsTask = TicketApiService.GetTicketsAsync(userId: userId);
-            var statsTask = TicketApiService.GetTicketStatsAsync(userId); // 👈 CAMBIO AQUÍ
+            var statsTask = TicketApiService.GetTicketStatsAsync(userId);
 
             await Task.WhenAll(ticketsTask, statsTask);
 

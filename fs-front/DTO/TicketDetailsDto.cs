@@ -8,6 +8,7 @@ public class TicketDetailDto
 
     public int ServiceId { get; set; }
     public string ServiceName { get; set; } = string.Empty;
+
     public int ProjectId { get; set; }
     public string ProjectName { get; set; } = string.Empty;
     public string ClientName { get; set; } = string.Empty;
@@ -29,8 +30,10 @@ public class TicketDetailDto
     public decimal ActualHours { get; set; }
     public decimal HourlyRate { get; set; }
 
-    public List<TicketCommentDto>? Comments { get; set; }
-    public List<TicketAttachmentDto>? Attachments { get; set; }
-    public List<TicketHistoryDto>? History { get; set; }
-    public List<TicketActivityDto>? Activities { get; set; }
+    public List<TicketCommentDto> Comments { get; set; } = new();
+    public List<TicketAttachmentDto> Attachments { get; set; } = new();
+    public List<TicketHistoryDto> History { get; set; } = new();
+
+    // ⭐ ASEGÚRATE DE TENER ESTA PROPIEDAD
+    public List<TicketActivityDto> Activities { get; set; } = new();
 }
