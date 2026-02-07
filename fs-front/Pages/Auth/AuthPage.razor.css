@@ -1,288 +1,72 @@
-/* =========================
-   Auth Shell (container)
-========================= */
-.auth-shell{
-  width: min(980px, 100%);
-  height: 520px;
-  border-radius: 22px;
-  position: relative;
-  overflow: hidden;
+/* Auth Shell (container) */
+.auth-shell {
+    width: min(980px, 100%);
+    height: 520px;
+    border-radius: 22px;
+    position: relative;
+    overflow: hidden;
 
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
 
-  background:
-    radial-gradient(900px 520px at 80% 20%, rgba(59,130,246,.28), transparent 60%),
-    radial-gradient(700px 460px at 20% 80%, rgba(124,58,237,.22), transparent 55%),
-    linear-gradient(135deg, #f8fafc, #eef2ff);
+    background:
+        radial-gradient(900px 520px at 80% 20%, rgba(59, 130, 246, 0.28), transparent 60%),
+        radial-gradient(700px 460px at 20% 80%, rgba(124, 58, 237, 0.22), transparent 55%),
+        linear-gradient(135deg, #f8fafc, #eef2ff);
 
-  box-shadow: 0 30px 60px rgba(15, 23, 42, .18);
-  border: 1px solid rgba(255,255,255,.55);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.55);
 }
 
-/* =========================
-   Overlay (panel azul)
-========================= */
-.overlay{
-  position: absolute;
-  inset: 0;
-  width: 50%;
-
-  background:
-    radial-gradient(circle at 30% 20%, rgba(59,130,246,.25), transparent 50%),
-    radial-gradient(circle at 70% 80%, rgba(14,165,233,.20), transparent 50%),
-    linear-gradient(135deg, #0f3460 0%, #16213e 50%, #0a2647 100%);
-
-  color: #fff;
-  transition: transform .55s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
-  z-index: 10;
-
-  box-shadow: inset 0 0 100px rgba(0,0,0,.15);
+/* Form Panel */
+.form-panel {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
 }
 
-.overlay::before{
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: .03;
-  background-image:
-    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
-  pointer-events: none;
+/* Posicionamiento del form-box */
+.auth-shell ::deep .form-box {
+    grid-column: 2;
 }
 
-.overlay::after{
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,.08), transparent);
-  pointer-events: none;
-}
-
-.auth-shell.is-register .overlay{
-  transform: translateX(100%);
-}
-
-.overlay-content{
-  width: 100%;
-  max-width: 340px;
-  text-align: left;
-  position: relative;
-  z-index: 1;
-}
-
-.overlay h2{
-  font-weight: 800;
-  margin: 18px 0 12px;
-  font-size: 1.75rem;
-  text-shadow: 0 2px 10px rgba(0,0,0,.2);
-}
-
-.overlay p{
-  opacity: .85;
-  margin: 0 0 20px;
-  font-size: .95rem;
-}
-
-.ghost{
-  border: 2px solid rgba(255,255,255,.35);
-  background: rgba(255,255,255,.08);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  color: #fff;
-  border-radius: 12px;
-  padding: 11px 20px;
-  font-weight: 700;
-  cursor: pointer;
-
-  transition: all .3s ease;
-
-  box-shadow:
-    0 4px 15px rgba(0,0,0,.15),
-    inset 0 1px 0 rgba(255,255,255,.15);
-}
-
-.ghost:hover{
-  background: rgba(255,255,255,.18);
-  border-color: rgba(255,255,255,.55);
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 25px rgba(0,0,0,.25),
-    inset 0 1px 0 rgba(255,255,255,.25);
-}
-
-.overlay-foot{
-  margin-top: 28px;
-  opacity: .65;
-  font-size: .82rem;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,.15);
-}
-
-/* =========================
-   Form Panel
-========================= */
-.form-panel{
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.form-box{
-  height: 520px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 44px;
-
-  background: rgba(255,255,255,.28);
-  border-left: 1px solid rgba(255,255,255,.45);
-
-  backdrop-filter: blur(22px) saturate(1.2);
-  -webkit-backdrop-filter: blur(22px) saturate(1.2);
-
-  box-shadow:
-    0 24px 60px rgba(2,6,23,.12),
-    inset 0 1px 0 rgba(255,255,255,.55);
-}
-
-.auth-shell .form-box{ grid-column: 2; }
-.auth-shell.is-register .form-box{ grid-column: 1; }
-
-.title{
-  font-weight: 800;
-  margin: 0 0 6px;
-  color: #0f172a;
-}
-
-.subtitle{
-  margin: 0 0 28px;
-  color: #64748b;
-}
-
-/* =========================
-   Validaciones (Blazor ValidationMessage)
-========================= */
-:deep(.validation-message),
-:deep(.validation-message li),
-:deep(.validation-errors),
-:deep(.validation-message span){
-  display: block;
-  margin-top: .5rem;
-  font-size: .82rem;
-  color: #dc2626;
-  padding-left: 4px;
-}
-
-/* =========================
-   Botón
-========================= */
-.btn-glass{
-  width: 100%;
-  border-radius: 14px;
-  padding: 13px 18px;
-  font-weight: 800;
-  font-size: .95rem;
-  margin-top: 18px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-
-  background:
-    linear-gradient(135deg, rgba(124,58,237,.15), rgba(59,130,246,.12)),
-    rgba(255,255,255,.25);
-
-  border: 1px solid rgba(255,255,255,.45);
-  color: #5b21b6;
-
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-
-  box-shadow:
-    0 16px 34px rgba(2,6,23,.18),
-    inset 0 1px 0 rgba(255,255,255,.55);
-
-  cursor: pointer;
-  transition: all .2s ease;
-}
-
-.btn-glass i{ font-size: 1.1rem; }
-
-.btn-glass:hover:not(:disabled){
-  transform: translateY(-2px);
-  background:
-    linear-gradient(135deg, rgba(124,58,237,.22), rgba(59,130,246,.18)),
-    rgba(255,255,255,.32);
-  border-color: rgba(124,58,237,.35);
-  box-shadow:
-    0 22px 48px rgba(2,6,23,.24),
-    0 0 0 4px rgba(124,58,237,.12),
-    inset 0 1px 0 rgba(255,255,255,.65);
-}
-
-.btn-glass:active:not(:disabled){
-  transform: translateY(0) scale(.98);
-}
-
-.btn-glass:disabled{
-  opacity: .5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* =========================
-   Mobile
-========================= */
-.switch-mobile{
-  display: none;
-  margin-top: 20px;
-  color: #64748b;
-  font-size: .9rem;
-}
-
-.switch-mobile .link{
-  border: 0;
-  background: transparent;
-  color: #7c3aed;
-  font-weight: 800;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.switch-mobile .link:hover{
-  text-decoration: underline;
-}
-
-@media (max-width: 900px){
-  .auth-shell{
-    height: auto;
-    grid-template-columns: 1fr;
-  }
-
-  .overlay{ display: none; }
-
-  .form-panel{ grid-template-columns: 1fr; }
-
-  .form-box{
-    height: auto;
-    padding: 26px;
+.auth-shell.is-register ::deep .form-box {
     grid-column: 1;
-  }
+}
 
-  .switch-mobile{
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: center;
-  }
+/* Movimiento del overlay */
+.auth-shell ::deep .overlay {
+    transform: translateX(0);
+}
+
+.auth-shell.is-register ::deep .overlay {
+    transform: translateX(100%);
+}
+
+/* Validaciones */
+::deep .validation-message,
+::deep .validation-message li,
+::deep .validation-errors,
+::deep .validation-message span {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: #dc2626;
+    padding-left: 4px;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+    .auth-shell {
+        height: auto;
+        grid-template-columns: 1fr;
+    }
+
+    .form-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-shell ::deep .form-box {
+        grid-column: 1;
+    }
 }

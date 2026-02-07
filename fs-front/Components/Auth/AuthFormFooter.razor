@@ -1,0 +1,10 @@
+<div class="switch-mobile">
+    <span>@Question</span>
+    <button type="button" class="link" @onclick="OnAction">@ActionText</button>
+</div>
+
+@code {
+    [Parameter] public string Question { get; set; } = "";
+    [Parameter] public string ActionText { get; set; } = "";
+    [Parameter] public EventCallback OnAction { get; set; }
+}

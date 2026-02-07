@@ -1,0 +1,28 @@
+.switch-mobile {
+    display: none;
+    margin-top: 20px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.switch-mobile .link {
+    border: 0;
+    background: transparent;
+    color: #7c3aed;
+    font-weight: 800;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.switch-mobile .link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+    .switch-mobile {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+    }
+}

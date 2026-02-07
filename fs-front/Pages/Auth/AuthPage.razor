@@ -1,12 +1,6 @@
 @page "/iniciar-sesion"
 @page "/registrarme"
 @layout AuthLayout
-@typeparam TValue
-@using System.Linq.Expressions
-
-
-@* ReSharper disable all *@
-@* @suppress RZ9991 *@
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
@@ -21,94 +15,18 @@
 
 <section class="auth-shell @(IsRegister ? "is-register" : "")">
 
-    <!-- OVERLAY -->
-    <div class="overlay">
-        <div class="overlay-content">
+    <AuthOverlay AnimationKey="@LogoKey"                 Title="@(IsRegister ? "¡Qué bueno verte!" : "Hola, Bienvenido!")"
+                 Subtitle="@(IsRegister ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?")"
+                 ActionText="@(IsRegister ? "Iniciar sesión" : "Registrarse")"                 OnAction="@(IsRegister ? GoLogin : GoRegister)" />
 
-            <!-- Ideal: componente de logo -->
-            <BrandLogo @key="LogoKey" AnimationKey="@LogoKey" />
-
-            @if (!IsRegister)
-            {
-                <h2>Hola, Bienvenido!</h2>
-                <p>¿No tienes una cuenta?</p>
-                <button class="ghost" type="button" @onclick="GoRegister">Registrarse</button>
-            }
-            else
-            {
-                <h2>¡Qué bueno verte!</h2>
-                <p>¿Ya tienes una cuenta?</p>
-                <button class="ghost" type="button" @onclick="GoLogin">Iniciar sesión</button>
-            }
-
-            <div class="overlay-foot">
-                <small>Finesoft • Blvd. Juan de Dios Batiz #145 PTE • (668) 817-1400</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- FORM PANEL -->
     <div class="form-panel">
         @if (!IsRegister)
         {
-            <div class="form-box">
-                <h3 class="title">Iniciar sesión</h3>
-                <p class="subtitle">Accede al sistema con tu cuenta</p>
-
-                <EditForm Model="@Login" OnValidSubmit="@LoginAsync">
-                    <DataAnnotationsValidator />
-
-                    <AuthInput TValue="string" Label="Correo electrónico" Icon="bi bi-envelope" Type="email"
-                               Placeholder="micorreo@empresa.mx" @bind-Value="Login.Email" ValidationFor="@(() => Login.Email)" />
-
-                    <AuthInput TValue="string" Label="Contraseña" Icon="bi bi-lock" IsPassword="true"
-                               Placeholder="Mínimo 8 caracteres" @bind-Value="Login.Password"
-                               ValidationFor="@(() => Login.Password)" />
-
-                    <button type="submit" class="btn-glass" disabled="@Loading">
-                        <i class="bi bi-box-arrow-in-right"></i>
-                        @(Loading ? "Iniciando..." : "Iniciar sesión")
-                    </button>
-                </EditForm>
-
-                <div class="switch-mobile">
-                    <span>¿No tienes cuenta?</span>
-                    <button type="button" class="link" @onclick="GoRegister">Regístrate</button>
-                </div>
-            </div>
+            <LoginForm Model="@Login" OnSubmit="@LoginAsync" IsLoading="@Loading"                      OnSwitchToRegister="@GoRegister" />
         }
         else
         {
-            <div class="form-box">
-                <h3 class="title">Crear cuenta</h3>
-                <p class="subtitle">Regístrate para comenzar</p>
-
-                <EditForm Model="@Register" OnValidSubmit="@RegisterAsync">
-                    <DataAnnotationsValidator />
-
-                    <AuthInput TValue="string" Label="Correo electrónico" Icon="bi bi-envelope" Type="email"
-                               Placeholder="micorreo@empresa.mx" @bind-Value="Register.Email"
-                               ValidationFor="@(() => Register.Email)" />
-
-                    <AuthInput TValue="string" Label="Contraseña" Icon="bi bi-lock" IsPassword="true"
-                               Placeholder="Mínimo 8 caracteres" @bind-Value="Register.Password"
-                               ValidationFor="@(() => Register.Password)" />
-
-                    <AuthInput TValue="string" Label="Confirmar contraseña" Icon="bi bi-lock" IsPassword="true"
-                               Placeholder="Mínimo 8 caracteres" @bind-Value="Register.ConfirmPassword"
-                               ValidationFor="@(() => Register.ConfirmPassword)" />
-
-                    <button type="submit" class="btn-glass" disabled="@Loading">
-                        <i class="bi bi-person-plus"></i>
-                        @(Loading ? "Registrando..." : "Registrarme")
-                    </button>
-                </EditForm>
-
-                <div class="switch-mobile">
-                    <span>¿Ya tienes cuenta?</span>
-                    <button type="button" class="link" @onclick="GoLogin">Inicia sesión</button>
-                </div>
-            </div>
+            <RegisterForm Model="@Register" OnSubmit="@RegisterAsync" IsLoading="@Loading"                         OnSwitchToLogin="@GoLogin" />
         }
     </div>
 </section>
@@ -116,16 +34,13 @@
 @code {
     private bool IsRegister;
     private bool Loading;
-
     private string LogoKey = Guid.NewGuid().ToString();
-
     private LoginModel Login = new();
     private RegisterModel Register = new();
 
     protected override void OnInitialized()
     {
         SyncModeFromRoute();
-
         Nav.LocationChanged += (_, __) =>
         {
             SyncModeFromRoute();
@@ -141,7 +56,7 @@
         if (newIsRegister != IsRegister)
         {
             IsRegister = newIsRegister;
-            LogoKey = Guid.NewGuid().ToString(); // reinicia animación del logo
+            LogoKey = Guid.NewGuid().ToString();
             return;
         }
 

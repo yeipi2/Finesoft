@@ -1,0 +1,36 @@
+.form-box {
+    height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 44px;
+
+    background: rgba(255, 255, 255, 0.28);
+    border-left: 1px solid rgba(255, 255, 255, 0.45);
+
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+
+    box-shadow:
+        0 24px 60px rgba(2, 6, 23, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.title {
+    font-weight: 800;
+    margin: 0 0 6px;
+    color: #0f172a;
+}
+
+.subtitle {
+    margin: 0 0 28px;
+    color: #64748b;
+}
+
+@media (max-width: 900px) {
+    .form-box {
+        height: auto;
+        padding: 26px;
+        grid-column: 1;
+    }
+}

@@ -1,0 +1,22 @@
+<div class="overlay">
+    <div class="overlay-content">
+        <BrandLogo @key="AnimationKey" AnimationKey="@AnimationKey" />
+
+        <h2>@Title</h2>
+        <p>@Subtitle</p>
+        <button class="ghost" type="button" @onclick="OnAction">@ActionText</button>
+
+        <div class="overlay-foot">
+            <small>@FooterText</small>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string AnimationKey { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public string ActionText { get; set; } = "";
+    [Parameter] public string FooterText { get; set; } = "Finesoft • Blvd. Juan de Dios Batiz #145 PTE • (668) 817-1400";
+    [Parameter] public EventCallback OnAction { get; set; }
+}
