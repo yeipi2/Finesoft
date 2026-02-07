@@ -9,4 +9,5 @@ public class QuoteItemDetailDto
     public decimal Subtotal { get; set; }
     public int? ServiceId { get; set; }
     public string? ServiceName { get; set; }
+    public int? TicketId { get; set; }
 }

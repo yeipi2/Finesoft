@@ -2,37 +2,64 @@
 
 <section class="container px-2" style="max-height: 500px; overflow-y: auto;">
     <EditForm Model="_quoteDto" OnValidSubmit="HandleSubmit">
-        <DataAnnotationsValidator/>
+        <DataAnnotationsValidator />
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <label for="ClientId" class="form-label fw-bold small">Cliente *</label>
+                <label for="ClientSearch" class="form-label fw-bold small">Cliente *</label>
                 @if (_isLoadingClients)
                 {
                     <div class="d-flex align-items-center">
-                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         <span>Cargando clientes...</span>
                     </div>
                 }
                 else
                 {
-                    <select id="ClientId" class="form-select" @bind="_quoteDto.ClientId">
-                        <option value="0">-- Seleccione un cliente --</option>
-                        @if (_clients != null)
+                    <div class="position-relative">
+                        <input type="text"
+                               class="form-control"
+                               id="ClientSearch"
+                               placeholder="Buscar cliente por nombre..."
+                               value="@_clientSearchText"
+                               @oninput="OnClientSearchInput"
+                               @onkeydown="OnKeyDown"
+                               @onfocus="() => _showSuggestions = true"
+                               autocomplete="off" />
+
+                        @if (_showSuggestions && _filteredClients.Any())
                         {
-                            @foreach (var client in _clients)
-                            {
-                                <option value="@client.Id">@client.CompanyName</option>
-                            }
+                            <div class="autocomplete-dropdown">
+                                @foreach (var client in _filteredClients.Take(10))
+                                {
+                                    <div class="autocomplete-item" @onclick="() => SelectClient(client)">
+                                        @client.CompanyName
+                                    </div>
+                                }
+                            </div>
                         }
-                    </select>
-                    <ValidationMessage For="@(() => _quoteDto.ClientId)"/>
+                    </div>
+
+                    @if (_quoteDto.ClientId > 0 && _selectedClient != null)
+                    {
+                        <small class="text-success mt-1 d-block">
+                            ✓ Cliente seleccionado: <strong>@_selectedClient.CompanyName</strong>
+                        </small>
+                    }
+
+                    @if (_quoteDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
+                    {
+                        <div class="form-text text-danger mt-2">
+                            <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
+                        </div>
+                    }
                 }
+                <ValidationMessage For="@(() => _quoteDto.ClientId)" />
             </div>
 
             <div class="col-md-3">
                 <label for="ValidUntil" class="form-label fw-bold small">Válida Hasta</label>
-                <InputDate id="ValidUntil" class="form-control" @bind-Value="_quoteDto.ValidUntil"/>
+                <InputDate id="ValidUntil" class="form-control" @bind-Value="_quoteDto.ValidUntil" />
             </div>
 
             <div class="col-md-3">
@@ -66,39 +93,39 @@
                                     <label class="form-label small">Descripción *</label>
                                     <InputText class="form-control form-control-sm"
                                                @bind-Value="item.Description"
-                                               placeholder="Descripción del servicio o producto"/>
+                                               placeholder="Descripción del servicio o producto" />
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label small">Cantidad *</label>
                                     <InputNumber class="form-control form-control-sm"
                                                  @bind-Value="item.Quantity"
-                                                 @bind-Value:after="RecalculateTotals"/>
+                                                 @bind-Value:after="RecalculateTotals" />
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label small">Precio Unitario *</label>
                                     <InputNumber class="form-control form-control-sm"
                                                  @bind-Value="item.UnitPrice"
-                                                 @bind-Value:after="RecalculateTotals"/>
+                                                 @bind-Value:after="RecalculateTotals" />
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label small">Subtotal</label>
                                     <input type="text" class="form-control form-control-sm"
                                            value="@((item.Quantity * item.UnitPrice).ToString("C"))"
-                                           readonly/>
+                                           readonly />
                                 </div>
 
                                 <div class="col-md-12">
-                                    <label class="form-label small">Servicio (Opcional)</label>
-                                    <select class="form-select form-select-sm" @bind="item.ServiceId">
-                                        <option value="">-- Sin servicio asociado --</option>
-                                        @if (_services != null)
+                                    <label class="form-label small">Ticket (Opcional)</label>
+                                    <select class="form-select form-select-sm" @bind="item.TicketId">
+                                        <option value="">-- Sin ticket asociado --</option>
+                                        @if (_tickets != null)
                                         {
-                                            @foreach (var service in _services)
+                                            @foreach (var ticket in _tickets)
                                             {
-                                                <option value="@service.Id">@service.Name - $@service.HourlyRate</option>
+                                                <option value="@ticket.Id">Ticket #@ticket.Id - @ticket.Title</option>
                                             }
                                         }
                                     </select>
@@ -126,7 +153,7 @@
             <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
             <InputTextArea id="Notes" class="form-control" rows="3"
                            placeholder="Condiciones, términos adicionales..."
-                           @bind-Value="_quoteDto.Notes"/>
+                           @bind-Value="_quoteDto.Notes" />
         </div>
 
         <div class="card bg-light mb-3">
@@ -142,7 +169,7 @@
                             <span>IVA (16%):</span>
                             <strong>@_calculatedTax.ToString("C")</strong>
                         </div>
-                        <hr/>
+                        <hr />
                         <div class="d-flex justify-content-between">
                             <span class="h5">Total:</span>
                             <strong class="h5 text-success">@_calculatedTotal.ToString("C")</strong>
@@ -154,7 +181,7 @@
 
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || !_quoteDto.Items.Any())">
+            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || !_quoteDto.Items.Any() || _quoteDto.ClientId == 0)">
                 @if (_isSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -173,9 +200,41 @@
     </EditForm>
 </section>
 
+<style>
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        max-height: 300px;
+        overflow-y: auto;
+        background-color: white;
+        border: 1px solid #ced4da;
+        border-top: none;
+        border-radius: 0 0 0.25rem 0.25rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-item {
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+        .autocomplete-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+</style>
+
 @inject IQuoteApiService QuoteApiService
 @inject IClientApiService ClientApiService
 @inject IServiceApiService ServiceApiService
+@inject ITicketApiService TicketApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
@@ -183,8 +242,14 @@
     [Parameter] public int? QuoteId { get; set; }
 
     private QuoteDto _quoteDto = new();
-    private List<ClientDto>? _clients;
+    private List<ClientDto> _allClients = new();
+    private List<ClientDto> _filteredClients = new();
+    private ClientDto? _selectedClient;
+    private string _clientSearchText = string.Empty;
+    private bool _showSuggestions = false;
+
     private List<ServiceDetailDto>? _services;
+    private List<TicketDetailDto>? _tickets;
 
     private decimal _calculatedSubtotal = 0;
     private decimal _calculatedTax = 0;
@@ -218,23 +283,32 @@
     private async Task LoadInitialData()
     {
         _isLoadingClients = true;
+        StateHasChanged();
+
         try
         {
             var clientsTask = ClientApiService.GetClientsAsync();
             var servicesTask = ServiceApiService.GetServicesAsync();
+            var ticketsTask = TicketApiService.GetTicketsAsync();
 
-            await Task.WhenAll(clientsTask, servicesTask);
+            await Task.WhenAll(clientsTask, servicesTask, ticketsTask);
 
-            _clients = await clientsTask;
+            _allClients = (await clientsTask) ?? new List<ClientDto>();
+            _filteredClients = _allClients;
             _services = await servicesTask;
+            _tickets = await ticketsTask;
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error al cargar datos: {ex.Message}";
+            Console.WriteLine($"Error al cargar datos: {ex.Message}");
+            _allClients = new List<ClientDto>();
+            _filteredClients = new List<ClientDto>();
+            _errorMessage = "Error al cargar la lista de clientes.";
         }
         finally
         {
             _isLoadingClients = false;
+            StateHasChanged();
         }
     }
 
@@ -258,9 +332,20 @@
                         Description = i.Description,
                         Quantity = i.Quantity,
                         UnitPrice = i.UnitPrice,
-                        ServiceId = i.ServiceId
+                        ServiceId = i.ServiceId,
+                        TicketId = i.TicketId
                     }).ToList()
                 };
+
+                if (quote.ClientId > 0)
+                {
+                    _selectedClient = _allClients.FirstOrDefault(c => c.Id == quote.ClientId);
+                    if (_selectedClient != null)
+                    {
+                        _clientSearchText = _selectedClient.CompanyName;
+                    }
+                }
+
                 RecalculateTotals();
             }
         }
@@ -268,6 +353,56 @@
         {
             _errorMessage = $"Error al cargar cotización: {ex.Message}";
         }
+    }
+
+    private void OnClientSearchInput(ChangeEventArgs e)
+    {
+        _clientSearchText = e.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_clientSearchText))
+        {
+            _filteredClients = _allClients;
+            _showSuggestions = false;
+            _selectedClient = null;
+            _quoteDto.ClientId = 0;
+        }
+        else
+        {
+            _filteredClients = _allClients
+                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.CompanyName)
+                .ToList();
+            _showSuggestions = true;
+
+            var exactMatch = _allClients.FirstOrDefault(c =>
+                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
+
+            if (exactMatch == null && _selectedClient != null)
+            {
+                _selectedClient = null;
+                _quoteDto.ClientId = 0;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _showSuggestions = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectClient(ClientDto client)
+    {
+        _selectedClient = client;
+        _quoteDto.ClientId = client.Id ?? 0;
+        _clientSearchText = client.CompanyName;
+        _showSuggestions = false;
+        StateHasChanged();
     }
 
     private void AddItem()
@@ -296,8 +431,17 @@
 
     private async Task HandleSubmit()
     {
+        _showSuggestions = false;
+
+        if (_quoteDto.ClientId == 0)
+        {
+            _errorMessage = "Debe seleccionar un cliente de la lista.";
+            return;
+        }
+
         _isSaving = true;
         _errorMessage = null;
+        StateHasChanged();
 
         try
         {
@@ -330,11 +474,12 @@
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"Error al {(_isEditMode ? "actualizar" : "crear")} la cotización: {ex.Message}";
         }
         finally
         {
             _isSaving = false;
+            StateHasChanged();
         }
     }
 

@@ -2,32 +2,59 @@
 
 <section class="container px-2" style="max-height: 500px; overflow-y: auto;">
     <EditForm Model="_invoiceDto" OnValidSubmit="HandleSubmit">
-        <DataAnnotationsValidator/>
+        <DataAnnotationsValidator />
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <label for="ClientId" class="form-label fw-bold small">Cliente *</label>
+                <label for="ClientSearch" class="form-label fw-bold small">Cliente *</label>
                 @if (_isLoadingClients)
                 {
                     <div class="d-flex align-items-center">
-                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         <span>Cargando clientes...</span>
                     </div>
                 }
                 else
                 {
-                    <select id="ClientId" class="form-select" @bind="_invoiceDto.ClientId">
-                        <option value="0">-- Seleccione un cliente --</option>
-                        @if (_clients != null)
+                    <div class="position-relative">
+                        <input type="text"
+                               class="form-control"
+                               id="ClientSearch"
+                               placeholder="Buscar cliente por nombre..."
+                               value="@_clientSearchText"
+                               @oninput="OnClientSearchInput"
+                               @onkeydown="OnKeyDown"
+                               @onclick="OnClientClick"
+                               autocomplete="off" />
+
+                        @if (_showSuggestions && _filteredClients.Any())
                         {
-                            @foreach (var client in _clients)
-                            {
-                                <option value="@client.Id">@client.CompanyName</option>
-                            }
+                            <div class="autocomplete-dropdown">
+                                @foreach (var client in _filteredClients.Take(10))
+                                {
+                                    <div class="autocomplete-item" @onclick="() => SelectClient(client)">
+                                        @client.CompanyName
+                                    </div>
+                                }
+                            </div>
                         }
-                    </select>
-                    <ValidationMessage For="@(() => _invoiceDto.ClientId)"/>
+                    </div>
+
+                    @if (_invoiceDto.ClientId > 0 && _selectedClient != null)
+                    {
+                        <small class="text-success mt-1 d-block">
+                            ✓ Cliente seleccionado: <strong>@_selectedClient.CompanyName</strong>
+                        </small>
+                    }
+
+                    @if (_invoiceDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
+                    {
+                        <div class="form-text text-danger mt-2">
+                            <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
+                        </div>
+                    }
                 }
+                <ValidationMessage For="@(() => _invoiceDto.ClientId)" />
             </div>
 
             <div class="col-md-6">
@@ -42,12 +69,12 @@
         <div class="row mb-3">
             <div class="col-md-4">
                 <label for="InvoiceDate" class="form-label fw-bold small">Fecha de Factura</label>
-                <InputDate id="InvoiceDate" class="form-control" @bind-Value="_invoiceDto.InvoiceDate"/>
+                <InputDate id="InvoiceDate" class="form-control" @bind-Value="_invoiceDto.InvoiceDate" />
             </div>
 
             <div class="col-md-4">
                 <label for="DueDate" class="form-label fw-bold small">Fecha de Vencimiento</label>
-                <InputDate id="DueDate" class="form-control" @bind-Value="_invoiceDto.DueDate"/>
+                <InputDate id="DueDate" class="form-control" @bind-Value="_invoiceDto.DueDate" />
             </div>
 
             <div class="col-md-4">
@@ -66,7 +93,7 @@
                 <label for="PaymentMethod" class="form-label fw-bold small">Método de Pago</label>
                 <InputText id="PaymentMethod" class="form-control"
                            placeholder="Transferencia, Efectivo, Tarjeta..."
-                           @bind-Value="_invoiceDto.PaymentMethod"/>
+                           @bind-Value="_invoiceDto.PaymentMethod" />
             </div>
         </div>
 
@@ -90,31 +117,31 @@
                                     <label class="form-label small">Descripción *</label>
                                     <InputText class="form-control form-control-sm"
                                                @bind-Value="item.Description"
-                                               placeholder="Descripción del servicio o producto"/>
+                                               placeholder="Descripción del servicio o producto" />
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label small">Cantidad *</label>
                                     <InputNumber class="form-control form-control-sm"
                                                  @bind-Value="item.Quantity"
-                                                 @bind-Value:after="RecalculateTotals"/>
+                                                 @bind-Value:after="RecalculateTotals" />
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label small">Precio Unitario *</label>
                                     <InputNumber class="form-control form-control-sm"
                                                  @bind-Value="item.UnitPrice"
-                                                 @bind-Value:after="RecalculateTotals"/>
+                                                 @bind-Value:after="RecalculateTotals" />
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label small">Subtotal</label>
                                     <input type="text" class="form-control form-control-sm"
                                            value="@((item.Quantity * item.UnitPrice).ToString("C"))"
-                                           readonly/>
+                                           readonly />
                                 </div>
 
-                                <div class="col-md-6">
+                                @*                                 <div class="col-md-6">
                                     <label class="form-label small">Servicio (Opcional)</label>
                                     <select class="form-select form-select-sm" @bind="item.ServiceId">
                                         <option value="">-- Sin servicio asociado --</option>
@@ -127,7 +154,7 @@
                                             }
                                         }
                                     </select>
-                                </div>
+                                </div> *@
 
                                 <div class="col-md-6">
                                     <label class="form-label small">Ticket (Opcional)</label>
@@ -165,7 +192,7 @@
             <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
             <InputTextArea id="Notes" class="form-control" rows="3"
                            placeholder="Términos de pago, condiciones adicionales..."
-                           @bind-Value="_invoiceDto.Notes"/>
+                           @bind-Value="_invoiceDto.Notes" />
         </div>
 
         <div class="card bg-light mb-3">
@@ -181,7 +208,7 @@
                             <span>IVA (16%):</span>
                             <strong>@_calculatedTax.ToString("C")</strong>
                         </div>
-                        <hr/>
+                        <hr />
                         <div class="d-flex justify-content-between">
                             <span class="h5">Total:</span>
                             <strong class="h5 text-success">@_calculatedTotal.ToString("C")</strong>
@@ -193,7 +220,7 @@
 
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || !_invoiceDto.Items.Any())">
+            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || !_invoiceDto.Items.Any() || _invoiceDto.ClientId == 0)">
                 @if (_isSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -212,6 +239,37 @@
     </EditForm>
 </section>
 
+<style>
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        max-height: 300px;
+        overflow-y: auto;
+        background-color: white;
+        border: 1px solid #ced4da;
+        border-top: none;
+        border-radius: 0 0 0.25rem 0.25rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-item {
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+        .autocomplete-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+</style>
+
 @inject IInvoiceApiService InvoiceApiService
 @inject IClientApiService ClientApiService
 @inject IServiceApiService ServiceApiService
@@ -223,7 +281,12 @@
     [Parameter] public int? InvoiceId { get; set; }
 
     private InvoiceDto _invoiceDto = new();
-    private List<ClientDto>? _clients;
+    private List<ClientDto> _allClients = new();
+    private List<ClientDto> _filteredClients = new();
+    private ClientDto? _selectedClient;
+    private string _clientSearchText = string.Empty;
+    private bool _showSuggestions = false;
+
     private List<ServiceDetailDto>? _services;
     private List<TicketDetailDto>? _tickets;
 
@@ -261,6 +324,8 @@
     private async Task LoadInitialData()
     {
         _isLoadingClients = true;
+        StateHasChanged();
+
         try
         {
             var clientsTask = ClientApiService.GetClientsAsync();
@@ -269,17 +334,22 @@
 
             await Task.WhenAll(clientsTask, servicesTask, ticketsTask);
 
-            _clients = await clientsTask;
+            _allClients = (await clientsTask) ?? new List<ClientDto>();
+            _filteredClients = _allClients;
             _services = await servicesTask;
             _tickets = await ticketsTask;
         }
         catch (Exception ex)
         {
-            _errorMessage = $"error al cargar datos: {ex.Message}";
+            Console.WriteLine($"Error al cargar datos: {ex.Message}");
+            _allClients = new List<ClientDto>();
+            _filteredClients = new List<ClientDto>();
+            _errorMessage = "Error al cargar la lista de clientes.";
         }
         finally
         {
             _isLoadingClients = false;
+            StateHasChanged();
         }
     }
 
@@ -311,13 +381,81 @@
                         TicketId = i.TicketId
                     }).ToList()
                 };
+
+                // Cargar el cliente seleccionado en modo edición
+                if (invoice.ClientId > 0 && !string.IsNullOrEmpty(invoice.ClientName))
+                {
+                    _selectedClient = _allClients.FirstOrDefault(c => c.Id == invoice.ClientId);
+                    _clientSearchText = invoice.ClientName;
+                }
+
                 RecalculateTotals();
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"error al cargar factura: {ex.Message}";
+            _errorMessage = $"Error al cargar factura: {ex.Message}";
         }
+    }
+
+    private void OnClientSearchInput(ChangeEventArgs e)
+    {
+        _clientSearchText = e.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_clientSearchText))
+        {
+            _filteredClients = _allClients;
+            _showSuggestions = false;
+            _selectedClient = null;
+            _invoiceDto.ClientId = 0;
+        }
+        else
+        {
+            _filteredClients = _allClients
+                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.CompanyName)
+                .ToList();
+            _showSuggestions = true;
+
+            var exactMatch = _allClients.FirstOrDefault(c =>
+                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
+
+            if (exactMatch == null && _selectedClient != null)
+            {
+                _selectedClient = null;
+                _invoiceDto.ClientId = 0;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _showSuggestions = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnClientClick()
+    {
+        // Solo mostrar sugerencias si hay texto escrito o si hay clientes disponibles
+        if (!string.IsNullOrWhiteSpace(_clientSearchText) || _allClients.Any())
+        {
+            _showSuggestions = true;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectClient(ClientDto client)
+    {
+        _selectedClient = client;
+        _invoiceDto.ClientId = client.Id ?? 0;
+        _clientSearchText = client.CompanyName;
+        _showSuggestions = false;
+        StateHasChanged();
     }
 
     private void AddItem()
@@ -346,8 +484,17 @@
 
     private async Task HandleSubmit()
     {
+        _showSuggestions = false;
+
+        if (_invoiceDto.ClientId == 0)
+        {
+            _errorMessage = "Debe seleccionar un cliente de la lista.";
+            return;
+        }
+
         _isSaving = true;
         _errorMessage = null;
+        StateHasChanged();
 
         try
         {
@@ -361,7 +508,7 @@
                 }
                 else
                 {
-                    _errorMessage = result.ErrorMessage ?? "no se pudo actualizar la factura.";
+                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar la factura.";
                 }
             }
             else
@@ -374,17 +521,18 @@
                 }
                 else
                 {
-                    _errorMessage = result.ErrorMessage ?? "no se pudo crear la factura.";
+                    _errorMessage = result.ErrorMessage ?? "No se pudo crear la factura.";
                 }
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"error: {ex.Message}";
+            _errorMessage = $"Error al {(_isEditMode ? "actualizar" : "crear")} la factura: {ex.Message}";
         }
         finally
         {
             _isSaving = false;
+            StateHasChanged();
         }
     }
 
