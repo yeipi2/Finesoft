@@ -1,6 +1,6 @@
 @using Microsoft.AspNetCore.Components
 
-<div class="brand-svg @(Animate ? "brand-animate" : "")" @key="AnimationKey">
+<div class="@CssClass" @key="@AnimationKey">
     <svg viewBox="0 0 640 150" role="img" aria-label="Finesoft logo">
         <defs>
             <linearGradient id="fsPurple" x1="0" y1="0" x2="0" y2="1">
@@ -20,16 +20,14 @@
             </filter>
         </defs>
 
-        <!-- tagline -->
         <text x="18" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700"
               letter-spacing="4" fill="#ff9a1f" opacity=".95" class="fs-tag">
             CERTIFIED HIGH SOLUTIONS
         </text>
 
-        <!-- palabra: letra por letra -->
         <g filter="url(#fsShadow)">
-            <text x="18" y="104"  font-family="Montserrat, Segoe UI, Arial, sans-serif"   font-size="92"    font-weight="900"
-                  letter-spacing="1"        fill="url(#fsPurple)"         class="fs-word">
+            <text x="18" y="104" font-family="Montserrat, Segoe UI, Arial, sans-serif" font-size="92" font-weight="900"
+                  letter-spacing="1" fill="url(#fsPurple)" class="fs-word">
                 <tspan class="fs-ch c1">F</tspan>
                 <tspan class="fs-ch c2">i</tspan>
                 <tspan class="fs-ch c3">n</tspan>
@@ -41,15 +39,27 @@
             </text>
         </g>
 
-        <!-- swoosh (sale al final) -->
-        <path class="fs-swoosh"     d="M145 118
+        <path class="fs-swoosh" d="M145 118
         C250 140, 395 140, 525 118
         C470 128, 355 134, 235 128
-        C190 126, 165 122, 145 118 Z"    fill="url(#fsOrange)" />
+        C190 126, 165 122, 145 118 Z"              fill="url(#fsOrange)" />
     </svg>
 </div>
 
 @code {
     [Parameter] public bool Animate { get; set; } = true;
-    [Parameter] public string? AnimationKey { get; set; } // cambia para reiniciar
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AnimationKey { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass
+        => string.Join(" ",
+            new[]
+            {
+                "brand-svg",
+                Animate ? "brand-animate" : null,
+                Class
+            }.Where(s => !string.IsNullOrWhiteSpace(s)));
 }

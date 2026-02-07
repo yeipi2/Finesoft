@@ -1,0 +1,75 @@
+/* Logo / SVG base */
+.brand-svg svg {
+    width: 400px;
+    height: auto;
+    display: block;
+}
+
+/* Estado inicial de elementos animados */
+.brand-animate .fs-tag,
+.brand-animate .fs-ch,
+.brand-animate .fs-swoosh {
+    opacity: 0;
+}
+
+/* Animación de letras (pop) */
+.brand-animate .fs-ch {
+    animation: fsPop 0.35s ease forwards;
+    transform: translateY(8px);
+}
+
+/* Delays escalonados para cada letra */
+.brand-animate .c1 { animation-delay: 0.05s; }
+.brand-animate .c2 { animation-delay: 0.11s; }
+.brand-animate .c3 { animation-delay: 0.17s; }
+.brand-animate .c4 { animation-delay: 0.23s; }
+.brand-animate .c5 { animation-delay: 0.29s; }
+.brand-animate .c6 { animation-delay: 0.35s; }
+.brand-animate .c7 { animation-delay: 0.41s; }
+.brand-animate .c8 { animation-delay: 0.47s; }
+
+/* Animación del tagline */
+.brand-animate .fs-tag {
+    animation: fsFade 0.35s ease forwards;
+    animation-delay: 0.02s;
+}
+
+/* Animación del swoosh */
+.brand-animate .fs-swoosh {
+    transform-origin: left center;
+    transform: translateY(6px) scaleX(0.8);
+    animation: fsSwoosh 0.45s ease forwards;
+    animation-delay: 0.62s;
+}
+
+/* Keyframes */
+@keyframes fsPop {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fsFade {
+    to {
+        opacity: 0.95;
+    }
+}
+
+@keyframes fsSwoosh {
+    to {
+        opacity: 0.95;
+        transform: translateY(0) scaleX(1);
+    }
+}
+
+/* Respetar preferencias de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+    .brand-animate .fs-tag,
+    .brand-animate .fs-ch,
+    .brand-animate .fs-swoosh {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}

@@ -1,0 +1,54 @@
+@typeparam TValue
+
+<div class="field-float">
+    <label class="float-label">@Label</label>
+
+    <div class="input-glass">
+        <i class="@Icon"></i>
+
+        @if (IsPassword)
+        {
+            <input class="glass-input"                   type="@(Show ? "text" : "password")"                   placeholder="@Placeholder"                   value="@Value"
+                   @oninput="OnInputChanged" />
+
+            <button type="button" class="toggle-password" @onclick="TogglePassword">
+                <i class="bi @(Show ? "bi-eye-slash" : "bi-eye")"></i>
+            </button>
+        }
+        else
+        {
+            <input class="glass-input"                   type="@Type"                   placeholder="@Placeholder" value="@Value" @oninput="OnInputChanged" />
+        }
+    </div>
+
+    @if (ValidationFor is not null)
+    {
+        <ValidationMessage For="ValidationFor" />
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "bi bi-envelope";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public bool IsPassword { get; set; }
+
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+
+    [Parameter] public Expression<Func<TValue>>? ValidationFor { get; set; }
+
+    private bool Show;
+
+    private void TogglePassword()
+    {
+        Show = !Show;
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        var newValue = (TValue?)Convert.ChangeType(e.Value?.ToString(), typeof(TValue));
+        await ValueChanged.InvokeAsync(newValue);
+    }
+}

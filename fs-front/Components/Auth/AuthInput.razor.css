@@ -1,0 +1,110 @@
+.field-float{
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.float-label{
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  z-index: 2;
+
+  padding: 0 .55rem;
+  font-size: .78rem;
+  font-weight: 800;
+
+  color: rgba(15,23,42,.72);
+
+  background: rgba(255,255,255,.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border: 1px solid rgba(255,255,255,.60);
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(2,6,23,.08);
+}
+
+.input-glass{
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+
+  padding: 0.85rem 1.15rem;
+  border-radius: 16px;
+
+  background: rgba(255,255,255,.22);
+  border: 1px solid rgba(255,255,255,.55);
+
+  backdrop-filter: blur(26px) saturate(1.35);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35);
+
+  box-shadow:
+    0 18px 40px rgba(2,6,23,.10),
+    inset 0 1px 0 rgba(255,255,255,.65);
+
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  min-height: 56px;
+}
+
+.input-glass::before{
+  content:"";
+  position:absolute;
+  inset: 1px;
+  border-radius: 15px;
+  pointer-events:none;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,.55),
+    rgba(255,255,255,.10) 40%,
+    rgba(255,255,255,.05)
+  );
+  opacity: .55;
+  z-index: 0;
+}
+
+.input-glass i{
+  position: relative;
+  z-index: 1;
+  font-size: 1.05rem;
+  color: rgba(15,23,42,.55);
+  flex-shrink: 0;
+}
+
+.glass-input{
+  position: relative;
+  flex: 1;
+  z-index: 1;
+
+  background: transparent !important;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  font-size: .98rem;
+  color: #0f172a;
+  width: 100%;
+}
+
+.glass-input::placeholder{
+  color: rgba(15,23,42,.42);
+}
+
+.toggle-password{
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: 0;
+  padding: .25rem .35rem;
+  border-radius: 10px;
+  color: rgba(15,23,42,.55);
+  cursor: pointer;
+}
+
+.toggle-password:hover{
+  background: rgba(15,23,42,.06);
+}
