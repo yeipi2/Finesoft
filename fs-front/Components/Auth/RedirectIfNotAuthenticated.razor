@@ -1,27 +1,55 @@
-@* Servicios necesarios para navegación y estado de autenticación *@
+@* 
+   Componente: RedirectIfNotAuthorized.razor
+   Ubicación: fs-front/Components/Auth/
+   
+   USO:
+   <RedirectIfNotAuthorized Roles="Admin,Administracion" RedirectTo="/acceso-denegado" />
+*@
+
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
 @code {
-    // Ruta a la que se redirige si NO está autenticado
-    [Parameter] public string RedirectTo { get; set; } = "/iniciar-sesion";
+    /// <summary>
+    /// Roles permitidos (separados por coma)
+    /// Ejemplo: "Admin,Administracion"
+    /// </summary>
+    [Parameter] public string Roles { get; set; } = string.Empty;
 
-    // Al inicializar, verifica si el usuario NO está autenticado
+    /// <summary>
+    /// Ruta a la que redirigir si NO tiene permiso
+    /// </summary>
+    [Parameter] public string RedirectTo { get; set; } = "/acceso-denegado";
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var isAuth = authState.User.Identity?.IsAuthenticated == true;
+        var user = authState.User;
 
-        if (!isAuth)
+        // Si no está autenticado, redirigir a login
+        if (!user.Identity?.IsAuthenticated == true)
         {
-            var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
+            Navigation.NavigateTo("/iniciar-sesion", forceLoad: true);
+            return;
+        }
 
-            // Evita loop si ya está en login
-            if (!currentUri.StartsWith("iniciar-sesion", StringComparison.OrdinalIgnoreCase))
-            {
-                // Redirige forzando carga completa
-                Navigation.NavigateTo(RedirectTo, forceLoad: true);
-            }
+        // Si Roles está vacío, solo verificar autenticación
+        if (string.IsNullOrWhiteSpace(Roles))
+        {
+            return; // Usuario autenticado, sin restricción de roles
+        }
+
+        // Verificar si el usuario tiene al menos uno de los roles permitidos
+        var allowedRoles = Roles.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                .Select(r => r.Trim())
+                                .ToList();
+
+        var hasRole = allowedRoles.Any(role => user.IsInRole(role));
+
+        if (!hasRole)
+        {
+            // NO tiene permiso, redirigir
+            Navigation.NavigateTo(RedirectTo, forceLoad: true);
         }
     }
 }

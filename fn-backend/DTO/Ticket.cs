@@ -14,6 +14,6 @@ public class TicketDto
 
     public string? AssignedToUserId { get; set; }
 
-    public decimal EstimatedHours { get; set; }
-    public decimal ActualHours { get; set; }
+    public decimal? EstimatedHours { get; set; }
+    public decimal? ActualHours { get; set; }
 }

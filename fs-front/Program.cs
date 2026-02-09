@@ -1,11 +1,12 @@
 using Blazored.LocalStorage;
 using fs_front;
+using fs_front.Repositories;
 using fs_front.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Radzen;
 using Microsoft.Extensions.DependencyInjection;
+using Radzen;
 
 // 1) Crear el host de Blazor WebAssembly con configuración por defecto.
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -50,6 +51,7 @@ builder.Services.AddScoped<ITicketApiService, TicketApiService>();
 builder.Services.AddScoped<IQuoteApiService, QuoteApiService>();
 builder.Services.AddScoped<IInvoiceApiService, InvoiceApiService>();
 builder.Services.AddScoped<IReportApiService, ReportApiService>();
+builder.Services.AddScoped<IPermissionApiService, PermissionApiService>();
 
 // 8) Habilitar LocalStorage para guardar datos en el navegador.
 builder.Services.AddBlazoredLocalStorage();

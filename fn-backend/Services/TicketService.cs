@@ -104,7 +104,7 @@ public class TicketService : ITicketService
             Priority = ticketDto.Priority,
             AssignedToUserId = ticketDto.AssignedToUserId,
             CreatedByUserId = createdByUserId,
-            EstimatedHours = ticketDto.EstimatedHours,
+            EstimatedHours = ticketDto.EstimatedHours ?? 0,
             ActualHours = 0,
             CreatedAt = DateTime.UtcNow
         };
@@ -232,8 +232,8 @@ public class TicketService : ITicketService
         ticket.Status = ticketDto.Status;
         ticket.Priority = ticketDto.Priority;
         ticket.AssignedToUserId = ticketDto.AssignedToUserId;
-        ticket.EstimatedHours = ticketDto.EstimatedHours;
-        ticket.ActualHours = ticketDto.ActualHours;
+        ticket.EstimatedHours = ticketDto.EstimatedHours ?? 0;
+        ticket.ActualHours = ticketDto.ActualHours ?? 0;
         ticket.UpdatedAt = DateTime.UtcNow;
 
         _context.Tickets.Update(ticket);

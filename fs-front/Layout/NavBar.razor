@@ -1,10 +1,23 @@
-﻿<AuthorizeView Context="authCtx">
+﻿@* 
+   NavBar.razor ACTUALIZADO
+   Ubicación: fs-front/Layout/NavBar.razor
+   
+   MUESTRA MENÚS SEGÚN ROL:
+   - Admin: TODO
+   - Administracion: TODO excepto módulo de usuarios admin
+   - Empleado: Solo Tickets
+   - Supervisor: Solo Dashboard y Reportes
+   - Cliente: Solo Tickets (pero formulario simplificado)
+*@
+
+<AuthorizeView Context="authCtx">
     <Authorized>
         <div class="navbar-collapse" id="navbarNav">
             <ul class="navbar-nav mx-auto">
 
-                @* ✅ ADMIN y USER: Dashboard *@
-                <AuthorizeView Roles="Admin,User" Context="dashCtx">
+                @* ========== DASHBOARD ========== *@
+                @* Admin, Administracion, Supervisor *@
+                <AuthorizeView Roles="Admin,Administracion,Supervisor">
                     <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
@@ -17,8 +30,9 @@
                     </Authorized>
                 </AuthorizeView>
 
-                @* ✅ ADMIN y USER: Tickets *@
-                <AuthorizeView Roles="Admin,User" Context="ticketsCtx">
+                @* ========== TICKETS ========== *@
+                @* Admin, Administracion, Empleado, Cliente *@
+                <AuthorizeView Roles="Admin,Administracion,Empleado,Cliente">
                     <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
@@ -31,8 +45,9 @@
                     </Authorized>
                 </AuthorizeView>
 
-                @* ✅ SOLO ADMIN: todos los demás módulos *@
-                <AuthorizeView Roles="Admin" Context="adminCtx">
+                @* ========== CLIENTES ========== *@
+                @* Solo Admin y Administracion *@
+                <AuthorizeView Roles="Admin,Administracion">
                     <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
@@ -42,7 +57,13 @@
                                 Clientes
                             </NavLink>
                         </li>
+                    </Authorized>
+                </AuthorizeView>
 
+                @* ========== PROYECTOS ========== *@
+                @* Solo Admin y Administracion *@
+                <AuthorizeView Roles="Admin,Administracion">
+                    <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
                                 href="proyectos" Match="NavLinkMatch.Prefix"
@@ -51,7 +72,13 @@
                                 Proyectos
                             </NavLink>
                         </li>
+                    </Authorized>
+                </AuthorizeView>
 
+                @* ========== COTIZACIONES ========== *@
+                @* Solo Admin y Administracion *@
+                <AuthorizeView Roles="Admin,Administracion">
+                    <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
                                 href="cotizaciones" Match="NavLinkMatch.Prefix"
@@ -60,7 +87,13 @@
                                 Cotizaciones
                             </NavLink>
                         </li>
+                    </Authorized>
+                </AuthorizeView>
 
+                @* ========== FACTURAS ========== *@
+                @* Solo Admin y Administracion *@
+                <AuthorizeView Roles="Admin,Administracion">
+                    <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
                                 href="facturas" Match="NavLinkMatch.Prefix"
@@ -69,7 +102,13 @@
                                 Facturas
                             </NavLink>
                         </li>
+                    </Authorized>
+                </AuthorizeView>
 
+                @* ========== REPORTES ========== *@
+                @* Admin, Administracion, Supervisor *@
+                <AuthorizeView Roles="Admin,Administracion,Supervisor">
+                    <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
                                 href="reportes" Match="NavLinkMatch.Prefix"
@@ -78,13 +117,19 @@
                                 Reportes
                             </NavLink>
                         </li>
+                    </Authorized>
+                </AuthorizeView>
 
+                @* ========== PERMISOS ========== *@
+                @* Solo Admin y Administracion *@
+                <AuthorizeView Roles="Admin,Administracion">
+                    <Authorized>
                         <li class="nav-item me-2">
                             <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                href="usuarios" Match="NavLinkMatch.Prefix"
-                                ActiveClass="active bg-light text-dark rounded fw-bold">
-                                <i class="bi bi-people me-2"></i>
-                                Usuarios
+                                     href="permisos" Match="NavLinkMatch.Prefix"
+                                     ActiveClass="active bg-light text-dark rounded fw-bold">
+                                <i class="bi bi-shield-lock me-2"></i>
+                                Permisos
                             </NavLink>
                         </li>
                     </Authorized>
@@ -92,6 +137,7 @@
 
             </ul>
 
+            @* ========== MENÚ DE USUARIO ========== *@
             <div class="position-relative">
                 <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-semibold"
                     style="width: 32px; height: 32px; font-size: 0.875rem; cursor: pointer;" @onclick="ToggleDropdown">
@@ -102,11 +148,16 @@
                 {
                     <Animated Animation="Animation.FadeIn" Duration="300">
                         <div class="position-absolute bg-white border rounded shadow-sm mt-2 end-0"
-                            style="min-width: 200px; z-index: 1000;">
+                            style="min-width: 250px; z-index: 1000;">
                             <div class="p-3">
                                 <p class="mb-2 fw-semibold">@authCtx.User.Identity?.Name</p>
-                                <p class="mb-0 text-muted small">
+                                <p class="mb-1 text-muted small">
                                     @authCtx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                                </p>
+                                <p class="mb-0">
+                                    <span class="badge bg-primary">
+                                        @GetUserRole(authCtx.User)
+                                    </span>
                                 </p>
                             </div>
                             <hr class="my-0" />
@@ -126,6 +177,8 @@
 
 @inject AuthenticationStateProvider Provider
 @inject NavigationManager Navigation
+@using fs_front.Services
+@using System.Security.Claims
 
 @code {
     private bool _isDropdownOpen;
@@ -149,5 +202,19 @@
             return $"{parts[0][0]}{parts[1][0]}".ToUpper();
 
         return userName.Length >= 2 ? userName.Substring(0, 2).ToUpper() : userName.ToUpper();
+    }
+
+    private string GetUserRole(ClaimsPrincipal user)
+    {
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+        return role switch
+        {
+            "Admin" => "Administrador",
+            "Administracion" => "Administración",
+            "Empleado" => "Empleado",
+            "Supervisor" => "Supervisor",
+            "Cliente" => "Cliente",
+            _ => "Sin rol"
+        };
     }
 }

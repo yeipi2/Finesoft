@@ -30,6 +30,8 @@ namespace fs_backend.Identity
         public DbSet<InvoiceItem> InvoiceItems { get; set; }
         public DbSet<InvoicePayment> InvoicePayments { get; set; }
         public DbSet<TicketActivity> TicketActivities { get; set; }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -161,6 +163,28 @@ namespace fs_backend.Identity
                     .HasForeignKey(e => e.TicketId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // ========== CONFIGURACIÓN DE PERMISOS ==========
+            modelBuilder.Entity<Permission>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+                entity.Property(p => p.Module).IsRequired().HasMaxLength(50);
+                entity.Property(p => p.Action).IsRequired().HasMaxLength(50);
+                entity.Property(p => p.Code).IsRequired().HasMaxLength(100);
+                entity.HasIndex(p => p.Code).IsUnique();
+            });
+
+            modelBuilder.Entity<RolePermission>(entity =>
+            {
+                entity.HasKey(rp => rp.Id);
+                entity.HasOne(rp => rp.Permission)
+                      .WithMany()
+                      .HasForeignKey(rp => rp.PermissionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
+            });
+
         }
     }
 }

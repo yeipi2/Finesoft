@@ -25,13 +25,11 @@ builder.Services.AddRazorPages();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
-//builder.Services.AddScoped<IServiceService, ServiceService>();
-//builder.Services.AddScoped<ITypeServiceService, TypeServiceService>();
-//builder.Services.AddScoped<ITypeActivityService, TypeActivityService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<IQuoteService, QuoteService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>(); // ⭐ SERVICIO DE PERMISOS
 
 // 5) Conexión a base de datos
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -72,11 +70,32 @@ builder.Services.AddIdentityApiEndpoints<IdentityUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+// ============================================
+// POLÍTICAS DE AUTORIZACIÓN
+// ============================================
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireRole("Admin"));
+
+    options.AddPolicy("AdminOrAdministracion", policy =>
+        policy.RequireRole("Admin", "Administracion"));
+
+    options.AddPolicy("CanManageTickets", policy =>
+        policy.RequireRole("Admin", "Administracion", "Empleado"));
+
+    options.AddPolicy("CanViewReports", policy =>
+        policy.RequireRole("Admin", "Administracion", "Supervisor"));
+
+    options.AddPolicy("CanCreateTicket", policy =>
+        policy.RequireAuthenticatedUser());
+});
+
 // 9) Construir la app
 var app = builder.Build();
 
 // ============================================
-// SEED DE ROLES Y USUARIO ADMIN
+// SEED DE ROLES Y USUARIO ADMIN - ACTUALIZADO
 // ============================================
 using (var scope = app.Services.CreateScope())
 {
@@ -86,15 +105,19 @@ using (var scope = app.Services.CreateScope())
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
 
-        // Crear roles si no existen
-        string[] roles = { "Admin", "User", "Technician" };
+        // ⭐ CREAR LOS 5 ROLES DEL SISTEMA
+        string[] roles = { "Admin", "Administracion", "Empleado", "Supervisor", "Cliente" };
 
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
                 await roleManager.CreateAsync(new IdentityRole(role));
-                Console.WriteLine($"âœ… Rol '{role}' creado exitosamente");
+                Console.WriteLine($"✅ Rol '{role}' creado exitosamente");
+            }
+            else
+            {
+                Console.WriteLine($"ℹ️  Rol '{role}' ya existe");
             }
         }
 
@@ -116,13 +139,13 @@ using (var scope = app.Services.CreateScope())
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(newAdmin, "Admin");
-                Console.WriteLine("âœ… Usuario Admin creado exitosamente");
+                Console.WriteLine("✅ Usuario Admin creado exitosamente");
                 Console.WriteLine($"   Email: {adminEmail}");
                 Console.WriteLine("   Password: Admin123!");
             }
             else
             {
-                Console.WriteLine("âŒ Error al crear usuario admin:");
+                Console.WriteLine("❌ Error al crear usuario admin:");
                 foreach (var error in result.Errors)
                 {
                     Console.WriteLine($"   - {error.Description}");
@@ -131,15 +154,21 @@ using (var scope = app.Services.CreateScope())
         }
         else
         {
-            Console.WriteLine("â„¹ï¸  Usuario Admin ya existe");
+            Console.WriteLine("ℹ️  Usuario Admin ya existe");
+
+            // Asegurar que el admin tenga el rol Admin
+            if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+                Console.WriteLine("✅ Rol 'Admin' asignado al usuario admin");
+            }
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"âŒ Error en seed de datos: {ex.Message}");
+        Console.WriteLine($"❌ Error en seed de datos: {ex.Message}");
     }
 }
-// ============================================
 
 // 10) Configuración CORS (permitir cualquier origen)
 app.UseCors(policy =>
