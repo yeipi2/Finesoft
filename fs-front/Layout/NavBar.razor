@@ -135,6 +135,19 @@
                     </Authorized>
                 </AuthorizeView>
 
+                <AuthorizeView Roles="Admin,Administracion">
+                    <Authorized>
+                        <li class="nav-item me-2">
+                            <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
+                                     href="usuarios" Match="NavLinkMatch.Prefix"
+                                     ActiveClass="active bg-light text-dark rounded fw-bold">
+                                <i class="bi bi-shield-lock me-2"></i>
+                                Usuarios
+                            </NavLink>
+                        </li>
+                    </Authorized>
+                </AuthorizeView>
+
             </ul>
 
             @* ========== MENÚ DE USUARIO ========== *@
