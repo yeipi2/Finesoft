@@ -22,9 +22,9 @@
     }
     else
     {
-        @if (_isAdmin)
+        @if (_isAdmin || _isAdministracion)
         {
-            <!-- ================== ADMIN DASHBOARD ================== -->
+            <!-- ================== ADMIN / ADMINISTRACIÓN DASHBOARD ================== -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="fw-bold text-primary mb-1">
@@ -49,7 +49,7 @@
             }
             else
             {
-                <!-- Tus cards de stats -->
+                <!-- Stats cards -->
                 <div class="row g-3 mb-5">
                     <div class="col-md-3">
                         <div class="card border-0 shadow-sm h-100 overflow-hidden">
@@ -121,12 +121,10 @@
                 </h5>
 
                 <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("clientes")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-people fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Clientes</h5>
@@ -139,8 +137,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("proyectos")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-kanban fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Proyectos</h5>
@@ -153,8 +150,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-ticket-detailed fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Soporte</h5>
@@ -167,8 +163,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("cotizaciones")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-file-earmark-text fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Cotizaciones</h5>
@@ -181,8 +176,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("facturas")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-receipt fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Facturación</h5>
@@ -195,8 +189,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("reportes")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-bar-chart-line fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Reportes</h5>
@@ -209,8 +202,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("usuarios")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3"
-                                    style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
                                     <i class="bi bi-shield-lock fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Usuarios</h5>
@@ -219,20 +211,18 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
-
             }
         }
-        else
+        else if (_isSupervisor)
         {
-            <!-- ================== USER DASHBOARD (SOLO TICKETS) ================== -->
+            <!-- ================== SUPERVISOR DASHBOARD ================== -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="fw-bold text-primary mb-1">
-                        <i class="bi bi-ticket-detailed me-2"></i>Panel de Usuario
+                        <i class="bi bi-binoculars me-2"></i>Panel de Supervisor
                     </h2>
-                    <p class="text-muted mb-0">Aquí puedes revisar tus tickets asignados.</p>
+                    <p class="text-muted mb-0">Consulta tickets y reportes del sistema.</p>
                 </div>
             </div>
 
@@ -240,13 +230,62 @@
                 <div class="col-12 col-md-6 col-lg-4">
                     <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
                         <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3"
-                                style="width: 60px; height: 60px;">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3" style="width: 60px; height: 60px;">
                                 <i class="bi bi-ticket-detailed fs-3"></i>
                             </div>
                             <h5 class="card-title fw-bold">Tickets</h5>
-                            <p class="card-text text-muted small">Consulta y da seguimiento a tus tickets.</p>
-                            <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver mis tickets</span>
+                            <p class="card-text text-muted small">Consulta todos los tickets del sistema.</p>
+                            <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver Tickets</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("reportes")'>
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-bar-chart-line fs-3"></i>
+                            </div>
+                            <h5 class="card-title fw-bold">Reportes</h5>
+                            <p class="card-text text-muted small">Consulta métricas y análisis del sistema.</p>
+                            <span class="btn btn-outline-info btn-sm rounded-pill px-3 text-white">Ver Reportes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- ================== EMPLEADO / CLIENTE DASHBOARD (SOLO TICKETS) ================== -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-primary mb-1">
+                        <i class="bi bi-ticket-detailed me-2"></i>
+                        @(_isCliente ? "Portal de Clientes" : "Panel de Empleado")
+                    </h2>
+                    <p class="text-muted mb-0">
+                        @(_isCliente
+                                        ? "Aquí puedes crear y seguir tus solicitudes de soporte."
+                                        : "Aquí puedes ver y gestionar los tickets asignados a ti.")
+                    </p>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-ticket-detailed fs-3"></i>
+                            </div>
+                            <h5 class="card-title fw-bold">Tickets</h5>
+                            <p class="card-text text-muted small">
+                                @(_isCliente
+                                                        ? "Crea nuevas solicitudes y consulta su estado."
+                                                        : "Consulta y da seguimiento a los tickets asignados.")
+                            </p>
+                            <span class="btn btn-outline-warning btn-sm rounded-pill px-3">
+                                @(_isCliente ? "Mis solicitudes" : "Mis tickets")
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -261,11 +300,11 @@
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .hover-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
-        border-color: var(--bs-primary) !important;
-    }
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+            border-color: var(--bs-primary) !important;
+        }
 
     .cursor-pointer {
         cursor: pointer;
@@ -277,17 +316,41 @@
     private bool isLoading = true;
 
     private bool _isAdmin = false;
+    private bool _isAdministracion = false;
+    private bool _isSupervisor = false;
+    private bool _isEmpleado = false;
+    private bool _isCliente = false;
     private bool _ready = false;
+
+    // ⭐ Roles válidos del sistema
+    private static readonly HashSet<string> RolesValidos = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Admin", "Administracion", "Empleado", "Supervisor", "Cliente"
+    };
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        // ✅ Si el usuario no tiene rol válido → redirigir a /pending
+        if (string.IsNullOrWhiteSpace(role) || !RolesValidos.Contains(role))
+        {
+            NavigationManager.NavigateTo("/pending", replace: true);
+            return;
+        }
+
         _isAdmin = user.IsInRole("Admin");
+        _isAdministracion = user.IsInRole("Administracion");
+        _isSupervisor = user.IsInRole("Supervisor");
+        _isEmpleado = user.IsInRole("Empleado");
+        _isCliente = user.IsInRole("Cliente");
         _ready = true;
 
-        if (_isAdmin)
+        // Solo Admin y Administracion cargan las stats
+        if (_isAdmin || _isAdministracion)
         {
             try
             {
@@ -295,7 +358,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error cargando dashboard: {ex.Message}");
+                Console.WriteLine($"Error cargando dashboard stats: {ex.Message}");
             }
         }
 

@@ -15,18 +15,22 @@
 
 <section class="auth-shell @(IsRegister ? "is-register" : "")">
 
-    <AuthOverlay AnimationKey="@LogoKey"                 Title="@(IsRegister ? "¡Qué bueno verte!" : "Hola, Bienvenido!")"
+    <AuthOverlay AnimationKey="@LogoKey"
+                 Title="@(IsRegister ? "¡Qué bueno verte!" : "Hola, Bienvenido!")"
                  Subtitle="@(IsRegister ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?")"
-                 ActionText="@(IsRegister ? "Iniciar sesión" : "Registrarse")"                 OnAction="@(IsRegister ? GoLogin : GoRegister)" />
+                 ActionText="@(IsRegister ? "Iniciar sesión" : "Registrarse")"
+                 OnAction="@(IsRegister ? GoLogin : GoRegister)" />
 
     <div class="form-panel">
         @if (!IsRegister)
         {
-            <LoginForm Model="@Login" OnSubmit="@LoginAsync" IsLoading="@Loading"                      OnSwitchToRegister="@GoRegister" />
+            <LoginForm Model="@Login" OnSubmit="@LoginAsync" IsLoading="@Loading"
+                       OnSwitchToRegister="@GoRegister" />
         }
         else
         {
-            <RegisterForm Model="@Register" OnSubmit="@RegisterAsync" IsLoading="@Loading"                         OnSwitchToLogin="@GoLogin" />
+            <RegisterForm Model="@Register" OnSubmit="@RegisterAsync" IsLoading="@Loading"
+                          OnSwitchToLogin="@GoLogin" />
         }
     </div>
 </section>
@@ -37,6 +41,12 @@
     private string LogoKey = Guid.NewGuid().ToString();
     private LoginModel Login = new();
     private RegisterModel Register = new();
+
+    // ⭐ Roles válidos del sistema (los 5 roles definidos)
+    private static readonly HashSet<string> RolesValidos = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Admin", "Administracion", "Empleado", "Supervisor", "Cliente"
+    };
 
     protected override void OnInitialized()
     {
@@ -66,6 +76,23 @@
     private void GoRegister() => Nav.NavigateTo("/registrarme");
     private void GoLogin() => Nav.NavigateTo("/iniciar-sesion");
 
+    // ⭐ HELPER: decide a dónde navegar según el rol del usuario
+    private string GetRedirectUrl(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        // Sin rol asignado → página de espera
+        if (string.IsNullOrWhiteSpace(role))
+            return "/pending";
+
+        // Rol no reconocido (residuo de versiones anteriores, ej: "Technician") → página de espera
+        if (!RolesValidos.Contains(role))
+            return "/pending";
+
+        // Rol válido → dashboard
+        return "/dashboard";
+    }
+
     private async Task LoginAsync()
     {
         Loading = true;
@@ -85,14 +112,10 @@
         }
 
         var state = await AuthProvider.GetAuthenticationStateAsync();
-        var user = state.User;
-        var role = user.FindFirst(ClaimTypes.Role)?.Value;
-
         Loading = false;
 
-        Nav.NavigateTo(string.IsNullOrWhiteSpace(role) || role == "Technician"
-            ? "/pending"
-            : "/dashboard");
+        // ✅ CORRECCIÓN: usar el helper que valida contra los roles del sistema actual
+        Nav.NavigateTo(GetRedirectUrl(state.User));
     }
 
     private async Task RegisterAsync()
@@ -123,10 +146,13 @@
         {
             Severity = NotificationSeverity.Success,
             Summary = "Registro exitoso",
-            Detail = "Tu cuenta ha sido creada correctamente.",
-            Duration = 2500
+            Detail = "Tu cuenta ha sido creada. Espera a que un administrador te asigne un rol.",
+            Duration = 3500
         });
 
-        Nav.NavigateTo("/dashboard");
+        // ✅ CORRECCIÓN: después del registro el usuario NO tiene rol → /pending
+        // (el JWT recién creado no tendrá ningún claim de rol)
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        Nav.NavigateTo(GetRedirectUrl(state.User));
     }
 }
