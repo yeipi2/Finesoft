@@ -8,6 +8,7 @@ using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using fs_backend.Hubs;
 
 // 1) Crear el builder de la aplicación
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +31,7 @@ builder.Services.AddScoped<IQuoteService, QuoteService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>(); // ⭐ SERVICIO DE PERMISOS
+builder.Services.AddSignalR();
 
 // 5) Conexión a base de datos
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -184,6 +186,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+
+app.MapHub<PermissionsHub>("/hubs/permissions");
+
+
 
 app.UseAuthentication();
 app.UseAuthorization();

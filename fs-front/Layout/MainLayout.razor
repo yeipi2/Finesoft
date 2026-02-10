@@ -1,16 +1,22 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+
+@inject fs_front.Services.PermissionsRealtimeClient Realtime
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 
 <HeadContent>
-    <RadzenTheme Theme="material"/>
+    <RadzenTheme Theme="material" />
 </HeadContent>
 
 <header class="navbar navbar-expand-lg bg-white border-bottom">
     <div class="container-fluid px-4">
         <a class="navbar-brand fw-semibold text-dark fs-5">
-            <img src="images/LogoFinesoft.png" alt="Logo de Finesoft"/>
+            <img src="images/LogoFinesoft.png" alt="Logo de Finesoft" />
         </a>
 
-        <NavBar/>
+        <NavBar />
     </div>
 </header>
 
@@ -18,6 +24,57 @@
     @Body
 </main>
 
+<RadzenComponents />
+<RadzenNotification />
 
-<RadzenComponents/>
-<RadzenNotification/>
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        AuthStateProvider.AuthenticationStateChanged += OnAuthChanged;
+        Realtime.PermissionsChanged += OnPermissionsChanged;
+
+        // Intento inicial (si ya había token guardado)
+        await EnsureRealtimeConnectionAsync();
+    }
+
+    private async void OnAuthChanged(Task<AuthenticationState> task)
+    {
+        await EnsureRealtimeConnectionAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task EnsureRealtimeConnectionAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuth = state.User.Identity?.IsAuthenticated == true;
+
+        if (isAuth && !Realtime.IsConnected)
+            await Realtime.StartAsync();
+
+        if (!isAuth && Realtime.IsConnected)
+            await Realtime.StopAsync();
+    }
+
+    private async Task OnPermissionsChanged()
+    {
+        // Refresh JWT (ya lo tienes en CustomAuthStateProvider) :contentReference[oaicite:1]{index=1}
+        var auth = (fs_front.Services.CustomAuthStateProvider)AuthStateProvider;
+
+        var ok = await auth.RefreshAsync();
+        if (!ok)
+        {
+            auth.Logout();
+            Navigation.NavigateTo("/iniciar-sesion", forceLoad: true);
+            return;
+        }
+
+        // Recarga: porque tu NavBar/Home calculan bools una vez
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthChanged;
+        Realtime.PermissionsChanged -= OnPermissionsChanged;
+    }
+}

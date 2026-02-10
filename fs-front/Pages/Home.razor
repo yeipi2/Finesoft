@@ -2,7 +2,6 @@
 @using fs_front.DTO
 @using fs_front.Services
 @using Microsoft.AspNetCore.Components.Authorization
-@using System.Security.Claims
 
 @inject IReportApiService ReportService
 @inject NavigationManager NavigationManager
@@ -22,42 +21,39 @@
     }
     else
     {
-        @if (_isAdmin || _isAdministracion)
-        {
-            <!-- ================== ADMIN / ADMINISTRACIÓN DASHBOARD ================== -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-primary mb-1">
-                        <i class="bi bi-speedometer2 me-2"></i>Panel de Administración
-                    </h2>
-                    <p class="text-muted mb-0">Resumen general y accesos rápidos a la plataforma.</p>
-                </div>
-                <div class="d-none d-md-block">
-                    <span class="badge bg-light text-dark border p-2">
-                        <i class="bi bi-calendar3 me-1"></i> @DateTime.Now.ToString("dd MMMM, yyyy")
-                    </span>
-                </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-speedometer2 me-2"></i>Panel de Control
+                </h2>
+                <p class="text-muted mb-0">Resumen general y accesos rápidos</p>
             </div>
+            <div class="d-none d-md-block">
+                <span class="badge bg-light text-dark border p-2">
+                    <i class="bi bi-calendar3 me-1"></i> @DateTime.Now.ToString("dd MMMM, yyyy")
+                </span>
+            </div>
+        </div>
 
-            @if (isLoading)
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+            </div>
+        }
+        else
+        {
+            @* Stats Cards (solo si tiene permiso de ver dashboard) *@
+            @if (_canViewDashboard)
             {
-                <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
-                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <!-- Stats cards -->
                 <div class="row g-3 mb-5">
                     <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                            <div class="card-body p-4 position-relative">
-                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-uppercase text-muted small fw-bold mb-1">Ingresos Mensuales</p>
-                                        <h3 class="fw-bold text-primary mb-0">$@stats?.MonthlyRevenue.ToString("N2")</h3>
+                                        <h3 class="fw-bold text-primary mb-0">$@_stats?.MonthlyRevenue.ToString("N2")</h3>
                                     </div>
                                     <div class="bg-primary bg-opacity-10 p-2 rounded-3 text-primary">
                                         <i class="bi bi-currency-dollar fs-4"></i>
@@ -68,12 +64,12 @@
                     </div>
 
                     <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                            <div class="card-body p-4 position-relative">
-                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-uppercase text-muted small fw-bold mb-1">Tickets Abiertos</p>
-                                        <h3 class="fw-bold text-warning mb-0">@stats?.OpenTickets</h3>
+                                        <h3 class="fw-bold text-warning mb-0">@_stats?.OpenTickets</h3>
                                     </div>
                                     <div class="bg-warning bg-opacity-10 p-2 rounded-3 text-warning">
                                         <i class="bi bi-ticket-detailed fs-4"></i>
@@ -84,12 +80,12 @@
                     </div>
 
                     <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                            <div class="card-body p-4 position-relative">
-                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-uppercase text-muted small fw-bold mb-1">Proyectos Activos</p>
-                                        <h3 class="fw-bold text-success mb-0">@stats?.ActiveProjects</h3>
+                                        <h3 class="fw-bold text-success mb-0">@_stats?.ActiveProjects</h3>
                                     </div>
                                     <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success">
                                         <i class="bi bi-kanban fs-4"></i>
@@ -100,12 +96,12 @@
                     </div>
 
                     <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100 overflow-hidden">
-                            <div class="card-body p-4 position-relative">
-                                <div class="d-flex justify-content-between align-items-start z-1 position-relative">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-uppercase text-muted small fw-bold mb-1">Total Clientes</p>
-                                        <h3 class="fw-bold text-info mb-0">@stats?.TotalClients</h3>
+                                        <h3 class="fw-bold text-info mb-0">@_stats?.TotalClients</h3>
                                     </div>
                                     <div class="bg-info bg-opacity-10 p-2 rounded-3 text-info">
                                         <i class="bi bi-people fs-4"></i>
@@ -115,180 +111,151 @@
                         </div>
                     </div>
                 </div>
+            }
 
-                <h5 class="fw-bold text-secondary mb-3">
-                    <i class="bi bi-grid-fill me-2"></i>Módulos de Gestión
-                </h5>
+            <h5 class="fw-bold text-secondary mb-3">
+                <i class="bi bi-grid-fill me-2"></i>Módulos Disponibles
+            </h5>
 
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+
+                @if (_canViewClients)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("clientes")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-people fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Clientes</h5>
-                                <p class="card-text text-muted small">Administra empresas, contactos y servicios contratados.</p>
+                                <p class="card-text text-muted small">Administra empresas y contactos.</p>
                                 <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Ver Directorio</span>
                             </div>
                         </div>
                     </div>
+                }
 
+                @if (_canViewProjects)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("proyectos")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-kanban fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Proyectos</h5>
-                                <p class="card-text text-muted small">Gestiona el desarrollo, entregables y horas asignadas.</p>
+                                <p class="card-text text-muted small">Gestiona desarrollo y entregables.</p>
                                 <span class="btn btn-outline-success btn-sm rounded-pill px-3">Ver Tablero</span>
                             </div>
                         </div>
                     </div>
+                }
 
+                @if (_canViewTickets)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-ticket-detailed fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Soporte</h5>
-                                <p class="card-text text-muted small">Atiende incidencias, tickets de soporte y dudas.</p>
+                                <p class="card-text text-muted small">Atiende tickets de soporte.</p>
                                 <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver Tickets</span>
                             </div>
                         </div>
                     </div>
+                }
 
+                @if (_canViewQuotes)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("cotizaciones")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-file-earmark-text fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Cotizaciones</h5>
-                                <p class="card-text text-muted small">Crea y envía presupuestos para nuevos servicios.</p>
+                                <p class="card-text text-muted small">Crea y envía presupuestos.</p>
                                 <span class="btn btn-outline-secondary btn-sm rounded-pill px-3">Gestionar</span>
                             </div>
                         </div>
                     </div>
+                }
 
+                @if (_canViewInvoices)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("facturas")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-receipt fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Facturación</h5>
-                                <p class="card-text text-muted small">Control de facturas emitidas, pagos y vencimientos.</p>
+                                <p class="card-text text-muted small">Control de facturas y pagos.</p>
                                 <span class="btn btn-outline-dark btn-sm rounded-pill px-3">Ver Finanzas</span>
                             </div>
                         </div>
                     </div>
+                }
 
+                @if (_canViewReports)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("reportes")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-bar-chart-line fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Reportes</h5>
-                                <p class="card-text text-muted small">Análisis detallado de rendimiento y métricas.</p>
+                                <p class="card-text text-muted small">Análisis y métricas.</p>
                                 <span class="btn btn-outline-info btn-sm rounded-pill px-3 text-white">Ver Analytics</span>
                             </div>
                         </div>
                     </div>
+                }
 
+                <AuthorizeView Roles="Admin,Administracion">
+                    <Authorized>
+                        <div class="col">
+                            <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("permisos")'>
+                                <div class="card-body text-center p-4">
+                                    <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3"
+                                         style="width: 60px; height: 60px;">
+                                        <i class="bi bi-shield-lock fs-3"></i>
+                                    </div>
+                                    <h5 class="card-title fw-bold">Permisos</h5>
+                                    <p class="card-text text-muted small">Gestión de permisos de usuarios.</p>
+                                    <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Administrar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                @if (_canViewUsers)
+                {
                     <div class="col">
                         <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("usuarios")'>
                             <div class="card-body text-center p-4">
-                                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-50 text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
                                     <i class="bi bi-shield-lock fs-3"></i>
                                 </div>
                                 <h5 class="card-title fw-bold">Usuarios</h5>
-                                <p class="card-text text-muted small">Gestión de acceso y roles del sistema.</p>
+                                <p class="card-text text-muted small">Gestión de acceso y roles.</p>
                                 <span class="btn btn-outline-primary btn-sm rounded-pill px-3">Administrar</span>
                             </div>
                         </div>
                     </div>
-                </div>
-            }
-        }
-        else if (_isSupervisor)
-        {
-            <!-- ================== SUPERVISOR DASHBOARD ================== -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-primary mb-1">
-                        <i class="bi bi-binoculars me-2"></i>Panel de Supervisor
-                    </h2>
-                    <p class="text-muted mb-0">Consulta tickets y reportes del sistema.</p>
-                </div>
-            </div>
+                }
 
-            <div class="row g-4">
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
-                        <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3" style="width: 60px; height: 60px;">
-                                <i class="bi bi-ticket-detailed fs-3"></i>
-                            </div>
-                            <h5 class="card-title fw-bold">Tickets</h5>
-                            <p class="card-text text-muted small">Consulta todos los tickets del sistema.</p>
-                            <span class="btn btn-outline-warning btn-sm rounded-pill px-3">Ver Tickets</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("reportes")'>
-                        <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center bg-info text-white rounded-circle mb-3" style="width: 60px; height: 60px;">
-                                <i class="bi bi-bar-chart-line fs-3"></i>
-                            </div>
-                            <h5 class="card-title fw-bold">Reportes</h5>
-                            <p class="card-text text-muted small">Consulta métricas y análisis del sistema.</p>
-                            <span class="btn btn-outline-info btn-sm rounded-pill px-3 text-white">Ver Reportes</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
-        else
-        {
-            <!-- ================== EMPLEADO / CLIENTE DASHBOARD (SOLO TICKETS) ================== -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-primary mb-1">
-                        <i class="bi bi-ticket-detailed me-2"></i>
-                        @(_isCliente ? "Portal de Clientes" : "Panel de Empleado")
-                    </h2>
-                    <p class="text-muted mb-0">
-                        @(_isCliente
-                                        ? "Aquí puedes crear y seguir tus solicitudes de soporte."
-                                        : "Aquí puedes ver y gestionar los tickets asignados a ti.")
-                    </p>
-                </div>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("tickets")'>
-                        <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center bg-warning text-dark rounded-circle mb-3" style="width: 60px; height: 60px;">
-                                <i class="bi bi-ticket-detailed fs-3"></i>
-                            </div>
-                            <h5 class="card-title fw-bold">Tickets</h5>
-                            <p class="card-text text-muted small">
-                                @(_isCliente
-                                                        ? "Crea nuevas solicitudes y consulta su estado."
-                                                        : "Consulta y da seguimiento a los tickets asignados.")
-                            </p>
-                            <span class="btn btn-outline-warning btn-sm rounded-pill px-3">
-                                @(_isCliente ? "Mis solicitudes" : "Mis tickets")
-                            </span>
-                        </div>
-                    </div>
-                </div>
             </div>
         }
     }
@@ -300,11 +267,11 @@
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-        .hover-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
-            border-color: var(--bs-primary) !important;
-        }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+        border-color: var(--bs-primary) !important;
+    }
 
     .cursor-pointer {
         cursor: pointer;
@@ -312,49 +279,39 @@
 </style>
 
 @code {
-    private DashboardStatsDto? stats;
-    private bool isLoading = true;
-
-    private bool _isAdmin = false;
-    private bool _isAdministracion = false;
-    private bool _isSupervisor = false;
-    private bool _isEmpleado = false;
-    private bool _isCliente = false;
+    private DashboardStatsDto? _stats;
+    private bool _isLoading = true;
     private bool _ready = false;
 
-    // ⭐ Roles válidos del sistema
-    private static readonly HashSet<string> RolesValidos = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Admin", "Administracion", "Empleado", "Supervisor", "Cliente"
-    };
+    private bool _canViewDashboard;
+    private bool _canViewTickets;
+    private bool _canViewClients;
+    private bool _canViewProjects;
+    private bool _canViewQuotes;
+    private bool _canViewInvoices;
+    private bool _canViewReports;
+    private bool _canViewUsers;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        var authProvider = (CustomAuthStateProvider)AuthStateProvider;
 
-        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+        _canViewDashboard = await authProvider.HasPermissionAsync("dashboard.view");
+        _canViewTickets = await authProvider.HasPermissionAsync("tickets.view");
+        _canViewClients = await authProvider.HasPermissionAsync("clients.view");
+        _canViewProjects = await authProvider.HasPermissionAsync("projects.view");
+        _canViewQuotes = await authProvider.HasPermissionAsync("quotes.view");
+        _canViewInvoices = await authProvider.HasPermissionAsync("invoices.view");
+        _canViewReports = await authProvider.HasPermissionAsync("reports.view");
+        _canViewUsers = await authProvider.HasPermissionAsync("users.view");
 
-        // ✅ Si el usuario no tiene rol válido → redirigir a /pending
-        if (string.IsNullOrWhiteSpace(role) || !RolesValidos.Contains(role))
-        {
-            NavigationManager.NavigateTo("/pending", replace: true);
-            return;
-        }
-
-        _isAdmin = user.IsInRole("Admin");
-        _isAdministracion = user.IsInRole("Administracion");
-        _isSupervisor = user.IsInRole("Supervisor");
-        _isEmpleado = user.IsInRole("Empleado");
-        _isCliente = user.IsInRole("Cliente");
         _ready = true;
 
-        // Solo Admin y Administracion cargan las stats
-        if (_isAdmin || _isAdministracion)
+        if (_canViewDashboard)
         {
             try
             {
-                stats = await ReportService.GetDashboardStatsAsync();
+                _stats = await ReportService.GetDashboardStatsAsync();
             }
             catch (Exception ex)
             {
@@ -362,7 +319,7 @@
             }
         }
 
-        isLoading = false;
+        _isLoading = false;
     }
 
     private void NavigateTo(string page) => NavigationManager.NavigateTo(page);

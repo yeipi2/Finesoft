@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿// fs-front/Services/CustomAuthStateProvider.cs
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
@@ -9,8 +10,6 @@ using System.IdentityModel.Tokens.Jwt;
 
 namespace fs_front.Services
 {
-    // Proveedor de estado de autenticación personalizado
-    // y servicio de autenticación (login/register/logout).
     public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
     {
         private readonly HttpClient _httpClient;
@@ -21,8 +20,6 @@ namespace fs_front.Services
             _httpClient = httpClient;
             _localStorage = localStorage;
 
-            // Al iniciar, si ya hay token guardado,
-            // lo coloca en el header por defecto.
             var token = _localStorage.GetItem<string>("accessToken");
             if (token != null)
             {
@@ -30,42 +27,41 @@ namespace fs_front.Services
             }
         }
 
-        // Devuelve el estado de autenticación actual
-        // leyendo el token JWT del localStorage.
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
         {
             var token = _localStorage.GetItem<string>("accessToken");
 
-            // Si no hay token, usuario anónimo.
             if (string.IsNullOrWhiteSpace(token))
                 return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
 
             try
             {
-                // Parsear el JWT para extraer los claims.
                 var handler = new JwtSecurityTokenHandler();
                 var jwt = handler.ReadJwtToken(token);
 
                 var claims = jwt.Claims.ToList();
-
-                // Crear identidad con los claims.
                 var identity = new ClaimsIdentity(claims, "jwt");
                 var user = new ClaimsPrincipal(identity);
 
-                // asegura header para llamadas al backend
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 return Task.FromResult(new AuthenticationState(user));
             }
             catch
             {
-                // token inválido -> limpiar
                 _localStorage.RemoveItem("accessToken");
                 return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
             }
         }
 
-        // Hace login contra la API y guarda el token si es correcto.
+        // ⭐ NUEVO: Método helper para verificar permisos
+        public async Task<bool> HasPermissionAsync(string permissionCode)
+        {
+            var authState = await GetAuthenticationStateAsync();
+            return authState.User.Claims
+                .Any(c => c.Type == "permission" && c.Value == permissionCode);
+        }
+
         public async Task<FormResponse> LoginAsync(LoginModel loginModel)
         {
             try
@@ -84,15 +80,12 @@ namespace fs_front.Services
                 if (string.IsNullOrWhiteSpace(accessToken))
                     return new FormResponse { Succeeded = false, Errors = ["No se recibió token"] };
 
-                // Guardar token y limpiar refresh viejo.
                 _localStorage.SetItem("accessToken", accessToken);
-                _localStorage.RemoveItem("refreshToken"); // por si quedaba basura anterior
+                _localStorage.RemoveItem("refreshToken");
 
-                // Actualizar header para futuras llamadas.
                 _httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", accessToken);
 
-                // Notificar a Blazor que cambió el estado de auth.
                 NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
 
                 return new FormResponse { Succeeded = true };
@@ -103,8 +96,6 @@ namespace fs_front.Services
             }
         }
 
-        // Registra un usuario nuevo y, si es exitoso,
-        // intenta loguearlo automáticamente.
         public async Task<FormResponse> RegisterAsync(RegisterModel registerModel)
         {
             try
@@ -121,9 +112,7 @@ namespace fs_front.Services
                     return await LoginAsync(loginModel);
                 }
 
-                // Si falla, parsea los errores del backend.
                 var strResponse = await response.Content.ReadAsStringAsync();
-
                 var jsonResponse = JsonNode.Parse(strResponse);
                 var errorsObject = jsonResponse?["errors"]?.AsObject();
                 var errorList = new List<string>();
@@ -146,7 +135,6 @@ namespace fs_front.Services
             }
         }
 
-        // Cierra sesión: borra tokens y notifica a Blazor.
         public void Logout()
         {
             _localStorage.RemoveItem("accessToken");
@@ -154,5 +142,34 @@ namespace fs_front.Services
             _httpClient.DefaultRequestHeaders.Authorization = null;
             NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }
+
+        public async Task<bool> RefreshAsync()
+        {
+            try
+            {
+                var resp = await _httpClient.PostAsync("api/auth/refresh", null);
+                if (!resp.IsSuccessStatusCode) return false;
+
+                var str = await resp.Content.ReadAsStringAsync();
+                var json = JsonNode.Parse(str);
+                var newToken = json?["accessToken"]?.ToString();
+
+                if (string.IsNullOrWhiteSpace(newToken)) return false;
+
+                _localStorage.SetItem("accessToken", newToken);
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", newToken);
+
+                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
     }
+
+
 }
