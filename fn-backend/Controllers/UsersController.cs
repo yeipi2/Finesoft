@@ -1,5 +1,6 @@
 ﻿using fn_backend.DTO;
 using fn_backend.Services;
+using fs_backend.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,21 +13,27 @@ namespace fn_backend.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
     {
         _userService = userService;
+        _logger = logger;
     }
 
     /// <summary>
     /// GET: api/users
-    /// - Admin: Ve TODOS los usuarios
-    /// - Administracion: Ve todos EXCEPTO usuarios con rol Admin
+    /// ⭐ CAMBIO: Permitir a usuarios autenticados ver la lista
+    /// (necesario para dropdowns de asignación en formularios)
+    /// Pero si es Administracion, filtrar Admins
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "AdminOrAdministracion")]
+    [Authorize] // Solo requiere autenticación
     public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _logger.LogInformation("✅ Usuario {UserId} obteniendo usuarios", userId);
+
         var users = await _userService.GetUsersAsync();
 
         // ✅ Si es Administracion, FILTRAR usuarios Admin
@@ -35,15 +42,22 @@ public class UsersController : ControllerBase
             users = users.Where(u => u.RoleName != "Admin").ToList();
         }
 
+        // ✅ Si es Empleado, solo mostrar usuarios para referencia (sin datos sensibles)
+        if (User.IsInRole("Empleado"))
+        {
+            // Opcional: podrías filtrar o limitar la info aquí
+            // Por ahora dejamos que vean la lista para el dropdown de asignación
+        }
+
         return Ok(users);
     }
 
     /// <summary>
     /// GET: api/users/{id}
-    /// - Administracion: NO puede ver detalles de usuarios Admin
+    /// Requiere permiso: usuarios.view
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Policy = "AdminOrAdministracion")]
+    [RequirePermission("usuarios.view")]
     public async Task<ActionResult<UserDto>> GetUser(string id)
     {
         var user = await _userService.GetUserByIdAsync(id);
@@ -63,12 +77,15 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// POST: api/users
-    /// - Administracion: NO puede crear usuarios con rol Admin
+    /// Requiere permiso: usuarios.create
     /// </summary>
     [HttpPost]
-    [Authorize(Policy = "AdminOrAdministracion")]
+    [RequirePermission("usuarios.create")]
     public async Task<ActionResult<UserDto>> CreateUser(UserDto userDto)
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _logger.LogInformation("✅ Usuario {UserId} creando usuario", userId);
+
         // ✅ Si es Administracion y quiere crear un Admin, bloquear
         if (User.IsInRole("Administracion") && userDto.RoleName == "Admin")
         {
@@ -86,26 +103,26 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// PUT: api/users/{id}
-    /// - Administracion: NO puede modificar usuarios Admin
+    /// Requiere permiso: usuarios.edit
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Policy = "AdminOrAdministracion")]
+    [RequirePermission("usuarios.edit")]
     public async Task<IActionResult> UpdateUser(string id, UserDto updateUserDto)
     {
-        // ✅ Verificar si el usuario a modificar es Admin
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _logger.LogInformation("✅ Usuario {UserId} actualizando usuario {TargetUserId}", userId, id);
+
         var existingUser = await _userService.GetUserByIdAsync(id);
         if (existingUser == null)
         {
             return NotFound($"Usuario con ID {id} no encontrado");
         }
 
-        // Si es Administracion y quiere modificar un Admin, bloquear
         if (User.IsInRole("Administracion") && existingUser.RoleName == "Admin")
         {
             return Forbid();
         }
 
-        // También bloquear si quiere cambiar el rol a Admin
         if (User.IsInRole("Administracion") && updateUserDto.RoleName == "Admin")
         {
             return Forbid();
@@ -125,20 +142,21 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// DELETE: api/users/{id}
-    /// - Administracion: NO puede eliminar usuarios Admin
+    /// Requiere permiso: usuarios.delete
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Policy = "AdminOrAdministracion")]
+    [RequirePermission("usuarios.delete")]
     public async Task<IActionResult> DeleteUser(string id)
     {
-        // ✅ Verificar si el usuario a eliminar es Admin
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _logger.LogInformation("✅ Usuario {UserId} eliminando usuario {TargetUserId}", userId, id);
+
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
             return NotFound($"Usuario con ID {id} no encontrado");
         }
 
-        // Si es Administracion y quiere eliminar un Admin, bloquear
         if (User.IsInRole("Administracion") && user.RoleName == "Admin")
         {
             return Forbid();
@@ -158,20 +176,21 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// POST: api/users/{id}/change-password
-    /// - Administracion: NO puede cambiar contraseña de usuarios Admin
+    /// Requiere permiso: usuarios.edit
     /// </summary>
     [HttpPost("{id}/change-password")]
-    [Authorize(Policy = "AdminOrAdministracion")]
+    [RequirePermission("usuarios.edit")]
     public async Task<IActionResult> ChangePassword(string id, ChangePasswordDto changePasswordDto)
     {
-        // ✅ Verificar si el usuario es Admin
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _logger.LogInformation("✅ Usuario {UserId} cambiando contraseña de {TargetUserId}", userId, id);
+
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
             return NotFound($"Usuario con ID {id} no encontrado");
         }
 
-        // Si es Administracion y quiere cambiar contraseña de Admin, bloquear
         if (User.IsInRole("Administracion") && user.RoleName == "Admin")
         {
             return Forbid();

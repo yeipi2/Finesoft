@@ -4,7 +4,7 @@
 @inject IReportApiService ReportApiService
 @inject NotificationService NotificationService
 
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "Admin,Administracion,Empleado,Supervisor")]
 
 <PageTitle>Finesoft - Reportes</PageTitle>
 

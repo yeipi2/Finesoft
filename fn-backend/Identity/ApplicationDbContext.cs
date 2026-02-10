@@ -13,13 +13,6 @@ namespace fs_backend.Identity
 
         public DbSet<Client> Clients { get; set; }
         public DbSet<Project> Projects { get; set; }
-
-        // CÓDIGO FUTURO - Tablas de servicios y actividades deshabilitadas
-        // Descomentar cuando se requiera reactivar estas funcionalidades
-        // public DbSet<Service> Services { get; set; }
-        // public DbSet<TypeService> TypeServices { get; set; }
-        // public DbSet<TypeActivity> TypeActivities { get; set; }
-
         public DbSet<Ticket> Tickets { get; set; }
         public DbSet<TicketComment> TicketComments { get; set; }
         public DbSet<TicketAttachment> TicketAttachments { get; set; }
@@ -37,39 +30,13 @@ namespace fs_backend.Identity
         {
             base.OnModelCreating(modelBuilder);
 
+            // ========== CONFIGURACIÓN DE RELACIONES ==========
+
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.Client)
                 .WithMany()
                 .HasForeignKey(p => p.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            // CÓDIGO FUTURO - Configuración de servicios y actividades deshabilitada
-            // Descomentar cuando se requiera reactivar estas funcionalidades
-            /*
-            modelBuilder.Entity<Service>()
-                .HasOne(s => s.Project)
-                .WithMany(p => p.Services)
-                .HasForeignKey(s => s.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<Service>()
-                .HasOne(s => s.TypeService)
-                .WithMany()
-                .HasForeignKey(s => s.TypeServiceId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Service>()
-                .HasOne(s => s.TypeActivity)
-                .WithMany()
-                .HasForeignKey(s => s.TypeActivityId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Ticket>()
-                .HasOne(t => t.Service)
-                .WithMany()
-                .HasForeignKey(t => t.ServiceId)
-                .OnDelete(DeleteBehavior.Restrict);
-            */
 
             modelBuilder.Entity<TicketComment>()
                 .HasOne(tc => tc.Ticket)
@@ -101,15 +68,6 @@ namespace fs_backend.Identity
                 .HasForeignKey(qi => qi.QuoteId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // CÓDIGO FUTURO - Relación QuoteItem con Service deshabilitada
-            /*
-            modelBuilder.Entity<QuoteItem>()
-                .HasOne(qi => qi.Service)
-                .WithMany()
-                .HasForeignKey(qi => qi.ServiceId)
-                .OnDelete(DeleteBehavior.Restrict);
-            */
-
             modelBuilder.Entity<Invoice>()
                 .HasOne(i => i.Client)
                 .WithMany()
@@ -127,15 +85,6 @@ namespace fs_backend.Identity
                 .WithMany(i => i.Items)
                 .HasForeignKey(ii => ii.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            // CÓDIGO FUTURO - Relación InvoiceItem con Service deshabilitada
-            /*
-            modelBuilder.Entity<InvoiceItem>()
-                .HasOne(ii => ii.Service)
-                .WithMany()
-                .HasForeignKey(ii => ii.ServiceId)
-                .OnDelete(DeleteBehavior.Restrict);
-            */
 
             modelBuilder.Entity<InvoiceItem>()
                 .HasOne(ii => ii.Ticket)
@@ -171,6 +120,7 @@ namespace fs_backend.Identity
                 entity.Property(p => p.Module).IsRequired().HasMaxLength(50);
                 entity.Property(p => p.Action).IsRequired().HasMaxLength(50);
                 entity.Property(p => p.Code).IsRequired().HasMaxLength(100);
+                entity.Property(p => p.Description).IsRequired().HasMaxLength(255);
                 entity.HasIndex(p => p.Code).IsUnique();
             });
 
@@ -185,6 +135,82 @@ namespace fs_backend.Identity
                 entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
             });
 
+            // ⭐ SEED DE PERMISOS - Esto insertará los permisos automáticamente
+            SeedPermissions(modelBuilder);
+        }
+
+        // ========== MÉTODO QUE INSERTA LOS 45 PERMISOS AUTOMÁTICAMENTE ==========
+        private void SeedPermissions(ModelBuilder builder)
+        {
+            var permissions = new List<Permission>();
+            int id = 1;
+
+            // ========== DASHBOARD (1 permiso) ==========
+            permissions.Add(new Permission
+            {
+                Id = id++,
+                Module = "Dashboard",
+                Action = "Ver",
+                Code = "dashboard.view",
+                Description = "Ver dashboard"
+            });
+
+            // ========== TICKETS (9 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Ver", Code = "tickets.view", Description = "Ver lista de tickets" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "VerDetalle", Code = "tickets.view_detail", Description = "Ver detalles de ticket" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Crear", Code = "tickets.create", Description = "Crear tickets" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Editar", Code = "tickets.edit", Description = "Editar tickets" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Eliminar", Code = "tickets.delete", Description = "Eliminar tickets" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Comentar", Code = "tickets.comment", Description = "Agregar comentarios" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Actividades", Code = "tickets.activity", Description = "Gestionar actividades" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Estadisticas", Code = "tickets.stats", Description = "Ver estadísticas" });
+            permissions.Add(new Permission { Id = id++, Module = "Tickets", Action = "Asignar", Code = "tickets.assign", Description = "Asignar tickets a usuarios" });
+
+            // ========== CLIENTES (5 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Ver", Code = "clients.view", Description = "Ver lista de clientes" });
+            permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "VerDetalle", Code = "clients.view_detail", Description = "Ver detalles de cliente" });
+            permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Crear", Code = "clients.create", Description = "Crear clientes" });
+            permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Editar", Code = "clients.edit", Description = "Editar clientes" });
+            permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Eliminar", Code = "clients.delete", Description = "Eliminar clientes" });
+
+            // ========== PROYECTOS (5 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "Ver", Code = "projects.view", Description = "Ver lista de proyectos" });
+            permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "VerDetalle", Code = "projects.view_detail", Description = "Ver detalles de proyecto" });
+            permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "Crear", Code = "projects.create", Description = "Crear proyectos" });
+            permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "Editar", Code = "projects.edit", Description = "Editar proyectos" });
+            permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "Eliminar", Code = "projects.delete", Description = "Eliminar proyectos" });
+
+            // ========== COTIZACIONES (6 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Cotizaciones", Action = "Ver", Code = "quotes.view", Description = "Ver lista de cotizaciones" });
+            permissions.Add(new Permission { Id = id++, Module = "Cotizaciones", Action = "VerDetalle", Code = "quotes.view_detail", Description = "Ver detalles de cotización" });
+            permissions.Add(new Permission { Id = id++, Module = "Cotizaciones", Action = "Crear", Code = "quotes.create", Description = "Crear cotizaciones" });
+            permissions.Add(new Permission { Id = id++, Module = "Cotizaciones", Action = "Editar", Code = "quotes.edit", Description = "Editar cotizaciones" });
+            permissions.Add(new Permission { Id = id++, Module = "Cotizaciones", Action = "Eliminar", Code = "quotes.delete", Description = "Eliminar cotizaciones" });
+            permissions.Add(new Permission { Id = id++, Module = "Cotizaciones", Action = "ConvertirFactura", Code = "quotes.convert", Description = "Convertir a factura" });
+
+            // ========== FACTURAS (6 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "Ver", Code = "invoices.view", Description = "Ver lista de facturas" });
+            permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "VerDetalle", Code = "invoices.view_detail", Description = "Ver detalles de factura" });
+            permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "Crear", Code = "invoices.create", Description = "Crear facturas" });
+            permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "Editar", Code = "invoices.edit", Description = "Editar facturas" });
+            permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "Eliminar", Code = "invoices.delete", Description = "Eliminar facturas" });
+            permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "RegistrarPago", Code = "invoices.payment", Description = "Registrar pagos" });
+
+            // ========== REPORTES (3 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "Ver", Code = "reports.view", Description = "Ver reportes" });
+            permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "Exportar", Code = "reports.export", Description = "Exportar reportes" });
+            permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "Financieros", Code = "reports.financial", Description = "Ver reportes financieros" });
+
+            // ========== USUARIOS (6 permisos) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "Ver", Code = "users.view", Description = "Ver lista de usuarios" });
+            permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "Crear", Code = "users.create", Description = "Crear usuarios" });
+            permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "Editar", Code = "users.edit", Description = "Editar usuarios" });
+            permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "Eliminar", Code = "users.delete", Description = "Eliminar usuarios" });
+            permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "CambiarPassword", Code = "users.change_password", Description = "Cambiar contraseñas" });
+            permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "AsignarRoles", Code = "users.assign_roles", Description = "Asignar roles" });
+
+            // Insertar todos los permisos en la base de datos
+            builder.Entity<Permission>().HasData(permissions);
         }
     }
 }
