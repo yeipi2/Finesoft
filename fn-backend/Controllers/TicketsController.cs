@@ -1,6 +1,6 @@
 ﻿using fs_backend.DTO;
 using fs_backend.Repositories;
-using fs_backend.Attributes; 
+using fs_backend.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -37,34 +37,37 @@ public class TicketsController : ControllerBase
     /// <summary>
     /// GET: api/tickets
     /// ⭐ REQUIERE: permiso "tickets.view"
-    /// - Admin: Tiene el permiso automáticamente (siempre puede)
-    /// - Otros roles: Solo si tienen el permiso asignado
+    /// - Admin/Administracion/Empleado: Ven TODOS los tickets
+    /// - Cliente: Solo ve sus tickets creados
     /// </summary>
     [HttpGet]
-    [RequirePermission("tickets.view")] // ⭐ VALIDACIÓN DE PERMISO
+    [RequirePermission("tickets.view")]
     public async Task<IActionResult> GetTickets(
         [FromQuery] string? status = null,
         [FromQuery] string? priority = null,
         [FromQuery] int? serviceId = null,
-        [FromQuery] string? userId = null)
+        [FromQuery] string? userId = null,
+        [FromQuery] bool byCreator = false)
     {
         var currentUserId = GetCurrentUserId();
 
-        // Si es Empleado, solo puede ver sus tickets asignados
-        if (IsInRole("Empleado"))
-        {
-            userId = currentUserId;
-        }
-
-        // Si es Cliente, solo puede ver tickets que él creó
+        // 🆕 Solo Cliente filtra por creador, los demás ven TODO
         if (IsInRole("Cliente"))
         {
             userId = currentUserId;
+            byCreator = true; // Cliente busca por creador
+        }
+        // Admin, Administracion, Empleado, Supervisor ven TODOS
+        else
+        {
+            userId = null; // Ver todos los tickets
+            byCreator = false;
         }
 
-        var tickets = await _ticketService.GetTicketsAsync(status, priority, serviceId, userId);
+        var tickets = await _ticketService.GetTicketsAsync(status, priority, serviceId, userId, byCreator);
 
-        _logger.LogInformation("✅ Usuario {UserId} obtuvo {Count} tickets", currentUserId, tickets.Count());
+        _logger.LogInformation("✅ Usuario {UserId} ({Role}) obtuvo {Count} tickets",
+            currentUserId, User.IsInRole("Cliente") ? "Cliente" : "Staff", tickets.Count());
 
         return Ok(tickets);
     }
@@ -85,15 +88,7 @@ public class TicketsController : ControllerBase
 
         var currentUserId = GetCurrentUserId();
 
-        // Si es Empleado, validar que el ticket esté asignado a él
-        if (IsInRole("Empleado") && ticket.AssignedToUserId != currentUserId)
-        {
-            _logger.LogWarning("⛔ Empleado {UserId} intentó acceder al ticket {TicketId} no asignado",
-                currentUserId, id);
-            return Forbid();
-        }
-
-        // Si es Cliente, validar que el ticket fue creado por él
+        // 🆕 Solo Cliente tiene restricción de acceso
         if (IsInRole("Cliente") && ticket.CreatedByUserId != currentUserId)
         {
             _logger.LogWarning("⛔ Cliente {UserId} intentó acceder al ticket {TicketId} de otro usuario",
@@ -101,6 +96,7 @@ public class TicketsController : ControllerBase
             return Forbid();
         }
 
+        // Admin, Administracion, Empleado, Supervisor pueden ver cualquier ticket
         return Ok(ticket);
     }
 
@@ -121,7 +117,7 @@ public class TicketsController : ControllerBase
         // Si es Cliente, LIMPIAR campos que no puede llenar
         if (IsInRole("Cliente"))
         {
-            ticketDto.ProjectId = 0;
+            ticketDto.ProjectId = null;
             ticketDto.ServiceId = 0;
             ticketDto.Status = "Abierto";
             ticketDto.Priority = "Media";
@@ -158,22 +154,8 @@ public class TicketsController : ControllerBase
             return Unauthorized(new { message = "Usuario no autenticado" });
         }
 
-        // Si es Empleado, validar que el ticket esté asignado a él
-        if (IsInRole("Empleado"))
-        {
-            var ticket = await _ticketService.GetTicketByIdAsync(id);
-            if (ticket == null)
-            {
-                return NotFound(new { message = "Ticket no encontrado" });
-            }
-
-            if (ticket.AssignedToUserId != userId)
-            {
-                _logger.LogWarning("⛔ Empleado {UserId} intentó editar ticket {TicketId} no asignado",
-                    userId, id);
-                return Forbid();
-            }
-        }
+        // 🆕 Empleado puede editar cualquier ticket (sin restricción)
+        // Solo Cliente tendría restricción pero Cliente no tiene permiso tickets.edit
 
         var result = await _ticketService.UpdateTicketAsync(id, ticketDto, userId);
         if (!result.Succeeded)
@@ -266,17 +248,24 @@ public class TicketsController : ControllerBase
     /// </summary>
     [HttpGet("stats")]
     [RequirePermission("tickets.stats")]
-    public async Task<IActionResult> GetTicketStats([FromQuery] string? userId = null)
+    public async Task<IActionResult> GetTicketStats([FromQuery] string? userId = null, [FromQuery] bool byCreator = false)
     {
         var currentUserId = GetCurrentUserId();
 
-        // Si es Empleado, solo puede ver sus propias estadísticas
-        if (IsInRole("Empleado"))
+        // 🆕 Solo Cliente filtra estadísticas
+        if (IsInRole("Cliente"))
         {
             userId = currentUserId;
+            byCreator = true;
+        }
+        else
+        {
+            // Admin, Administracion, Empleado, Supervisor ven estadísticas de TODO
+            userId = null;
+            byCreator = false;
         }
 
-        var stats = await _ticketService.GetTicketStatsAsync(userId);
+        var stats = await _ticketService.GetTicketStatsAsync(userId, byCreator);
 
         _logger.LogInformation("✅ Usuario {UserId} obtuvo estadísticas de tickets", currentUserId);
 
@@ -293,9 +282,6 @@ public class TicketsController : ControllerBase
     public async Task<IActionResult> AssignTicket(int id, [FromBody] AssignTicketDto dto)
     {
         var userId = GetCurrentUserId();
-
-        // Aquí iría la lógica de asignación (necesitarías implementarla en el servicio)
-        // Por ahora es un ejemplo
 
         _logger.LogInformation("✅ Usuario {UserId} asignó ticket #{TicketId} a {AssignedTo}",
             userId, id, dto.AssignedToUserId);
@@ -369,7 +355,6 @@ public class TicketsController : ControllerBase
             return Unauthorized(new { message = "Usuario no autenticado" });
         }
 
-        // ⭐ CAMBIO: Solo pasar ticketId y activityId (sin userId)
         var result = await _ticketService.DeleteActivityAsync(ticketId, activityId);
         if (!result.Succeeded)
         {
@@ -383,9 +368,6 @@ public class TicketsController : ControllerBase
     }
 }
 
-
-
-// DTO auxiliar para asignación
 public class AssignTicketDto
 {
     public string AssignedToUserId { get; set; } = string.Empty;

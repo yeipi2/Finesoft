@@ -330,14 +330,13 @@
         _currentUserId = await PermissionService.GetUserIdAsync();
         _currentRole = await PermissionService.GetRoleAsync();
 
-        // Lee desde claims del JWT
-        var permViewAll = await PermissionService.HasPermissionAsync("tickets.view_all");
         var permCreate = await PermissionService.HasPermissionAsync("tickets.create");
         var permEdit = await PermissionService.HasPermissionAsync("tickets.edit");
         var permDelete = await PermissionService.HasPermissionAsync("tickets.delete");
 
-        // Fallback por rol (por si los permisos aún no están sembrados en la BD)
-        _canViewAll = permViewAll || _currentRole is "Admin" or "Administracion" or "Supervisor";
+        // 🆕 CAMBIO: Admin, Administracion, Empleado, Supervisor ven todos
+        _canViewAll = _currentRole is "Admin" or "Administracion" or "Empleado" or "Supervisor";
+
         _canCreate = permCreate || _currentRole is "Admin" or "Administracion" or "Empleado" or "Cliente";
         _canEdit = permEdit || _currentRole is "Admin" or "Administracion" or "Empleado";
         _canDelete = permDelete || _currentRole is "Admin" or "Administracion";
@@ -348,7 +347,8 @@
         _isLoading = true;
         try
         {
-            var userId = _canViewAll ? null : _currentUserId;
+            // 🆕 CAMBIO: Solo Cliente tiene userId filtrado, los demás ven TODO
+            var userId = _currentRole == "Cliente" ? _currentUserId : null;
 
             var ticketsTask = TicketApiService.GetTicketsAsync(userId: userId);
             var statsTask = TicketApiService.GetTicketStatsAsync(userId);
@@ -374,13 +374,11 @@
 
         if (_currentRole == "Cliente")
         {
-            // Formulario simple: solo Título + Descripción
             result = await DialogService.OpenAsync<TicketFormCliente>("Crear Ticket",
                 options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
         }
         else
         {
-            // Formulario completo para Empleado, Admin, Administracion
             result = await DialogService.OpenAsync<TicketForm>("Crear Ticket",
                 options: new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
         }

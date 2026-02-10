@@ -19,8 +19,13 @@ public class TicketService : ITicketService
         _userManager = userManager;
     }
 
-    public async Task<IEnumerable<TicketDetailDto>> GetTicketsAsync(string? status = null, string? priority = null,
-        int? serviceId = null, string? userId = null)
+    // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator
+    public async Task<IEnumerable<TicketDetailDto>> GetTicketsAsync(
+        string? status = null,
+        string? priority = null,
+        int? serviceId = null,
+        string? userId = null,
+        bool byCreator = false)
     {
         var query = _context.Tickets
             .Include(t => t.Project)
@@ -40,9 +45,19 @@ public class TicketService : ITicketService
             query = query.Where(t => t.Priority == priority);
         }
 
+        // 🆕 Filtrar por userId según byCreator
         if (!string.IsNullOrEmpty(userId))
         {
-            query = query.Where(t => t.AssignedToUserId == userId);
+            if (byCreator)
+            {
+                // Filtrar por creador (Cliente)
+                query = query.Where(t => t.CreatedByUserId == userId);
+            }
+            else
+            {
+                // Filtrar por asignado (Empleado)
+                query = query.Where(t => t.AssignedToUserId == userId);
+            }
         }
 
         var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
@@ -76,11 +91,9 @@ public class TicketService : ITicketService
         return await MapToDetailDto(ticket);
     }
 
-    // ⭐⭐⭐ MÉTODO ACTUALIZADO - Reemplaza el método CreateTicketAsync completo ⭐⭐⭐
-
     public async Task<ServiceResult<TicketDetailDto>> CreateTicketAsync(TicketDto ticketDto, string createdByUserId)
     {
-        // ⭐ NUEVO: Solo validar proyecto si está presente
+        // Solo validar proyecto si está presente
         if (ticketDto.ProjectId.HasValue && ticketDto.ProjectId.Value > 0)
         {
             var projectExists = await _context.Projects.AnyAsync(p => p.Id == ticketDto.ProjectId.Value);
@@ -104,12 +117,9 @@ public class TicketService : ITicketService
         {
             Title = ticketDto.Title,
             Description = ticketDto.Description,
-
-            // ⭐ CAMBIO: ProjectId puede ser null
             ProjectId = ticketDto.ProjectId.HasValue && ticketDto.ProjectId.Value > 0
                 ? ticketDto.ProjectId.Value
                 : null,
-
             ServiceId = ticketDto.ServiceId > 0 ? ticketDto.ServiceId : null,
             Status = ticketDto.Status,
             Priority = ticketDto.Priority,
@@ -137,7 +147,7 @@ public class TicketService : ITicketService
 
         await _context.SaveChangesAsync();
 
-        // ⭐ CAMBIO: Cargar Project solo si existe
+        // Cargar Project solo si existe
         if (ticket.ProjectId.HasValue)
         {
             await _context.Entry(ticket)
@@ -331,13 +341,23 @@ public class TicketService : ITicketService
         });
     }
 
-    public async Task<TicketStatsDto> GetTicketStatsAsync(string? userId = null)
+    // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator
+    public async Task<TicketStatsDto> GetTicketStatsAsync(string? userId = null, bool byCreator = false)
     {
         var query = _context.Tickets.AsQueryable();
 
         if (!string.IsNullOrEmpty(userId))
         {
-            query = query.Where(t => t.AssignedToUserId == userId);
+            if (byCreator)
+            {
+                // Filtrar por creador (Cliente)
+                query = query.Where(t => t.CreatedByUserId == userId);
+            }
+            else
+            {
+                // Filtrar por asignado (Empleado)
+                query = query.Where(t => t.AssignedToUserId == userId);
+            }
         }
 
         var tickets = await query.ToListAsync();
@@ -523,8 +543,6 @@ public class TicketService : ITicketService
         return ServiceResult<bool>.Success(true);
     }
 
-    // ⭐⭐⭐ MÉTODO ACTUALIZADO - Reemplaza el método MapToDetailDto completo ⭐⭐⭐
-
     private async Task<TicketDetailDto> MapToDetailDto(Ticket ticket)
     {
         IdentityUser? assignedUser = null;
@@ -547,12 +565,9 @@ public class TicketService : ITicketService
             Description = ticket.Description,
             ServiceId = ticket.ServiceId ?? 0,
             ServiceName = string.Empty,
-
-            // ⭐ CAMBIO: Manejar ProjectId nullable
             ProjectId = ticket.ProjectId ?? 0,
             ProjectName = ticket.Project?.Name ?? "Sin asignar",
             ClientName = ticket.Project?.Client?.CompanyName ?? "Sin asignar",
-
             Status = ticket.Status,
             Priority = ticket.Priority,
             AssignedToUserId = ticket.AssignedToUserId,

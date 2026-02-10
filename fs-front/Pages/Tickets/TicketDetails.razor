@@ -411,11 +411,11 @@
         var permActivity = await PermissionService.HasPermissionAsync("tickets.activity");
         var permComment = await PermissionService.HasPermissionAsync("tickets.comment");
 
-        // Fallback por rol
-        _canEditTicket = permEdit || _currentRole is "Admin" or "Administracion" or "Empleado";
-        _canDeleteTicket = permDelete || _currentRole is "Admin" or "Administracion";
-        _canManageActivities = permActivity || _currentRole is "Admin" or "Empleado";
-        _canComment = permComment || _currentRole is "Admin" or "Administracion" or "Empleado" or "Supervisor";
+        // Solo usar fallback si NO existe el permiso en la base de datos
+        _canEditTicket = permEdit;
+        _canDeleteTicket = permDelete;
+        _canManageActivities = permActivity;
+        _canComment = permComment;
     }
 
     private async Task CheckAccess()
