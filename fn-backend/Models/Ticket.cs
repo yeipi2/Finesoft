@@ -8,11 +8,11 @@ public class Ticket
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
-    // RELACIÓN DIRECTA CON PROYECTO (nuevo)
-    public int ProjectId { get; set; }
+    // ⭐ CAMBIO: ProjectId ahora es NULLABLE para permitir tickets sin proyecto
+    public int? ProjectId { get; set; }
     public Project? Project { get; set; }
 
-    // ServiceId ahora es nullable y opcional
+    // ServiceId también nullable (ya lo tenías así)
     public int? ServiceId { get; set; }
 
     public string Status { get; set; } = string.Empty;

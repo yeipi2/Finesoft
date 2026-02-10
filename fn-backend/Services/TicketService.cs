@@ -76,15 +76,21 @@ public class TicketService : ITicketService
         return await MapToDetailDto(ticket);
     }
 
+    // ⭐⭐⭐ MÉTODO ACTUALIZADO - Reemplaza el método CreateTicketAsync completo ⭐⭐⭐
+
     public async Task<ServiceResult<TicketDetailDto>> CreateTicketAsync(TicketDto ticketDto, string createdByUserId)
     {
-        // Validar que el proyecto existe
-        var projectExists = await _context.Projects.AnyAsync(p => p.Id == ticketDto.ProjectId);
-        if (!projectExists)
+        // ⭐ NUEVO: Solo validar proyecto si está presente
+        if (ticketDto.ProjectId.HasValue && ticketDto.ProjectId.Value > 0)
         {
-            return ServiceResult<TicketDetailDto>.Failure("El proyecto especificado no existe");
+            var projectExists = await _context.Projects.AnyAsync(p => p.Id == ticketDto.ProjectId.Value);
+            if (!projectExists)
+            {
+                return ServiceResult<TicketDetailDto>.Failure("El proyecto especificado no existe");
+            }
         }
 
+        // Validar usuario asignado (si existe)
         if (!string.IsNullOrEmpty(ticketDto.AssignedToUserId))
         {
             var userExists = await _userManager.FindByIdAsync(ticketDto.AssignedToUserId);
@@ -98,7 +104,12 @@ public class TicketService : ITicketService
         {
             Title = ticketDto.Title,
             Description = ticketDto.Description,
-            ProjectId = ticketDto.ProjectId,
+
+            // ⭐ CAMBIO: ProjectId puede ser null
+            ProjectId = ticketDto.ProjectId.HasValue && ticketDto.ProjectId.Value > 0
+                ? ticketDto.ProjectId.Value
+                : null,
+
             ServiceId = ticketDto.ServiceId > 0 ? ticketDto.ServiceId : null,
             Status = ticketDto.Status,
             Priority = ticketDto.Priority,
@@ -116,7 +127,9 @@ public class TicketService : ITicketService
             Ticket = ticket,
             UserId = createdByUserId,
             Action = "Created",
-            NewValue = "Ticket creado",
+            NewValue = ticket.ProjectId.HasValue
+                ? "Ticket creado"
+                : "Ticket creado (pendiente de clasificar)",
             ChangedAt = DateTime.UtcNow
         };
 
@@ -124,11 +137,15 @@ public class TicketService : ITicketService
 
         await _context.SaveChangesAsync();
 
-        await _context.Entry(ticket)
-            .Reference(t => t.Project)
-            .Query()
-            .Include(p => p.Client)
-            .LoadAsync();
+        // ⭐ CAMBIO: Cargar Project solo si existe
+        if (ticket.ProjectId.HasValue)
+        {
+            await _context.Entry(ticket)
+                .Reference(t => t.Project)
+                .Query()
+                .Include(p => p.Client)
+                .LoadAsync();
+        }
 
         return ServiceResult<TicketDetailDto>.Success(await MapToDetailDto(ticket));
     }
@@ -506,6 +523,8 @@ public class TicketService : ITicketService
         return ServiceResult<bool>.Success(true);
     }
 
+    // ⭐⭐⭐ MÉTODO ACTUALIZADO - Reemplaza el método MapToDetailDto completo ⭐⭐⭐
+
     private async Task<TicketDetailDto> MapToDetailDto(Ticket ticket)
     {
         IdentityUser? assignedUser = null;
@@ -528,9 +547,12 @@ public class TicketService : ITicketService
             Description = ticket.Description,
             ServiceId = ticket.ServiceId ?? 0,
             ServiceName = string.Empty,
-            ProjectId = ticket.ProjectId,
-            ProjectName = ticket.Project?.Name ?? string.Empty,
-            ClientName = ticket.Project?.Client?.CompanyName ?? string.Empty,
+
+            // ⭐ CAMBIO: Manejar ProjectId nullable
+            ProjectId = ticket.ProjectId ?? 0,
+            ProjectName = ticket.Project?.Name ?? "Sin asignar",
+            ClientName = ticket.Project?.Client?.CompanyName ?? "Sin asignar",
+
             Status = ticket.Status,
             Priority = ticket.Priority,
             AssignedToUserId = ticket.AssignedToUserId,
@@ -544,7 +566,6 @@ public class TicketService : ITicketService
             ActualHours = ticket.ActualHours,
             HourlyRate = 0,
 
-            // ⭐ MAPEAR LOS COMENTARIOS
             Comments = ticket.Comments?.Select(c => new TicketCommentDto
             {
                 Id = c.Id,
@@ -555,16 +576,13 @@ public class TicketService : ITicketService
                 CreatedAt = c.CreatedAt
             }).ToList() ?? new List<TicketCommentDto>(),
 
-            // ⭐ MAPEAR LOS ATTACHMENTS
             Attachments = ticket.Attachments?.Select(a => new TicketAttachmentDto
             {
                 Id = a.Id,
                 FileName = a.FileName,
-               
                 UploadedAt = a.UploadedAt
             }).ToList() ?? new List<TicketAttachmentDto>(),
 
-            // ⭐ MAPEAR EL HISTORIAL
             History = ticket.History?.Select(h => new TicketHistoryDto
             {
                 Id = h.Id,
@@ -575,7 +593,6 @@ public class TicketService : ITicketService
                 ChangedAt = h.ChangedAt
             }).ToList() ?? new List<TicketHistoryDto>(),
 
-            // ⭐⭐⭐ AGREGAR ESTE MAPEO DE ACTIVIDADES ⭐⭐⭐
             Activities = ticket.Activities?.Select(a => new TicketActivityDto
             {
                 Id = a.Id,

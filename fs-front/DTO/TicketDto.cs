@@ -4,7 +4,7 @@ namespace fs_front.DTO;
 
 public class TicketDto
 {
-    public int Id { get; set; } // Cambiado de nullable a int normal
+    public int Id { get; set; }
 
     [Required(ErrorMessage = "El título es obligatorio")]
     public string Title { get; set; } = string.Empty;
@@ -12,13 +12,12 @@ public class TicketDto
     [Required(ErrorMessage = "La descripción es obligatoria")]
     public string Description { get; set; } = string.Empty;
 
-    // AGREGAR ProjectId (que faltaba)
-    [Required(ErrorMessage = "El proyecto es obligatorio")]
-    [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar un proyecto válido")]
-    public int ProjectId { get; set; }
+    // ⭐ CAMBIO: ProjectId ahora es NULLABLE
+    // Sin [Required] para permitir que Cliente lo deje vacío
+    public int? ProjectId { get; set; }
 
-    // ServiceId ahora es opcional (ya no lo usas)
-    public int ServiceId { get; set; } = 0;
+    // ServiceId opcional
+    public int? ServiceId { get; set; }
 
     [Required(ErrorMessage = "El estado es obligatorio")]
     public string Status { get; set; } = "Abierto";

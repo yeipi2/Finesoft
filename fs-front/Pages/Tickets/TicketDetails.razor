@@ -18,8 +18,11 @@
     {
         <div class="alert alert-danger">
             <i class="bi bi-exclamation-triangle"></i>
-            No tienes permiso para ver este ticket. Solo el usuario asignado y los administradores pueden acceder.
+            No tienes permiso para ver este ticket.
         </div>
+        <button class="btn btn-secondary mt-2" @onclick="GoBack">
+            <i class="bi bi-arrow-left"></i> Volver
+        </button>
     }
     else if (_ticket != null)
     {
@@ -27,9 +30,7 @@
             <div class="col">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="/tickets">Tickets</a>
-                        </li>
+                        <li class="breadcrumb-item"><a href="/tickets">Tickets</a></li>
                         <li class="breadcrumb-item active">Ticket #@_ticket.Id</li>
                     </ol>
                 </nav>
@@ -61,23 +62,28 @@
                             <span class="badge @statusClass fs-6">@_ticket.Status</span>
                         </div>
                     </div>
-                    @if (_isAdmin)
-                    {
-                        <div>
-                            <button class="btn btn-primary me-2" @onclick="EditTicket">
+
+                    <div class="d-flex gap-2">
+                        @if (_canEditTicket)
+                        {
+                            <button class="btn btn-primary" @onclick="EditTicket">
                                 <i class="bi bi-pencil-fill"></i> Editar
                             </button>
+                        }
+                        @if (_canDeleteTicket)
+                        {
                             <button class="btn btn-danger" @onclick="ConfirmDelete">
                                 <i class="bi bi-trash-fill"></i> Eliminar
                             </button>
-                        </div>
-                    }
+                        }
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="row">
             <div class="col-lg-8">
+
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0"><i class="bi bi-info-circle"></i> Descripción</h5>
@@ -87,78 +93,80 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN DE ACTIVIDADES -->
-                <div class="card mb-4">
-                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="bi bi-list-task"></i> Actividades a Realizar
-                            (@(_ticket.Activities?.Count(a => !a.IsCompleted) ?? 0) pendientes)
-                        </h5>
-                        <button class="btn btn-sm btn-dark" @onclick="ShowAddActivityModal">
-                            <i class="bi bi-plus-lg"></i> Agregar Actividad
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        @if (_ticket.Activities != null && _ticket.Activities.Any())
-                        {
-                            <div class="list-group">
-                                @foreach (var activity in _ticket.Activities.OrderBy(a => a.IsCompleted).ThenBy(a => a.CreatedAt))
-                                {
-                                    <div class="list-group-item @(activity.IsCompleted ? "bg-light" : "")">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex align-items-center gap-2 mb-2">
-                                                    @if (activity.IsCompleted)
-                                                    {
-                                                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                                                        <span class="text-decoration-line-through text-muted">@activity.Description</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <i class="bi bi-circle text-muted"></i>
-                                                        <strong>@activity.Description</strong>
-                                                    }
+                @if (_canManageActivities)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-list-task"></i> Actividades a Realizar
+                                (@(_ticket.Activities?.Count(a => !a.IsCompleted) ?? 0) pendientes)
+                            </h5>
+                            <button class="btn btn-sm btn-dark" @onclick="ShowAddActivityModal">
+                                <i class="bi bi-plus-lg"></i> Agregar Actividad
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            @if (_ticket.Activities != null && _ticket.Activities.Any())
+                            {
+                                <div class="list-group">
+                                    @foreach (var activity in _ticket.Activities.OrderBy(a => a.IsCompleted).ThenBy(a => a.CreatedAt))
+                                    {
+                                        <div class="list-group-item @(activity.IsCompleted ? "bg-light" : "")">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                                        @if (activity.IsCompleted)
+                                                        {
+                                                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                                            <span class="text-decoration-line-through text-muted">@activity.Description</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="bi bi-circle text-muted"></i>
+                                                            <strong>@activity.Description</strong>
+                                                        }
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-clock"></i> @activity.HoursSpent.ToString("0.00")h
+                                                        | <i class="bi bi-person"></i> @activity.CreatedByUserName
+                                                        @if (activity.IsCompleted && activity.CompletedAt.HasValue)
+                                                        {
+                                                            <span> | Completada: @activity.CompletedAt.Value.ToString("dd/MM/yyyy")</span>
+                                                        }
+                                                    </small>
                                                 </div>
-                                                <small class="text-muted">
-                                                    <i class="bi bi-clock"></i> @activity.HoursSpent.ToString("0.00")h
-                                                    | <i class="bi bi-person"></i> @activity.CreatedByUserName
-                                                    @if (activity.IsCompleted && activity.CompletedAt.HasValue)
+                                                <div class="d-flex gap-1">
+                                                    @if (!activity.IsCompleted)
                                                     {
-                                                        <span> | Completada: @activity.CompletedAt.Value.ToString("dd/MM/yyyy")</span>
+                                                        <button class="btn btn-sm btn-success"
+                                                                @onclick="() => CompleteActivity(activity.Id)"
+                                                                title="Marcar como completada">
+                                                            <i class="bi bi-check-lg"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-primary"
+                                                                @onclick="() => ShowEditActivityModal(activity)"
+                                                                title="Editar">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
                                                     }
-                                                </small>
-                                            </div>
-                                            <div class="d-flex gap-1">
-                                                @if (!activity.IsCompleted)
-                                                {
-                                                    <button class="btn btn-sm btn-success"
-                                                            @onclick="() => CompleteActivity(activity.Id)"
-                                                            title="Marcar como completada">
-                                                        <i class="bi bi-check-lg"></i>
+                                                    <button class="btn btn-sm btn-danger"
+                                                            @onclick="() => ConfirmDeleteActivity(activity)"
+                                                            title="Eliminar">
+                                                        <i class="bi bi-trash"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-primary"
-                                                            @onclick="() => ShowEditActivityModal(activity)"
-                                                            title="Editar">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </button>
-                                                }
-                                                <button class="btn btn-sm btn-danger"
-                                                        @onclick="() => ConfirmDeleteActivity(activity)"
-                                                        title="Eliminar">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center py-3">No hay actividades registradas.</p>
-                        }
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted text-center py-3">No hay actividades registradas.</p>
+                            }
+                        </div>
                     </div>
-                </div>
+                }
 
                 <div class="card mb-4">
                     <div class="card-header bg-success text-white">
@@ -191,16 +199,17 @@
                             <p class="text-muted text-center py-3">No hay comentarios aún.</p>
                         }
 
-                        <div class="mt-4">
-                            <EditForm Model="_newComment" OnValidSubmit="AddComment">
-                                <DataAnnotationsValidator />
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Agregar Comentario</label>
-                                    <InputTextArea class="form-control" rows="3" @bind-Value="_newComment.Comment"
-                                                   placeholder="Escribe tu comentario aquí..." />
-                                    <ValidationMessage For="@(() => _newComment.Comment)" />
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
+                        @if (_canComment)
+                        {
+                            <div class="mt-4">
+                                <EditForm Model="_newComment" OnValidSubmit="AddComment">
+                                    <DataAnnotationsValidator />
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Agregar Comentario</label>
+                                        <InputTextArea class="form-control" rows="3" @bind-Value="_newComment.Comment"
+                                                       placeholder="Escribe tu comentario aquí..." />
+                                        <ValidationMessage For="@(() => _newComment.Comment)" />
+                                    </div>
                                     <button type="submit" class="btn btn-primary" disabled="@_isAddingComment">
                                         @if (_isAddingComment)
                                         {
@@ -208,9 +217,9 @@
                                         }
                                         <i class="bi bi-send"></i> Agregar Comentario
                                     </button>
-                                </div>
-                            </EditForm>
-                        </div>
+                                </EditForm>
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -221,41 +230,36 @@
                     <div class="card-body">
                         @if (_ticket.History != null && _ticket.History.Any())
                         {
-                            <div class="timeline">
-                                @foreach (var history in _ticket.History)
-                                {
-                                    <div class="mb-3">
-                                        <div class="d-flex gap-2 align-items-start">
-                                            <i class="bi bi-circle-fill text-primary"
-                                               style="font-size: 0.5rem; margin-top: 0.5rem;"></i>
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex justify-content-between align-items-start">
-                                                    <div>
-                                                        <strong>@history.UserName</strong>
-                                                        <span class="text-muted"> - @history.Action</span>
-                                                    </div>
-                                                    <small class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                            @foreach (var history in _ticket.History)
+                            {
+                                <div class="mb-3">
+                                    <div class="d-flex gap-2 align-items-start">
+                                        <i class="bi bi-circle-fill text-primary" style="font-size: 0.5rem; margin-top: 0.5rem;"></i>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <strong>@history.UserName</strong>
+                                                    <span class="text-muted"> - @history.Action</span>
                                                 </div>
-                                                @if (!string.IsNullOrEmpty(history.OldValue) || !string.IsNullOrEmpty(history.NewValue))
-                                                {
-                                                    <small class="text-muted">
-                                                        @if (!string.IsNullOrEmpty(history.OldValue))
-                                                        {
-                                                            <span>
-                                                                De: <span class="text-decoration-line-through">@history.OldValue</span>
-                                                            </span>
-                                                        }
-                                                        @if (!string.IsNullOrEmpty(history.NewValue))
-                                                        {
-                                                            <span> A: <strong>@history.NewValue</strong></span>
-                                                        }
-                                                    </small>
-                                                }
+                                                <small class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
                                             </div>
+                                            @if (!string.IsNullOrEmpty(history.OldValue) || !string.IsNullOrEmpty(history.NewValue))
+                                            {
+                                                <small class="text-muted">
+                                                    @if (!string.IsNullOrEmpty(history.OldValue))
+                                                    {
+                                                        <span>De: <span class="text-decoration-line-through">@history.OldValue</span></span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(history.NewValue))
+                                                    {
+                                                        <span> A: <strong>@history.NewValue</strong></span>
+                                                    }
+                                                </small>
+                                            }
                                         </div>
                                     </div>
-                                }
-                            </div>
+                                </div>
+                            }
                         }
                         else
                         {
@@ -263,6 +267,7 @@
                         }
                     </div>
                 </div>
+
             </div>
 
             <div class="col-lg-4">
@@ -279,11 +284,6 @@
                             <small class="text-muted">Proyecto</small>
                             <div class="fw-bold">@_ticket.ProjectName</div>
                         </div>
-@*                         <div>
-                            <small class="text-muted">Servicio</small>
-                            <div class="fw-bold">@_ticket.ServiceName</div>
-                            <small class="text-muted">$@_ticket.HourlyRate.ToString("N2")/hora</small>
-                        </div> *@
                     </div>
                 </div>
 
@@ -335,16 +335,12 @@
                         <div class="mb-3">
                             <small class="text-muted">Horas Estimadas</small>
                             <div class="h4 mb-0">@_ticket.EstimatedHours.ToString("0.00")h</div>
-                            <small class="text-muted">
-                                Costo: $@((_ticket.EstimatedHours * _ticket.HourlyRate).ToString("N2"))
-                            </small>
+                            <small class="text-muted">Costo: $@((_ticket.EstimatedHours * _ticket.HourlyRate).ToString("N2"))</small>
                         </div>
                         <div>
                             <small class="text-muted">Horas Reales</small>
                             <div class="h4 mb-0 text-success">@_ticket.ActualHours.ToString("0.00")h</div>
-                            <small class="text-muted">
-                                Costo: $@((_ticket.ActualHours * _ticket.HourlyRate).ToString("N2"))
-                            </small>
+                            <small class="text-muted">Costo: $@((_ticket.ActualHours * _ticket.HourlyRate).ToString("N2"))</small>
                         </div>
                         @if (_ticket.ActualHours > _ticket.EstimatedHours)
                         {
@@ -381,7 +377,7 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
-@inject AuthenticationStateProvider AuthStateProvider
+@inject fs_front.Services.PermissionService PermissionService
 
 @code {
     [Parameter] public int TicketId { get; set; }
@@ -391,16 +387,35 @@
     private bool _isLoading = false;
     private bool _isAddingComment = false;
     private bool _hasAccess = false;
-    private bool _isAdmin = false;
     private string? _currentUserId;
+    private string? _currentRole;
+
+    private bool _canEditTicket = false;
+    private bool _canDeleteTicket = false;
+    private bool _canManageActivities = false;
+    private bool _canComment = false;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadPermissions();
         await CheckAccess();
-        if (_hasAccess)
-        {
-            await LoadTicket();
-        }
+    }
+
+    private async Task LoadPermissions()
+    {
+        _currentUserId = await PermissionService.GetUserIdAsync();
+        _currentRole = await PermissionService.GetRoleAsync();
+
+        var permEdit = await PermissionService.HasPermissionAsync("tickets.edit");
+        var permDelete = await PermissionService.HasPermissionAsync("tickets.delete");
+        var permActivity = await PermissionService.HasPermissionAsync("tickets.activity");
+        var permComment = await PermissionService.HasPermissionAsync("tickets.comment");
+
+        // Fallback por rol
+        _canEditTicket = permEdit || _currentRole is "Admin" or "Administracion" or "Empleado";
+        _canDeleteTicket = permDelete || _currentRole is "Admin" or "Administracion";
+        _canManageActivities = permActivity || _currentRole is "Admin" or "Empleado";
+        _canComment = permComment || _currentRole is "Admin" or "Administracion" or "Empleado" or "Supervisor";
     }
 
     private async Task CheckAccess()
@@ -408,25 +423,19 @@
         _isLoading = true;
         try
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
+            var ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
 
-            if (user.Identity?.IsAuthenticated == true)
+            if (ticket != null)
             {
-                _currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-                _isAdmin = role == "Admin";
+                var permViewDetail = await PermissionService.HasPermissionAsync("tickets.view_detail");
+                var roleCanViewAll = _currentRole is "Admin" or "Administracion" or "Supervisor";
 
-                // Cargar el ticket para verificar acceso
-                var ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
+                _hasAccess = permViewDetail
+                             || roleCanViewAll
+                             || ticket.AssignedToUserId == _currentUserId
+                             || ticket.CreatedByUserId == _currentUserId;
 
-                if (ticket != null)
-                {
-                    // Admin tiene acceso a todo
-                    // Usuario asignado tiene acceso
-                    _hasAccess = _isAdmin || ticket.AssignedToUserId == _currentUserId;
-                    _ticket = ticket;
-                }
+                _ticket = ticket;
             }
         }
         catch (Exception ex)
@@ -472,24 +481,18 @@
         </div>
         <div class="mb-3">
             <label class="form-label fw-bold">Horas Estimadas *</label>
-            <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent"
-                         placeholder="0.00" step="0.25" />
+            <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent" placeholder="0.00" step="0.25" />
             <ValidationMessage For="@(() => newActivity.HoursSpent)" />
         </div>
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-plus-lg"></i> Agregar
-            </button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Agregar</button>
         </div>
     </EditForm>
 </div>
         , new DialogOptions { Width = "600px" });
 
-        if (result == true)
-        {
-            await LoadTicket();
-        }
+        if (result == true) await LoadTicket();
     }
 
     private async Task AddActivity(TicketActivityDto activity, DialogService ds)
@@ -539,18 +542,13 @@
         </div>
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check-lg"></i> Actualizar
-            </button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Actualizar</button>
         </div>
     </EditForm>
 </div>
         , new DialogOptions { Width = "600px" });
 
-        if (result == true)
-        {
-            await LoadTicket();
-        }
+        if (result == true) await LoadTicket();
     }
 
     private async Task UpdateActivity(TicketActivityDto activity, DialogService ds)
@@ -577,18 +575,11 @@
     private async Task ConfirmDeleteActivity(TicketActivityDto activity)
     {
         var confirmed = await DialogService.Confirm(
-            $"¿Está seguro que desea eliminar esta actividad?{(activity.IsCompleted ? " (Las horas ya sumadas serán restadas del total)" : "")}",
+            $"¿Está seguro que desea eliminar esta actividad?{(activity.IsCompleted ? " (Las horas sumadas serán restadas del total)" : "")}",
             "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
 
-        if (confirmed == true)
-        {
-            await DeleteActivity(activity.Id);
-        }
+        if (confirmed == true) await DeleteActivity(activity.Id);
     }
 
     private async Task DeleteActivity(int activityId)
@@ -617,11 +608,7 @@
         var confirmed = await DialogService.Confirm(
             "¿Marcar esta actividad como completada? Las horas se sumarán al total de horas reales del ticket.",
             "Confirmar Completar",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, completar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions { OkButtonText = "Sí, completar", CancelButtonText = "Cancelar" });
 
         if (confirmed == true)
         {
@@ -674,41 +661,23 @@
 
     private async Task EditTicket()
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "TicketId", TicketId }
-        };
+        var parameters = new Dictionary<string, object> { { "TicketId", TicketId } };
 
         var result = await DialogService.OpenAsync<TicketForm>("Editar Ticket",
             parameters,
-            new DialogOptions()
-            {
-                Width = "800px",
-                Resizable = false,
-                Draggable = false
-            });
+            new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
 
-        if (result == true)
-        {
-            await LoadTicket();
-        }
+        if (result == true) await LoadTicket();
     }
 
     private async Task ConfirmDelete()
     {
         var confirmed = await DialogService.Confirm(
-            $"¿Está seguro que desea eliminar este ticket?",
+            "¿Está seguro que desea eliminar este ticket?",
             "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
 
-        if (confirmed == true)
-        {
-            await DeleteTicket();
-        }
+        if (confirmed == true) await DeleteTicket();
     }
 
     private async Task DeleteTicket()
@@ -732,10 +701,7 @@
         }
     }
 
-    private void GoBack()
-    {
-        NavigationManager.NavigateTo("/tickets");
-    }
+    private void GoBack() => NavigationManager.NavigateTo("/tickets");
 
     private void ShowNotification(string title, string message, NotificationSeverity severity)
     {

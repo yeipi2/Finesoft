@@ -1,0 +1,108 @@
+﻿@using fs_front.DTO
+
+<section class="container px-0">
+    <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-info-circle-fill fs-5"></i>
+        <span>Describe tu solicitud o problema. Nuestro equipo lo revisará y asignará al área correspondiente.</span>
+    </div>
+
+    <EditForm Model="_ticketDto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="alert alert-danger" />
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Title" class="form-label fw-bold small">Título *</label>
+                    <InputText id="Title" class="form-control"
+                               placeholder="Ej: No puedo acceder al sistema de facturación"
+                               @bind-Value="_ticketDto.Title" />
+                    <ValidationMessage For="@(() => _ticketDto.Title)" />
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="Description" class="form-label fw-bold small">Descripción *</label>
+                    <InputTextArea id="Description" class="form-control" rows="5"
+                                   placeholder="Describe detalladamente el problema o solicitud. Incluye cuándo ocurrió, qué estabas haciendo y cualquier mensaje de error que hayas visto..."
+                                   @bind-Value="_ticketDto.Description" />
+                    <ValidationMessage For="@(() => _ticketDto.Description)" />
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                <i class="bi bi-send"></i> Enviar Solicitud
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3">@_errorMessage</div>
+        }
+    </EditForm>
+</section>
+
+@inject ITicketApiService TicketApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    private TicketDto _ticketDto = new()
+    {
+        Status = "Abierto",
+        Priority = "Media",
+        ProjectId = null,  // ⭐ CAMBIO: null en lugar de 0
+        ServiceId = null
+    };
+
+    private bool _isSaving = false;
+    private string? _errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await TicketApiService.CreateTicketAsync(_ticketDto);
+            if (result.Success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Solicitud enviada",
+                    Detail = "Tu ticket ha sido creado. Nuestro equipo lo clasificará y te notificará sobre su avance.",
+                    Duration = 5000
+                });
+                DialogService.Close(true);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "No se pudo crear el ticket.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al enviar la solicitud: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+}

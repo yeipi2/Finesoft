@@ -264,7 +264,7 @@ namespace fs_backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Clients");
+                    b.ToTable("Clients", (string)null);
                 });
 
             modelBuilder.Entity("fn_backend.Models.Project", b =>
@@ -293,7 +293,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("ClientId");
 
-                    b.ToTable("Projects");
+                    b.ToTable("Projects", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.Invoice", b =>
@@ -358,7 +358,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("QuoteId");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.InvoiceItem", b =>
@@ -394,7 +394,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("InvoiceItems");
+                    b.ToTable("InvoiceItems", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.InvoicePayment", b =>
@@ -434,7 +434,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("InvoiceId");
 
-                    b.ToTable("InvoicePayments");
+                    b.ToTable("InvoicePayments", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.Permission", b =>
@@ -469,7 +469,7 @@ namespace fs_backend.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Permissions");
+                    b.ToTable("Permissions", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.Quote", b =>
@@ -518,7 +518,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("ClientId");
 
-                    b.ToTable("Quotes");
+                    b.ToTable("Quotes", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.QuoteItem", b =>
@@ -549,7 +549,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("QuoteId");
 
-                    b.ToTable("QuoteItems");
+                    b.ToTable("QuoteItems", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.RolePermission", b =>
@@ -574,7 +574,7 @@ namespace fs_backend.Migrations
                     b.HasIndex("RoleId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.Ticket", b =>
@@ -633,7 +633,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Tickets");
+                    b.ToTable("Tickets", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.TicketActivity", b =>
@@ -673,7 +673,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("TicketActivities");
+                    b.ToTable("TicketActivities", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.TicketAttachment", b =>
@@ -713,7 +713,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("TicketAttachments");
+                    b.ToTable("TicketAttachments", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.TicketComment", b =>
@@ -745,7 +745,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("TicketComments");
+                    b.ToTable("TicketComments", (string)null);
                 });
 
             modelBuilder.Entity("fs_backend.Models.TicketHistory", b =>
@@ -780,7 +780,7 @@ namespace fs_backend.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("TicketHistories");
+                    b.ToTable("TicketHistories", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

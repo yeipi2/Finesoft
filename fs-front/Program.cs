@@ -52,6 +52,7 @@ builder.Services.AddScoped<IQuoteApiService, QuoteApiService>();
 builder.Services.AddScoped<IInvoiceApiService, InvoiceApiService>();
 builder.Services.AddScoped<IReportApiService, ReportApiService>();
 builder.Services.AddScoped<IPermissionApiService, PermissionApiService>();
+builder.Services.AddScoped<fs_front.Services.PermissionService>();
 
 // 8) Habilitar LocalStorage para guardar datos en el navegador.
 builder.Services.AddBlazoredLocalStorage();

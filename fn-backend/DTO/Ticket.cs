@@ -6,8 +6,13 @@ public class TicketDto
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
-    public int ProjectId { get; set; } // Ahora usa ProjectId directamente
-    public int ServiceId { get; set; } // Mantén esto para compatibilidad pero será opcional
+    // ⭐ CAMBIO: ProjectId ahora es NULLABLE
+    // - Cliente: puede enviarlo como null
+    // - Empleado/Admin: debe enviarlo obligatoriamente
+    public int? ProjectId { get; set; }
+
+    // ServiceId opcional
+    public int? ServiceId { get; set; }
 
     public string Status { get; set; } = "Abierto";
     public string Priority { get; set; } = "Media";

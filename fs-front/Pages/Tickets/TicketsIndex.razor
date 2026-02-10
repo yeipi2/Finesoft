@@ -2,8 +2,7 @@
 @using fs_front.DTO
 @using Microsoft.AspNetCore.Components.Authorization
 
-@* ⭐ CAMBIO 1: Actualizar roles (quitar "User", agregar los 5 roles reales) *@
-@attribute [Authorize(Roles = "Admin,Administracion,Empleado,Supervisor,Cliente")]
+@attribute [Authorize]
 
 <PageTitle>Finesoft - Tickets</PageTitle>
 
@@ -14,7 +13,6 @@
                 <i class="bi bi-ticket-perforated fs-1 text-primary me-3"></i>
                 <div>
                     <p class="display-6 fw-bolder mb-2">
-                        @* ⭐ CAMBIO 2: Actualizar el título según el rol *@
                         @if (_canViewAll)
                         {
                             <span>Sistema de Tickets</span>
@@ -40,7 +38,6 @@
                     </p>
                 </div>
             </div>
-            @* ⭐ CAMBIO 3: Mostrar botón según permisos, no solo si es Admin *@
             @if (_canCreate)
             {
                 <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
@@ -115,7 +112,6 @@
                 <input type="text" class="form-control" placeholder="Buscar tickets..."
                        @bind="_searchText" @bind:event="oninput" />
             </div>
-
             <div class="col-md-2">
                 <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
                     <option value="">Todos los estados</option>
@@ -125,7 +121,6 @@
                     <option value="Cerrado">Cerrado</option>
                 </select>
             </div>
-
             <div class="col-md-2">
                 <select class="form-select" @bind="_priorityFilter" @bind:event="onchange">
                     <option value="">Todas las prioridades</option>
@@ -135,7 +130,6 @@
                     <option value="Urgente">Urgente</option>
                 </select>
             </div>
-
             <div class="col-md-4 d-flex justify-content-end">
                 <button class="btn btn-outline-secondary" @onclick="ClearFilters">
                     <i class="bi bi-x-circle"></i> Limpiar Filtros
@@ -163,7 +157,6 @@
                             <th>Cliente / Proyecto</th>
                             <th>Prioridad</th>
                             <th>Estado</th>
-                            @* ⭐ CAMBIO 4: Usar _canViewAll en lugar de _isAdmin *@
                             @if (_canViewAll)
                             {
                                 <th>Asignado a</th>
@@ -172,7 +165,6 @@
                             <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
-
                     <tbody>
                         @if (_filteredTickets.Any())
                         {
@@ -180,19 +172,16 @@
                             {
                                 <tr>
                                     <td class="fw-bold">#@ticket.Id</td>
-
                                     <td>
                                         <div class="fw-bold">@ticket.Title</div>
                                         <small class="text-muted">
                                             @(ticket.Description?.Length > 50 ? ticket.Description.Substring(0, 50) + "..." : ticket.Description)
                                         </small>
                                     </td>
-
                                     <td>
                                         <div><strong>@ticket.ClientName</strong></div>
                                         <small class="text-muted">@ticket.ProjectName</small>
                                     </td>
-
                                     <td>
                                         @{
                                             var priorityClass = ticket.Priority switch
@@ -205,7 +194,6 @@
                                         }
                                         <span class="badge @priorityClass">@ticket.Priority</span>
                                     </td>
-
                                     <td>
                                         @{
                                             var statusClass = ticket.Status switch
@@ -219,7 +207,6 @@
                                         }
                                         <span class="badge @statusClass">@ticket.Status</span>
                                     </td>
-
                                     @if (_canViewAll)
                                     {
                                         <td>
@@ -233,25 +220,20 @@
                                             }
                                         </td>
                                     }
-
                                     <td>
-                                        <div>
-                                            <small class="text-muted">Est:</small> @ticket.EstimatedHours.ToString("0.0")h
-                                        </div>
-                                        <div>
-                                            <small class="text-muted">Real:</small>
-                                            <strong class="text-success">@ticket.ActualHours.ToString("0.0")h</strong>
-                                        </div>
+                                        <div><small class="text-muted">Est:</small> @ticket.EstimatedHours.ToString("0.0")h</div>
+                                        <div><small class="text-muted">Real:</small> <strong class="text-success">@ticket.ActualHours.ToString("0.0")h</strong></div>
                                     </td>
-
                                     <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary me-1"
-                                                @onclick="() => ViewTicketDetails(ticket.Id)"
-                                                title="Ver detalles">
-                                            <i class="bi bi-eye-fill"></i>
-                                        </button>
-
-                                        @* ⭐ CAMBIO 5: Usar _canEdit en lugar de _isAdmin *@
+                                        @* Cliente NO puede navegar a detalles *@
+                                        @if (_currentRole != "Cliente")
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary me-1"
+                                                    @onclick="() => ViewTicketDetails(ticket.Id)"
+                                                    title="Ver detalles">
+                                                <i class="bi bi-eye-fill"></i>
+                                            </button>
+                                        }
                                         @if (_canEdit)
                                         {
                                             <button class="btn btn-sm btn-outline-info me-1"
@@ -260,8 +242,6 @@
                                                 <i class="bi bi-pencil-fill"></i>
                                             </button>
                                         }
-
-                                        @* ⭐ CAMBIO 6: Usar _canDelete en lugar de _isAdmin *@
                                         @if (_canDelete)
                                         {
                                             <button class="btn btn-sm btn-outline-danger"
@@ -307,7 +287,7 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
-@inject AuthenticationStateProvider AuthStateProvider
+@inject fs_front.Services.PermissionService PermissionService
 
 @code {
     private List<TicketDetailDto>? _tickets;
@@ -317,22 +297,22 @@
     private string _priorityFilter = string.Empty;
     private bool _isLoading = false;
 
-    @* ⭐ CAMBIO 7: Agregar variables de permisos *@
     private string? _currentUserId;
     private string? _currentRole;
-    private bool _canViewAll = false;     // Admin, Administracion, Supervisor
-    private bool _canCreate = false;      // Admin, Administracion, Empleado, Cliente
-    private bool _canEdit = false;        // Admin, Administracion, Empleado
-    private bool _canDelete = false;      // Admin, Administracion
+
+    private bool _canViewAll = false;
+    private bool _canCreate = false;
+    private bool _canEdit = false;
+    private bool _canDelete = false;
 
     private IEnumerable<TicketDetailDto> _filteredTickets
         => _tickets?
             .Where(t =>
                 (string.IsNullOrWhiteSpace(_searchText) ||
-                t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                 t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                 (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                 (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                 (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
                 && (string.IsNullOrEmpty(_statusFilter) || t.Status == _statusFilter)
                 && (string.IsNullOrEmpty(_priorityFilter) || t.Priority == _priorityFilter)
             )
@@ -341,63 +321,33 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await CheckUserRole();
+        await LoadPermissions();
         await LoadData();
     }
 
-    @* ⭐ CAMBIO 8: Actualizar CheckUserRole para establecer permisos *@
-    private async Task CheckUserRole()
+    private async Task LoadPermissions()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        _currentUserId = await PermissionService.GetUserIdAsync();
+        _currentRole = await PermissionService.GetRoleAsync();
 
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            _currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            _currentRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        // Lee desde claims del JWT
+        var permViewAll = await PermissionService.HasPermissionAsync("tickets.view_all");
+        var permCreate = await PermissionService.HasPermissionAsync("tickets.create");
+        var permEdit = await PermissionService.HasPermissionAsync("tickets.edit");
+        var permDelete = await PermissionService.HasPermissionAsync("tickets.delete");
 
-            // Establecer permisos según el rol
-            switch (_currentRole)
-            {
-                case "Admin":
-                case "Administracion":
-                    _canViewAll = true;
-                    _canCreate = true;
-                    _canEdit = true;
-                    _canDelete = true;
-                    break;
-
-                case "Empleado":
-                    _canViewAll = false;  // Solo ve tickets asignados
-                    _canCreate = true;
-                    _canEdit = true;
-                    _canDelete = false;
-                    break;
-
-                case "Supervisor":
-                    _canViewAll = true;   // Ve todos pero no puede editar
-                    _canCreate = false;
-                    _canEdit = false;
-                    _canDelete = false;
-                    break;
-
-                case "Cliente":
-                    _canViewAll = false;  // Solo ve sus propios tickets
-                    _canCreate = true;
-                    _canEdit = false;
-                    _canDelete = false;
-                    break;
-            }
-        }
+        // Fallback por rol (por si los permisos aún no están sembrados en la BD)
+        _canViewAll = permViewAll || _currentRole is "Admin" or "Administracion" or "Supervisor";
+        _canCreate = permCreate || _currentRole is "Admin" or "Administracion" or "Empleado" or "Cliente";
+        _canEdit = permEdit || _currentRole is "Admin" or "Administracion" or "Empleado";
+        _canDelete = permDelete || _currentRole is "Admin" or "Administracion";
     }
 
-    @* ⭐ CAMBIO 9: Actualizar LoadData para usar _canViewAll *@
     private async Task LoadData()
     {
         _isLoading = true;
         try
         {
-            // Solo pasar userId si NO puede ver todos
             var userId = _canViewAll ? null : _currentUserId;
 
             var ticketsTask = TicketApiService.GetTicketsAsync(userId: userId);
@@ -420,62 +370,46 @@
 
     private async Task ShowCreateModal()
     {
-        var result = await DialogService.OpenAsync<TicketForm>("Crear Ticket",
-            options: new DialogOptions()
-            {
-                Width = "800px",
-                Resizable = false,
-                Draggable = false
-            });
+        bool? result;
 
-        if (result == true)
+        if (_currentRole == "Cliente")
         {
-            await LoadData();
+            // Formulario simple: solo Título + Descripción
+            result = await DialogService.OpenAsync<TicketFormCliente>("Crear Ticket",
+                options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
         }
+        else
+        {
+            // Formulario completo para Empleado, Admin, Administracion
+            result = await DialogService.OpenAsync<TicketForm>("Crear Ticket",
+                options: new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
+        }
+
+        if (result == true) await LoadData();
     }
 
     private async Task ShowEditModal(int ticketId)
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "TicketId", ticketId }
-        };
+        var parameters = new Dictionary<string, object> { { "TicketId", ticketId } };
 
         var result = await DialogService.OpenAsync<TicketForm>("Editar Ticket",
             parameters,
-            new DialogOptions()
-            {
-                Width = "800px",
-                Resizable = false,
-                Draggable = false
-            });
+            new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
 
-        if (result == true)
-        {
-            await LoadData();
-        }
+        if (result == true) await LoadData();
     }
 
     private void ViewTicketDetails(int ticketId)
-    {
-        NavigationManager.NavigateTo($"/tickets/{ticketId}");
-    }
+        => NavigationManager.NavigateTo($"/tickets/{ticketId}");
 
     private async Task ConfirmDelete(TicketDetailDto ticket)
     {
         var confirmed = await DialogService.Confirm(
             $"¿Está seguro que desea eliminar el ticket #{ticket.Id} - '{ticket.Title}'?",
             "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
 
-        if (confirmed == true)
-        {
-            await DeleteTicket(ticket.Id);
-        }
+        if (confirmed == true) await DeleteTicket(ticket.Id);
     }
 
     private async Task DeleteTicket(int ticketId)

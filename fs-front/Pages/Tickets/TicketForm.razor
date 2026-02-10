@@ -71,9 +71,16 @@
                                 }
                             </Template>
                         </RadzenAutoComplete>
-                        <ValidationMessage For="@(() => _ticketDto.ProjectId)" />
 
-                        @if (_ticketDto.ProjectId > 0 && _selectedProject != null)
+                        @* ⭐ CAMBIO: Validación manual de proyecto *@
+                        @if (_showProjectError)
+                        {
+                            <div class="text-danger small mt-1">
+                                <i class="bi bi-exclamation-circle"></i> Debe seleccionar un proyecto válido
+                            </div>
+                        }
+
+                        @if (_ticketDto.ProjectId.HasValue && _ticketDto.ProjectId.Value > 0 && _selectedProject != null)
                         {
                             <small class="text-success mt-1 d-block">
                                 ✓ Proyecto seleccionado: <strong>@_selectedProject.Name</strong>
@@ -155,7 +162,6 @@
                     <ValidationMessage For="@(() => _ticketDto.EstimatedHours)" />
                 </div>
             </div>
-
             @if (_isEditMode)
             {
                 <div class="col-md-6">
@@ -171,7 +177,8 @@
 
         <div class="d-flex justify-content-end gap-2 mt-4">
             <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || _isLoadingProjects || _projects == null || !_projects.Any())">
+            <button type="submit" class="btn btn-primary"
+                    disabled="@(_isSaving || _isLoadingProjects)">
                 @if (_isSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -183,9 +190,7 @@
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <div class="alert alert-danger mt-3">
-                @_errorMessage
-            </div>
+            <div class="alert alert-danger mt-3">@_errorMessage</div>
         }
     </EditForm>
 </section>
@@ -203,7 +208,6 @@
     private List<ProjectDetailDto>? _projects;
     private List<UserDto>? _users;
 
-    // Para el autocompletado
     private string? _selectedProjectName;
     private ProjectDetailDto? _selectedProject;
 
@@ -211,6 +215,7 @@
     private bool _isLoadingProjects = false;
     private bool _isLoadingUsers = false;
     private string? _errorMessage;
+    private bool _showProjectError = false;  // ⭐ NUEVO
     private bool _isEditMode => TicketId.HasValue;
 
     protected override async Task OnInitializedAsync()
@@ -227,8 +232,8 @@
             {
                 Status = "Abierto",
                 Priority = "Media",
-                ProjectId = 0,
-                ServiceId = 0
+                ProjectId = null,  // ⭐ CAMBIO: null en lugar de 0
+                ServiceId = null
             };
         }
     }
@@ -241,30 +246,24 @@
 
         try
         {
-            // ⭐ CAMBIO: Cargar proyectos con manejo de errores
             try
             {
                 _projects = await ProjectApiService.GetProjectsAsync();
-                Console.WriteLine($"✅ Proyectos cargados: {_projects?.Count ?? 0}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error al cargar proyectos: {ex.Message}");
-                _projects = new List<ProjectDetailDto>(); // Lista vacía para evitar null
-                // No mostramos error aquí, solo en el UI
+                _projects = new List<ProjectDetailDto>();
             }
 
-            // ⭐ CAMBIO: Cargar usuarios con manejo de errores
             try
             {
                 _users = await UserApiService.GetUsersAsync();
-                Console.WriteLine($"✅ Usuarios cargados: {_users?.Count ?? 0}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error al cargar usuarios: {ex.Message}");
-                _users = new List<UserDto>(); // Lista vacía para evitar null
-                // Campo de asignación será opcional de todas formas
+                _users = new List<UserDto>();
             }
         }
         finally
@@ -287,8 +286,8 @@
                     Id = ticket.Id,
                     Title = ticket.Title,
                     Description = ticket.Description,
-                    ProjectId = ticket.ProjectId,
-                    ServiceId = ticket.ServiceId,
+                    ProjectId = ticket.ProjectId > 0 ? ticket.ProjectId : null,  // ⭐ CAMBIO
+                    ServiceId = ticket.ServiceId > 0 ? ticket.ServiceId : null,
                     Status = ticket.Status,
                     Priority = ticket.Priority,
                     AssignedToUserId = ticket.AssignedToUserId,
@@ -296,9 +295,11 @@
                     ActualHours = ticket.ActualHours
                 };
 
-                // Establecer el nombre del proyecto seleccionado para el autocompletado
-                _selectedProject = _projects?.FirstOrDefault(p => p.Id == ticket.ProjectId);
-                _selectedProjectName = _selectedProject?.Name;
+                if (_ticketDto.ProjectId.HasValue)
+                {
+                    _selectedProject = _projects?.FirstOrDefault(p => p.Id == _ticketDto.ProjectId.Value);
+                    _selectedProjectName = _selectedProject?.Name;
+                }
             }
         }
         catch (Exception ex)
@@ -309,9 +310,11 @@
 
     private void OnProjectSelected(object value)
     {
+        _showProjectError = false;  // ⭐ Limpiar error
+
         if (value == null)
         {
-            _ticketDto.ProjectId = 0;
+            _ticketDto.ProjectId = null;
             _selectedProject = null;
             _selectedProjectName = null;
             return;
@@ -325,11 +328,11 @@
         {
             _ticketDto.ProjectId = _selectedProject.Id;
             _selectedProjectName = _selectedProject.Name;
-            _ticketDto.ServiceId = 0;
+            _ticketDto.ServiceId = null;
         }
         else
         {
-            _ticketDto.ProjectId = 0;
+            _ticketDto.ProjectId = null;
             _selectedProjectName = projectName;
         }
 
@@ -338,21 +341,22 @@
 
     private async Task HandleSubmit()
     {
+        // ⭐ VALIDACIÓN: Empleado/Admin DEBE seleccionar proyecto
+        if (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0)
+        {
+            _showProjectError = true;
+            _errorMessage = "Debe seleccionar un proyecto válido de la lista.";
+            StateHasChanged();
+            return;
+        }
+
         _isSaving = true;
         _errorMessage = null;
+        _showProjectError = false;
         StateHasChanged();
 
         try
         {
-            // Validar que se haya seleccionado un proyecto válido
-            if (_ticketDto.ProjectId <= 0)
-            {
-                _errorMessage = "Debe seleccionar un proyecto válido de la lista.";
-                _isSaving = false;
-                StateHasChanged();
-                return;
-            }
-
             if (_isEditMode)
             {
                 var result = await TicketApiService.UpdateTicketAsync(TicketId!.Value, _ticketDto);
@@ -382,13 +386,11 @@
         }
         catch (HttpRequestException httpEx) when (httpEx.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            _errorMessage = "No tienes permisos para crear tickets. Contacta a un administrador.";
-            Console.WriteLine($"❌ Error 403: {httpEx.Message}");
+            _errorMessage = "No tienes permisos para realizar esta acción. Contacta a un administrador.";
         }
         catch (Exception ex)
         {
             _errorMessage = $"Error: {ex.Message}";
-            Console.WriteLine($"❌ Error al guardar ticket: {ex}");
         }
         finally
         {
@@ -397,10 +399,7 @@
         }
     }
 
-    private void Cancel()
-    {
-        DialogService.Close(false);
-    }
+    private void Cancel() => DialogService.Close(false);
 
     private void ShowNotification(string title, string message, NotificationSeverity severity)
     {
