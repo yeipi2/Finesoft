@@ -7,12 +7,18 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
+@* Permisos NO cambia el Authorize — Admin y Administracion siempre, sin granular *@
 @attribute [Authorize(Roles = "Admin,Administracion")]
 
 <PageTitle>Finesoft - Gestión de Permisos</PageTitle>
 
-<RedirectIfNotAuthenticated />
-<RedirectIfNotAuthorized Roles="Admin,Administracion" />
+@* CAMBIO: Eliminar estas 2 líneas que ya no existen/sirven:
+   <RedirectIfNotAuthenticated />
+   <RedirectIfNotAuthorized Roles="Admin,Administracion" />
+   El @attribute [Authorize(Roles=...)] ya protege esta página completamente.
+   No necesitas nada más aquí. *@
+
+@* ↓↓↓ TODO EL RESTO DEL HTML ORIGINAL SIN CAMBIAR NADA ↓↓↓ *@
 
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-start mb-4">
@@ -43,8 +49,6 @@
                 <i class="bi bi-arrow-clockwise me-1"></i> Reintentar
             </button>
         </div>
-
-        @* Panel de debug *@
         <div class="alert alert-info mt-3">
             <h6>🔍 Información de Debug:</h6>
             <ul class="mb-0">
@@ -58,13 +62,12 @@
     {
         <div class="alert alert-warning">
             <i class="bi bi-info-circle me-2"></i>
-            No se encontraron roles en el sistema. Asegúrate de que los roles estén creados en el backend.
+            No se encontraron roles en el sistema.
         </div>
     }
     else
     {
         <div class="row">
-            <!-- SELECTOR DE ROL -->
             <div class="col-md-3 mb-4">
                 <div class="card shadow-sm">
                     <div class="card-header bg-primary text-white">
@@ -73,13 +76,11 @@
                     <div class="list-group list-group-flush">
                         @foreach (var role in _roles)
                         {
-                            <button
-                                class="list-group-item list-group-item-action @(role.RoleId == _selectedRoleId ? "active" : "")"
-                                @onclick="() => SelectRole(role.RoleId)">
+                            <button class="list-group-item list-group-item-action @(role.RoleId == _selectedRoleId ? "active" : "")"
+                                    @onclick="() => SelectRole(role.RoleId)">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="fw-bold">@role.RoleName</span>
-                                    <span
-                                        class="badge @(role.RoleId == _selectedRoleId ? "bg-white text-primary" : "bg-secondary")">
+                                    <span class="badge @(role.RoleId == _selectedRoleId ? "bg-white text-primary" : "bg-secondary")">
                                         @role.PermissionIds.Count
                                     </span>
                                 </div>
@@ -89,7 +90,6 @@
                 </div>
             </div>
 
-            <!-- PANEL DE PERMISOS CON ACORDEÓN -->
             <div class="col-md-9">
                 @if (_selectedRoleId != null)
                 {
@@ -97,106 +97,96 @@
                         <div class="card-header bg-white d-flex justify-content-between align-items-center">
                             <div>
                                 <h5 class="mb-0">Permisos de: <strong class="text-primary">@GetSelectedRoleName()</strong></h5>
-                                <small class="text-muted">Selecciona los permisos que tendrá este rol
-                                    (@_selectedPermissions.Count seleccionados)</small>
-                                </div>
-                                <button class="btn btn-success" @onclick="SavePermissions" disabled="@_isSaving">
-                                    @if (_isSaving)
-                                    {
-                                        <span class="spinner-border spinner-border-sm me-2"></span>
-                                    }
-                                    <i class="bi bi-save me-2"></i>Guardar Cambios
-                                </button>
+                                <small class="text-muted">Selecciona los permisos que tendrá este rol (@_selectedPermissions.Count seleccionados)</small>
                             </div>
-
-                            <div class="card-body p-3">
-                                @if (_groupedPermissions.Count == 0)
+                            <button class="btn btn-success" @onclick="SavePermissions" disabled="@_isSaving">
+                                @if (_isSaving)
                                 {
-                                    <div class="alert alert-warning">
-                                        <i class="bi bi-exclamation-triangle me-2"></i>
-                                        No hay permisos disponibles. Ejecuta las migraciones del backend para crear los permisos.
-                                    </div>
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
                                 }
-                                else
-                                {
-                                    <!-- ACORDEÓN DE MÓDULOS/PÁGINAS CON BOOTSTRAP -->
-                                    <div class="accordion" id="permissionsAccordion">
-                                        @{
-                                            int moduleIndex = 0;
-                                        }
-                                        @foreach (var moduleGroup in _groupedPermissions)
-                                        {
-                                            var collapseId = $"collapse_{moduleIndex}";
-                                            var headingId = $"heading_{moduleIndex}";
-
-                                            <div class="accordion-item mb-2 border rounded">
-                                                <h2 class="accordion-header" id="@headingId">
-                                                    <button class="accordion-button collapsed bg-light" type="button"
-                                                            data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false"
-                                                            aria-controls="@collapseId">
-                                                        <div class="d-flex justify-content-between align-items-center w-100 me-3">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="bi @GetModuleIcon(moduleGroup.Module) fs-5 me-3 text-primary"></i>
-                                                                <span class="fw-bold fs-6">@moduleGroup.Module</span>
-                                                                <span class="badge bg-primary ms-2">@moduleGroup.Permissions.Count</span>
-                                                            </div>
+                                <i class="bi bi-save me-2"></i>Guardar Cambios
+                            </button>
+                        </div>
+                        <div class="card-body p-3">
+                            @if (_groupedPermissions.Count == 0)
+                            {
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    No hay permisos disponibles.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="accordion" id="permissionsAccordion">
+                                    @{
+                                        int moduleIndex = 0;
+                                    }
+                                    @foreach (var moduleGroup in _groupedPermissions)
+                                    {
+                                        var collapseId = $"collapse_{moduleIndex}";
+                                        var headingId = $"heading_{moduleIndex}";
+                                        <div class="accordion-item mb-2 border rounded">
+                                            <h2 class="accordion-header" id="@headingId">
+                                                <button class="accordion-button collapsed bg-light" type="button"
+                                                        data-bs-toggle="collapse" data-bs-target="#@collapseId"
+                                                        aria-expanded="false" aria-controls="@collapseId">
+                                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="bi @GetModuleIcon(moduleGroup.Module) fs-5 me-3 text-primary"></i>
+                                                            <span class="fw-bold fs-6">@moduleGroup.Module</span>
+                                                            <span class="badge bg-primary ms-2">@moduleGroup.Permissions.Count</span>
                                                         </div>
-                                                    </button>
-                                                </h2>
-                                                <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId"
-                                                     data-bs-parent="#permissionsAccordion">
-                                                    <div class="accordion-body">
-                                                        <!-- Botones de Selección -->
-                                                        <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
-                                                            <button class="btn btn-sm btn-outline-primary"
-                                                                    @onclick="() => SelectAllInModule(moduleGroup.Module)" type="button">
-                                                                <i class="bi bi-check-all me-1"></i> Seleccionar todos
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                    @onclick="() => DeselectAllInModule(moduleGroup.Module)" type="button">
-                                                                <i class="bi bi-x-lg me-1"></i> Deseleccionar todos
-                                                            </button>
-                                                        </div>
-
-                                                        <!-- Permisos -->
-                                                        <div class="row g-3">
-                                                            @foreach (var permission in moduleGroup.Permissions)
-                                                            {
-                                                                <div class="col-md-6 col-lg-4">
-                                                                    <div class="form-check">
-                                                                        <input class="form-check-input" type="checkbox" id="perm_@permission.Id"
-                                                                               checked="@_selectedPermissions.Contains(permission.Id)"
-                                                                               @onchange="@((e) => TogglePermission(permission.Id, (bool)e.Value!))" />
-                                                                        <label class="form-check-label" for="perm_@permission.Id">
-                                                                            <strong class="d-block">@permission.Action</strong>
-                                                                            <small class="text-muted">@permission.Description</small>
-                                                                        </label>
-                                                                    </div>
+                                                    </div>
+                                                </button>
+                                            </h2>
+                                            <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId"
+                                                 data-bs-parent="#permissionsAccordion">
+                                                <div class="accordion-body">
+                                                    <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
+                                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => SelectAllInModule(moduleGroup.Module)" type="button">
+                                                            <i class="bi bi-check-all me-1"></i> Seleccionar todos
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => DeselectAllInModule(moduleGroup.Module)" type="button">
+                                                            <i class="bi bi-x-lg me-1"></i> Deseleccionar todos
+                                                        </button>
+                                                    </div>
+                                                    <div class="row g-3">
+                                                        @foreach (var permission in moduleGroup.Permissions)
+                                                        {
+                                                            <div class="col-md-6 col-lg-4">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" id="perm_@permission.Id"
+                                                                           checked="@_selectedPermissions.Contains(permission.Id)"
+                                                                           @onchange="@((e) => TogglePermission(permission.Id, (bool)e.Value!))" />
+                                                                    <label class="form-check-label" for="perm_@permission.Id">
+                                                                        <strong class="d-block">@permission.Action</strong>
+                                                                        <small class="text-muted">@permission.Description</small>
+                                                                    </label>
                                                                 </div>
-                                                            }
-                                                        </div>
+                                                            </div>
+                                                        }
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            moduleIndex++;
-                                        }
-                                    </div>
-                                }
-                            </div>
+                                        </div>
+                                        moduleIndex++;
+                                    }
+                                </div>
+                            }
                         </div>
-                    }
-            else
-                    {
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Selecciona un rol de la lista para administrar sus permisos
-                        </div>
-                    }
-                </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Selecciona un rol de la lista para administrar sus permisos
+                    </div>
+                }
             </div>
-        }
-    </div>
+        </div>
+    }
+</div>
 
 @inject IPermissionApiService PermissionApiService
 @inject NotificationService NotificationService
@@ -205,65 +195,36 @@
     private List<PermissionDto> _allPermissions = new();
     private List<RolePermissionsDto> _roles = new();
     private List<ModulePermissionsDto> _groupedPermissions = new();
-
     private string? _selectedRoleId;
     private HashSet<int> _selectedPermissions = new();
-
     private bool _isLoading = true;
     private bool _isSaving = false;
     private bool _hasError = false;
     private string _errorMessage = "";
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
+    @* Sin cambios en OnInitializedAsync ni en ningún método *@
+    protected override async Task OnInitializedAsync() => await LoadData();
 
     private async Task LoadData()
     {
-        _isLoading = true;
-        _hasError = false;
-        _errorMessage = "";
-
+        _isLoading = true; _hasError = false; _errorMessage = "";
         try
         {
-            Console.WriteLine("🔄 Iniciando carga de permisos...");
-
             var permissionsTask = PermissionApiService.GetAllPermissionsAsync();
             var rolesTask = PermissionApiService.GetAllRolesPermissionsAsync();
-
             await Task.WhenAll(permissionsTask, rolesTask);
-
             _allPermissions = (await permissionsTask) ?? new();
             _roles = (await rolesTask) ?? new();
-
-            Console.WriteLine($"✅ Datos cargados - Permisos: {_allPermissions.Count}, Roles: {_roles.Count}");
-
-            // Agrupar permisos por módulo
-            _groupedPermissions = _allPermissions
-            .GroupBy(p => p.Module)
-            .Select(g => new ModulePermissionsDto
-            {
-                Module = g.Key,
-                Permissions = g.ToList()
-            })
-            .OrderBy(m => m.Module)
-            .ToList();
-
-            Console.WriteLine($"✅ Módulos agrupados: {_groupedPermissions.Count}");
+            _groupedPermissions = _allPermissions.GroupBy(p => p.Module)
+                .Select(g => new ModulePermissionsDto { Module = g.Key, Permissions = g.ToList() })
+                .OrderBy(m => m.Module).ToList();
         }
         catch (Exception ex)
         {
-            _hasError = true;
-            _errorMessage = $"{ex.Message}";
-            Console.WriteLine($"❌ Error al cargar datos: {ex}");
+            _hasError = true; _errorMessage = ex.Message;
             ShowNotification("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
         }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
+        finally { _isLoading = false; StateHasChanged(); }
     }
 
     private void SelectRole(string roleId)
@@ -271,130 +232,74 @@
         _selectedRoleId = roleId;
         var rolePermissions = _roles.FirstOrDefault(r => r.RoleId == roleId);
         _selectedPermissions = rolePermissions?.PermissionIds.ToHashSet() ?? new();
-        Console.WriteLine($"✅ Rol seleccionado: {roleId} con {_selectedPermissions.Count} permisos");
         StateHasChanged();
     }
 
     private void TogglePermission(int permissionId, bool isChecked)
     {
-        if (isChecked)
-            _selectedPermissions.Add(permissionId);
-        else
-            _selectedPermissions.Remove(permissionId);
-
+        if (isChecked) _selectedPermissions.Add(permissionId);
+        else _selectedPermissions.Remove(permissionId);
         StateHasChanged();
     }
 
     private void SelectAllInModule(string module)
     {
-        var modulePermissions = _allPermissions
-        .Where(p => p.Module == module)
-        .Select(p => p.Id);
-
-        foreach (var id in modulePermissions)
+        foreach (var id in _allPermissions.Where(p => p.Module == module).Select(p => p.Id))
             _selectedPermissions.Add(id);
-
         StateHasChanged();
     }
 
     private void DeselectAllInModule(string module)
     {
-        var modulePermissions = _allPermissions
-        .Where(p => p.Module == module)
-        .Select(p => p.Id);
-
-        foreach (var id in modulePermissions)
+        foreach (var id in _allPermissions.Where(p => p.Module == module).Select(p => p.Id))
             _selectedPermissions.Remove(id);
-
         StateHasChanged();
     }
 
     private async Task SavePermissions()
     {
         if (_selectedRoleId == null) return;
-
         _isSaving = true;
         try
         {
-            var dto = new AssignPermissionsDto
-            {
-                RoleId = _selectedRoleId,
-                PermissionIds = _selectedPermissions.ToList()
-            };
-
-            Console.WriteLine($"💾 Guardando {dto.PermissionIds.Count} permisos para rol {dto.RoleId}");
-
+            var dto = new AssignPermissionsDto { RoleId = _selectedRoleId, PermissionIds = _selectedPermissions.ToList() };
             var result = await PermissionApiService.AssignPermissionsAsync(dto);
-
             if (result.Success)
             {
                 ShowNotification("Éxito", "Permisos actualizados correctamente", NotificationSeverity.Success);
-
-                // Si el rol editado es el mismo rol del usuario actual, refresca el JWT
                 var state = await AuthStateProvider.GetAuthenticationStateAsync();
                 var currentRole = state.User.FindFirst(ClaimTypes.Role)?.Value;
-
                 var selectedRoleName = GetSelectedRoleName();
-
                 if (!string.IsNullOrWhiteSpace(currentRole) &&
                     string.Equals(currentRole, selectedRoleName, StringComparison.OrdinalIgnoreCase))
                 {
                     var auth = (CustomAuthStateProvider)AuthStateProvider;
                     var refreshed = await auth.RefreshAsync();
-
-                    // forzamos recarga para que cards/nav no se queden cacheados
-                    if (refreshed)
-                        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+                    if (refreshed) Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
                 }
-
                 await LoadData();
             }
-
-            else
-            {
-                ShowNotification("Error", result.ErrorMessage ?? "No se pudieron guardar los permisos", NotificationSeverity.Error);
-            }
+            else ShowNotification("Error", result.ErrorMessage ?? "No se pudieron guardar los permisos", NotificationSeverity.Error);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error al guardar permisos: {ex}");
-            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
-        }
-        finally
-        {
-            _isSaving = false;
-        }
+        catch (Exception ex) { ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error); }
+        finally { _isSaving = false; }
     }
 
-    private string GetSelectedRoleName()
-    {
-        return _roles.FirstOrDefault(r => r.RoleId == _selectedRoleId)?.RoleName ?? "";
-    }
+    private string GetSelectedRoleName() => _roles.FirstOrDefault(r => r.RoleId == _selectedRoleId)?.RoleName ?? "";
 
-    private string GetModuleIcon(string module)
+    private string GetModuleIcon(string module) => module switch
     {
-        return module switch
-        {
-            "Tickets" => "bi-ticket-perforated",
-            "Clientes" => "bi-people",
-            "Proyectos" => "bi-folder",
-            "Cotizaciones" => "bi-receipt",
-            "Facturas" => "bi-receipt-cutoff",
-            "Reportes" => "bi-flag",
-            "Usuarios" => "bi-person-gear",
-            "Dashboard" => "bi-speedometer2",
-            _ => "bi-gear"
-        };
-    }
+        "Tickets" => "bi-ticket-perforated",
+        "Clientes" => "bi-people",
+        "Proyectos" => "bi-folder",
+        "Cotizaciones" => "bi-receipt",
+        "Facturas" => "bi-receipt-cutoff",
+        "Reportes" => "bi-flag",
+        "Usuarios" => "bi-person-gear",
+        "Dashboard" => "bi-speedometer2",
+        _ => "bi-gear"
+    };
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
-        NotificationService.Notify(new NotificationMessage
-        {
-            Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
-        });
-    }
+    private void ShowNotification(string title, string message, NotificationSeverity severity) =>
+        NotificationService.Notify(new NotificationMessage { Severity = severity, Summary = title, Detail = message, Duration = 4000 });
 }

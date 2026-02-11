@@ -3,105 +3,152 @@
 @inject IClientApiService ClientApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@inject PermissionService PermissionService
+@inject NavigationManager NavigationManager
 
-@attribute [Authorize(Roles = "Admin,Administracion,Empleado")]
+@attribute [Authorize]
 
 <PageTitle>Finesoft - Clientes</PageTitle>
 
-<container class="container p-4">
-    <section class="container-fluid p-xl-5">
-        <div class="d-flex justify-content-between align-items-start mb-4">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-people fs-1 text-primary me-3"></i>
-                <div>
-                    <p class="display-6 fw-bolder mb-2">Clientes Registrados</p>
-                    <p class="text-muted mb-0">Lista de todos los clientes con sus modalidades de servicio</p>
+@* ── ESTADO: verificando acceso ── *@
+@if (_checkingAccess)
+{
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
+                    background:white;z-index:9999;
+                    display:flex;align-items:center;justify-content:center;">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+@* ── ESTADO: sin acceso (seguridad extra mientras redirige) ── *@
+else if (!_hasAccess)
+{
+    <div></div>
+}
+@* ── ESTADO: contenido real ── *@
+else
+{
+    <container class="container p-4">
+        <section class="container-fluid p-xl-5">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-people fs-1 text-primary me-3"></i>
+                    <div>
+                        <p class="display-6 fw-bolder mb-2">Clientes Registrados</p>
+                        <p class="text-muted mb-0">Lista de todos los clientes con sus modalidades de servicio</p>
+                    </div>
+                </div>
+                @if (_canCreate)
+                {
+                    <button @onclick="ShowCreateModal"
+                            class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+                        <i class="bi bi-plus-lg"></i> Nuevo Cliente
+                    </button>
+                }
+            </div>
+            <div class="row">
+                <div class="col-md-6 col-lg-4">
+                    <input type="text" class="form-control" placeholder="Buscar clientes..." />
                 </div>
             </div>
-            <button onclick="@ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
-                <i class="bi bi-plus-lg"></i>
-                Nuevo Cliente
-            </button>
-        </div>
+        </section>
 
-        <div class="row">
-            <div class="col-md-6 col-lg-4">
-                <input type="text" class="form-control" placeholder="Buscar clientes..."/>
-            </div>
-        </div>
-    </section>
-
-    <section class="container-fluid p-xl-5 ">
-        <table class="table table-hover mb-0">
-            <tbody>
-            @if (_clients != null && _clients.Any())
-            {
-                @foreach (var client in _clients)
-                {
-                    <tr>
-                        <td class="fw-bold ps-4">@client.CompanyName</td>
-                        <td>
-                            <div class="fw-bold">@client.ContactName</div>
-                            <div class="text-muted small">@client.Phone</div>
-                        </td>
-                        <td class="fw-bold">@client.Email</td>
-                        <td>
-                            @if (client.ServiceMode == "Póliza Mensual")
-                            {
-                                <div class="fw-bold">
-                                    <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
-                                    <div class="text-muted small">@client.MonthlyRate</div>
-                                </div>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-dark">@client.ServiceMode</span>
-                            }
-                        </td>
-                        <td>
-                            @if (client.IsActive)
-                            {
-                                <span class="badge bg-success">Activo</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Inactivo</span>
-                            }
-                        </td>
-                        <td>
-                            <span class="badge bg-primary">1 proyectos</span>
-                        </td>
-
-                        <td class="text-center">
-                            <button @onclick="@(() => ShowEditModal(client.Id))"
-                                    class="btn btn-sm btn-outline-primary me-1" title="Editar">
-                                <i class="bi bi-pencil-fill"></i>
-                            </button>
-                            <button @onclick="@(() => DeleteClient(client.Id, client.CompanyName))"
-                                    class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
-                        </td>
-                    </tr>
-                }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="7" class="text-center py-4">No hay clientes registrados.</td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </section>
-</container>
-
+        <section class="container-fluid p-xl-5">
+            <table class="table table-hover mb-0">
+                <tbody>
+                    @if (_clients != null && _clients.Any())
+                    {
+                        @foreach (var client in _clients)
+                        {
+                            <tr>
+                                <td class="fw-bold ps-4">@client.CompanyName</td>
+                                <td>
+                                    <div class="fw-bold">@client.ContactName</div>
+                                    <div class="text-muted small">@client.Phone</div>
+                                </td>
+                                <td class="fw-bold">@client.Email</td>
+                                <td>
+                                    @if (client.ServiceMode == "Póliza Mensual")
+                                    {
+                                        <div class="fw-bold">
+                                            <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
+                                            <div class="text-muted small">@client.MonthlyRate</div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark">@client.ServiceMode</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(client.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(client.IsActive ? "Activo" : "Inactivo")
+                                    </span>
+                                </td>
+                                <td><span class="badge bg-primary">1 proyectos</span></td>
+                                <td class="text-center">
+                                    @if (_canEdit)
+                                    {
+                                        <button @onclick="@(() => ShowEditModal(client.Id))"
+                                                class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </button>
+                                    }
+                                    @if (_canDelete)
+                                    {
+                                        <button @onclick="@(() => DeleteClient(client.Id, client.CompanyName))"
+                                                class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-4">No hay clientes registrados.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    </container>
+}
 
 @code {
     private List<ClientDto>? _clients = new();
 
+    // ⭐ Control de acceso integrado en la página
+    private bool _checkingAccess = true;  // empieza bloqueando
+    private bool _hasAccess = false;
+
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
     protected override async Task OnInitializedAsync()
     {
+        // ── 1. Verificar permiso ANTES de cargar cualquier dato ──
+        var canView = await PermissionService.HasPermissionAsync("clients.view");
+
+        if (!canView)
+        {
+            Console.WriteLine("⛔ Sin permiso clients.view → redirigiendo");
+            _checkingAccess = false;
+            _hasAccess = false;
+            NavigationManager.NavigateTo("/dashboard", forceLoad: true);
+            return;
+        }
+
+        // ── 2. Tiene acceso: cargar permisos de acciones y datos ──
+        _hasAccess = true;
+        _checkingAccess = false;
+
+        _canCreate = await PermissionService.HasPermissionAsync("clients.create");
+        _canEdit = await PermissionService.HasPermissionAsync("clients.edit");
+        _canDelete = await PermissionService.HasPermissionAsync("clients.delete");
+
         await LoadClients();
     }
 
@@ -122,39 +169,16 @@
     private async Task ShowCreateModal()
     {
         var result = await DialogService.OpenAsync<ClientForm>("Crear Cliente",
-            options: new DialogOptions()
-            {
-                Width = "600px",
-                Resizable = false,
-                Draggable = false
-            });
-
-        if (result == true)
-        {
-            await LoadClients();
-        }
+            options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
+        if (result == true) await LoadClients();
     }
 
     private async Task ShowEditModal(int? clientId)
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "UserId", clientId }
-        };
-
-        var result = await DialogService.OpenAsync<ClientForm>("Editar Cliente",
-            parameters,
-            options: new DialogOptions()
-            {
-                Width = "600px",
-                Resizable = false,
-                Draggable = false
-            });
-
-        if (result == true)
-        {
-            await LoadClients();
-        }
+        var parameters = new Dictionary<string, object> { { "UserId", clientId } };
+        var result = await DialogService.OpenAsync<ClientForm>("Editar Cliente", parameters,
+            options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
+        if (result == true) await LoadClients();
     }
 
     private async Task DeleteClient(int? clientId, string clientName)
@@ -169,7 +193,6 @@
             try
             {
                 var (success, errorMessage) = await ClientApiService.DeleteClientAsync(clientId);
-
                 if (success)
                 {
                     ShowNotification("Éxito", "Cliente eliminado correctamente.", NotificationSeverity.Success);
@@ -177,7 +200,7 @@
                 }
                 else
                 {
-                    ShowNotification("Error", errorMessage ?? "No se pudo eliminar el cliente.", NotificationSeverity.Error);
+                    ShowNotification("Error", errorMessage ?? "No se pudo eliminar.", NotificationSeverity.Error);
                 }
             }
             catch (Exception ex)
@@ -187,8 +210,7 @@
         }
     }
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
             Severity = severity,
@@ -196,6 +218,4 @@
             Detail = message,
             Duration = 4000
         });
-    }
-
 }
