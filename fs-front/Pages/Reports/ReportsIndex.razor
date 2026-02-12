@@ -14,8 +14,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                    background:white;z-index:9999;
-                    display:flex;align-items:center;justify-content:center;">
+        background:white;z-index:9999;
+        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -27,7 +27,7 @@ else if (!_hasAccess)
 @* ── ESTADO: contenido real ── *@
 else
 {
-    <container class="container p-4">
+    <container class="container px-xl-5 py-4">
         <section class="container-fluid p-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
@@ -46,7 +46,8 @@ else
                         <label class="form-label small text-muted">Hasta</label>
                         <input type="date" class="form-control" @bind="EndDate" />
                     </div>
-                    <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold small mb-1" @onclick="LoadFilteredData">
+                    <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold small mb-1"
+                            @onclick="LoadFilteredData">
                         <i class="bi bi-filter"></i> Actualizar
                     </button>
                 </div>
@@ -62,41 +63,22 @@ else
             }
             else
             {
-                @*resumen general*@
-                <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="card bg-primary text-white h-100 shadow-sm border-0">
-                            <div class="card-body">
-                                <h6 class="card-title opacity-75">Ingresos Totales</h6>
-                                <h3 class="fw-bold mb-0">$@dashboardStats?.TotalRevenue.ToString("N2")</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-success text-white h-100 shadow-sm border-0">
-                            <div class="card-body">
-                                <h6 class="card-title opacity-75">Proyectos Activos</h6>
-                                <h3 class="fw-bold mb-0">@dashboardStats?.ActiveProjects</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-warning text-dark h-100 shadow-sm border-0">
-                            <div class="card-body">
-                                <h6 class="card-title opacity-75">Tickets Abiertos</h6>
-                                <h3 class="fw-bold mb-0">@dashboardStats?.OpenTickets</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-info text-white h-100 shadow-sm border-0">
-                            <div class="card-body">
-                                <h6 class="card-title opacity-75">Clientes Totales</h6>
-                                <h3 class="fw-bold mb-0">@dashboardStats?.TotalClients</h3>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                @* resumen general *@
+                <StatGrid class="mb-5">
+                    <StatCard Title="Ingresos Totales" Value="@RevenueText" Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-cash-stack" />
+
+                    <StatCard Title="Proyectos Activos" Value="@ActiveProjectsText" Accent="StatCard.StatAccent.Primary"
+                              IconClass="bi bi-kanban" />
+
+                    <StatCard Title="Tickets Abiertos" Value="@OpenTicketsText" Accent="StatCard.StatAccent.Primary"
+                              IconClass="bi bi-ticket-perforated" />
+
+                    <StatCard Title="Clientes Totales" Value="@TotalClientsText" Accent="StatCard.StatAccent.Primary"
+                              IconClass="bi bi-people" />
+                </StatGrid>
+
+
 
                 @*tabs navegación*@
                 <ul class="nav nav-tabs mb-4">
@@ -106,10 +88,12 @@ else
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="@GetTabClass("financial")" @onclick="@(() => activeTab = "financial")">Financiero</button>
+                        <button class="@GetTabClass("financial")"
+                                @onclick="@(() => activeTab = "financial")">Financiero</button>
                     </li>
                     <li class="nav-item">
-                        <button class="@GetTabClass("performance")" @onclick="@(() => activeTab = "performance")">Rendimiento</button>
+                        <button class="@GetTabClass("performance")"
+                                @onclick="@(() => activeTab = "performance")">Rendimiento</button>
                     </li>
                     <li class="nav-item">
                         <button class="@GetTabClass("clients")" @onclick="@(() => activeTab = "clients")">Clientes</button>
@@ -139,13 +123,8 @@ else
                                         @if (revenueTrends != null && revenueTrends.Any())
                                         {
                                             <RadzenChart>
-                                                <RadzenLineSeries Data="@revenueTrends"
-                                                                  CategoryProperty="Month"
-                                                                  ValueProperty="Revenue"
-                                                                  Title="Ingresos"
-                                                                  Stroke="#6366f1"
-                                                                  StrokeWidth="3"
-                                                                  Smooth="true">
+                                                <RadzenLineSeries Data="@revenueTrends" CategoryProperty="Month" ValueProperty="Revenue"
+                                                                  Title="Ingresos" Stroke="#6366f1" StrokeWidth="3" Smooth="true">
                                                     <RadzenMarkers MarkerType="MarkerType.Circle" />
                                                 </RadzenLineSeries>
                                                 <RadzenCategoryAxis Padding="20" />
@@ -177,11 +156,8 @@ else
                                         @if (ticketStatusChart != null && ticketStatusChart.Any())
                                         {
                                             <RadzenChart>
-                                                <RadzenDonutSeries Data="@ticketStatusChart"
-                                                                   CategoryProperty="Status"
-                                                                   ValueProperty="Count"
-                                                                   Fills="@GetTicketColors()"
-                                                                   InnerRadius="0.5">
+                                                <RadzenDonutSeries Data="@ticketStatusChart" CategoryProperty="Status"
+                                                                   ValueProperty="Count" Fills="@GetTicketColors()" InnerRadius="0.5">
                                                     <RadzenSeriesDataLabels Visible="true" />
                                                 </RadzenDonutSeries>
                                                 <RadzenLegend Position="LegendPosition.Bottom" />
@@ -208,11 +184,8 @@ else
                                         @if (topClients != null && topClients.Any())
                                         {
                                             <RadzenChart>
-                                                <RadzenColumnSeries Data="@topClients"
-                                                                    CategoryProperty="ClientName"
-                                                                    ValueProperty="TotalRevenue"
-                                                                    Title="Ingresos"
-                                                                    Fill="#f59e0b">
+                                                <RadzenColumnSeries Data="@topClients" CategoryProperty="ClientName"
+                                                                    ValueProperty="TotalRevenue" Title="Ingresos" Fill="#f59e0b">
                                                     <RadzenSeriesDataLabels Visible="true" />
                                                 </RadzenColumnSeries>
                                                 <RadzenCategoryAxis Padding="20" />
@@ -244,26 +217,14 @@ else
                                         @if (revenueTrends != null && revenueTrends.Any())
                                         {
                                             <RadzenChart>
-                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()"
-                                                                  CategoryProperty="Month"
-                                                                  ValueProperty="Invoiced"
-                                                                  Title="Facturado"
-                                                                  Stroke="#3b82f6"
-                                                                  Fill="#3b82f640">
+                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()" CategoryProperty="Month"
+                                                                  ValueProperty="Invoiced" Title="Facturado" Stroke="#3b82f6" Fill="#3b82f640">
                                                 </RadzenAreaSeries>
-                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()"
-                                                                  CategoryProperty="Month"
-                                                                  ValueProperty="Paid"
-                                                                  Title="Pagado"
-                                                                  Stroke="#10b981"
-                                                                  Fill="#10b98140">
+                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()" CategoryProperty="Month"
+                                                                  ValueProperty="Paid" Title="Pagado" Stroke="#10b981" Fill="#10b98140">
                                                 </RadzenAreaSeries>
-                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()"
-                                                                  CategoryProperty="Month"
-                                                                  ValueProperty="Pending"
-                                                                  Title="Pendiente"
-                                                                  Stroke="#f59e0b"
-                                                                  Fill="#f59e0b40">
+                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()" CategoryProperty="Month"
+                                                                  ValueProperty="Pending" Title="Pendiente" Stroke="#f59e0b" Fill="#f59e0b40">
                                                 </RadzenAreaSeries>
                                                 <RadzenCategoryAxis Padding="20" />
                                                 <RadzenValueAxis Formatter="@FormatAsCurrency">
@@ -299,15 +260,18 @@ else
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between py-3">
                                                 <span>Total Pagado</span>
-                                                <span class="fw-bold text-success">$@financialReport?.TotalPaid.ToString("N2")</span>
+                                                <span
+                                                class="fw-bold text-success">$@financialReport?.TotalPaid.ToString("N2")</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between py-3">
                                                 <span>Total Pendiente</span>
-                                                <span class="fw-bold text-warning">$@financialReport?.TotalPending.ToString("N2")</span>
+                                                <span
+                                                class="fw-bold text-warning">$@financialReport?.TotalPending.ToString("N2")</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between py-3">
                                                 <span>Total Vencido</span>
-                                                <span class="fw-bold text-danger">$@financialReport?.TotalOverdue.ToString("N2")</span>
+                                                <span
+                                                class="fw-bold text-danger">$@financialReport?.TotalOverdue.ToString("N2")</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -358,7 +322,8 @@ else
                                                 <span>@(performanceMetrics?.TicketResolutionRate.ToString("F1"))%</span>
                                             </div>
                                             <div class="progress" style="height: 10px;">
-                                                <div class="progress-bar" role="progressbar" style="width: @(performanceMetrics?.TicketResolutionRate ?? 0)%"></div>
+                                                <div class="progress-bar" role="progressbar"
+                                                     style="width: @(performanceMetrics?.TicketResolutionRate ?? 0)%"></div>
                                             </div>
                                         </div>
                                         <div class="mb-4">
@@ -367,20 +332,24 @@ else
                                                 <span>@(performanceMetrics?.ClientSatisfactionScore.ToString("F1")) / 5.0</span>
                                             </div>
                                             <div class="progress" style="height: 10px;">
-                                                <div class="progress-bar bg-success" role="progressbar" style="width: @((performanceMetrics?.ClientSatisfactionScore ?? 0) * 20)%"></div>
+                                                <div class="progress-bar bg-success" role="progressbar"
+                                                     style="width: @((performanceMetrics?.ClientSatisfactionScore ?? 0) * 20)%">
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="row mt-4">
                                             <div class="col-6">
                                                 <div class="p-3 bg-light rounded text-center">
                                                     <div class="small text-muted mb-1">Eficiencia Facturación</div>
-                                                    <div class="h5 mb-0">@(performanceMetrics?.BillingEfficiency.ToString("P"))</div>
+                                                    <div class="h5 mb-0">@(performanceMetrics?.BillingEfficiency.ToString("P"))
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="p-3 bg-light rounded text-center">
                                                     <div class="small text-muted mb-1">Utilización Recursos</div>
-                                                    <div class="h5 mb-0">@(performanceMetrics?.ResourceUtilization.ToString("P"))</div>
+                                                    <div class="h5 mb-0">@(performanceMetrics?.ResourceUtilization.ToString("P"))
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -396,9 +365,11 @@ else
                                             {
                                                 @foreach (var status in ticketStatusChart)
                                                 {
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                                    <li
+                                                        class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                                         @status.Status
-                                                        <span class="badge rounded-pill" style="background-color: @status.Color; font-size: 0.9rem;">@status.Count</span>
+                                                        <span class="badge rounded-pill"
+                                                              style="background-color: @status.Color; font-size: 0.9rem;">@status.Count</span>
                                                     </li>
                                                 }
                                             }
@@ -689,4 +660,17 @@ else
         public decimal Paid { get; set; }
         public decimal Pending { get; set; }
     }
+
+    private string RevenueText =>
+    dashboardStats is null ? "-" : $"${dashboardStats.TotalRevenue:N2}";
+
+    private string ActiveProjectsText =>
+    dashboardStats?.ActiveProjects.ToString() ?? "-";
+
+    private string OpenTicketsText =>
+    dashboardStats?.OpenTickets.ToString() ?? "-";
+
+    private string TotalClientsText =>
+    dashboardStats?.TotalClients.ToString() ?? "-";
+
 }

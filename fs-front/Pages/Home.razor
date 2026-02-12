@@ -11,7 +11,7 @@
 
 <PageTitle>Finesoft - Dashboard</PageTitle>
 
-<div class="container-fluid p-4">
+<div class="container-fluid px-xl-5 py-4">
 
     @if (!_ready)
     {
@@ -21,7 +21,7 @@
     }
     else
     {
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 ">
             <div>
                 <h2 class="fw-bold text-primary mb-1">
                     <i class="bi bi-speedometer2 me-2"></i>Panel de Control
@@ -43,75 +43,23 @@
         }
         else
         {
-            @* Stats Cards (solo si tiene permiso de ver dashboard) *@
             @if (_canViewDashboard)
             {
-                <div class="row g-3 mb-5">
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="text-uppercase text-muted small fw-bold mb-1">Ingresos Mensuales</p>
-                                        <h3 class="fw-bold text-primary mb-0">$@_stats?.MonthlyRevenue.ToString("N2")</h3>
-                                    </div>
-                                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 text-primary">
-                                        <i class="bi bi-currency-dollar fs-4"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <StatGrid Class="mb-5">
+                    <StatCard Title="Ingresos Mensuales" Value="@MonthlyRevenueText" Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-currency-dollar" />
 
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="text-uppercase text-muted small fw-bold mb-1">Tickets Abiertos</p>
-                                        <h3 class="fw-bold text-warning mb-0">@_stats?.OpenTickets</h3>
-                                    </div>
-                                    <div class="bg-warning bg-opacity-10 p-2 rounded-3 text-warning">
-                                        <i class="bi bi-ticket-detailed fs-4"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <StatCard Title="Tickets Abiertos" Value="@OpenTicketsText" Accent="StatCard.StatAccent.Primary"
+                              IconClass="bi bi-ticket-detailed" />
 
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="text-uppercase text-muted small fw-bold mb-1">Proyectos Activos</p>
-                                        <h3 class="fw-bold text-success mb-0">@_stats?.ActiveProjects</h3>
-                                    </div>
-                                    <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success">
-                                        <i class="bi bi-kanban fs-4"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <StatCard Title="Proyectos Activos" Value="@ActiveProjectsText" Accent="StatCard.StatAccent.Success"
+                              IconClass="bi bi-kanban" />
 
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="text-uppercase text-muted small fw-bold mb-1">Total Clientes</p>
-                                        <h3 class="fw-bold text-info mb-0">@_stats?.TotalClients</h3>
-                                    </div>
-                                    <div class="bg-info bg-opacity-10 p-2 rounded-3 text-info">
-                                        <i class="bi bi-people fs-4"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <StatCard Title="Total Clientes" Value="@TotalClientsText" Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-people" />
+                </StatGrid>
             }
+
 
             <h5 class="fw-bold text-secondary mb-3">
                 <i class="bi bi-grid-fill me-2"></i>Módulos Disponibles
@@ -291,6 +239,19 @@
     private bool _canViewInvoices;
     private bool _canViewReports;
     private bool _canViewUsers;
+
+    private string MonthlyRevenueText =>
+    _stats is null ? "-" : $"${_stats.MonthlyRevenue:N2}";
+
+    private string OpenTicketsText =>
+        _stats?.OpenTickets.ToString() ?? "-";
+
+    private string ActiveProjectsText =>
+        _stats?.ActiveProjects.ToString() ?? "-";
+
+    private string TotalClientsText =>
+        _stats?.TotalClients.ToString() ?? "-";
+
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,0 +1,65 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="stat-card @AccentClass @(Clickable ? "is-clickable" : "")" @onclick="HandleClick">
+    <div class="stat-top">
+        <div class="stat-text">
+            <div class="stat-title">@Title</div>
+
+            <div class="stat-value">
+                @if (IsLoading)
+                {
+                    <span class="skeleton" style="width: 120px;"></span>
+                }
+                else
+                {
+                    @Value
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(SubValue))
+            {
+                <div class="stat-sub">@SubValue</div>
+            }
+        </div>
+
+        <div class="stat-icon" aria-hidden="true">
+            @if (!string.IsNullOrWhiteSpace(IconClass))
+            {
+                <i class="@IconClass"></i>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+    [Parameter, EditorRequired] public string Value { get; set; } = default!;
+    [Parameter] public string? SubValue { get; set; }
+
+    // ✅ en vez de RenderFragment
+    [Parameter] public string? IconClass { get; set; }
+
+    [Parameter] public StatAccent Accent { get; set; } = StatAccent.Primary;
+    [Parameter] public bool IsLoading { get; set; }
+
+    [Parameter] public bool Clickable { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string AccentClass => Accent switch
+    {
+        StatAccent.Primary => "accent-primary",
+        StatAccent.Success => "accent-success",
+        StatAccent.Warning => "accent-warning",
+        StatAccent.Info => "accent-info",
+        StatAccent.Danger => "accent-danger",
+        _ => "accent-primary"
+    };
+
+    private async Task HandleClick()
+    {
+        if (!Clickable) return;
+        if (OnClick.HasDelegate) await OnClick.InvokeAsync();
+    }
+
+    public enum StatAccent { Primary, Success, Warning, Info, Danger }
+}

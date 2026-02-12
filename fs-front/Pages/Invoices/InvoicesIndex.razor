@@ -25,7 +25,7 @@ else if (!_hasAccess)
 @* ── ESTADO: contenido real ── *@
 else
 {
-    <section class="p-4">
+    <section class="px-xl-5 py-4">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -54,70 +54,34 @@ else
             </div>
         </div>
 
-        <!-- Estadísticas CON ICONOS -->
+        <!-- Estadísticas -->
         @if (_stats != null)
         {
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="card bg-warning text-dark h-100 shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="opacity-75 mb-1">Pendientes</h6>
-                                    <h3 class="fw-bold mb-0">@_stats.PendingInvoices</h3>
-                                    <small class="opacity-75">@_stats.TotalPending.ToString("C")</small>
-                                </div>
-                                <i class="bi bi-hourglass-split fs-1 opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <StatGrid class="mb-5">
+                <StatCard Title="Pendientes"
+                        Value="@_stats.PendingInvoices.ToString()"
+                        SubValue="@_stats.TotalPending.ToString("C")"
+                        Accent="StatCard.StatAccent.Info"
+                        IconClass="bi bi-hourglass-split" />
 
-                <div class="col-md-3">
-                    <div class="card bg-success text-white h-100 shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="opacity-75 mb-1">Pagadas</h6>
-                                    <h3 class="fw-bold mb-0">@_stats.PaidInvoices</h3>
-                                    <small class="opacity-75">@_stats.TotalPaid.ToString("C")</small>
-                                </div>
-                                <i class="bi bi-check-circle fs-1 opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <StatCard Title="Pagadas"
+                        Value="@_stats.PaidInvoices.ToString()"
+                        SubValue="@_stats.TotalPaid.ToString("C")"
+                        Accent="StatCard.StatAccent.Success"
+                        IconClass="bi bi-check-circle" />
 
-                <div class="col-md-3">
-                    <div class="card bg-danger text-white h-100 shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="opacity-75 mb-1">Vencidas</h6>
-                                    <h3 class="fw-bold mb-0">@_stats.OverdueInvoices</h3>
-                                    <small class="opacity-75">@_stats.TotalOverdue.ToString("C")</small>
-                                </div>
-                                <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <StatCard Title="Vencidas"
+                        Value="@_stats.OverdueInvoices.ToString()"
+                        SubValue="@_stats.TotalOverdue.ToString("C")"
+                        Accent="StatCard.StatAccent.Danger"
+                        IconClass="bi bi-exclamation-triangle" />
 
-                <div class="col-md-3">
-                    <div class="card bg-primary text-white h-100 shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="opacity-75 mb-1">Total Facturado</h6>
-                                    <h3 class="fw-bold mb-0">@_stats.TotalInvoices</h3>
-                                    <small class="opacity-75">@_stats.TotalBilled.ToString("C")</small>
-                                </div>
-                                <i class="bi bi-wallet2 fs-1 opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                <StatCard Title="Total Facturado"
+                        Value="@_stats.TotalInvoices.ToString()"
+                        SubValue="@_stats.TotalBilled.ToString("C")"
+                        Accent="StatCard.StatAccent.Info"
+                        IconClass="bi bi-wallet2" />
+            </StatGrid>
         }
 
         <!-- Filtros -->
