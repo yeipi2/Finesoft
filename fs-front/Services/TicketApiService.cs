@@ -225,4 +225,31 @@ public class TicketApiService : ITicketApiService
             return (false, $"Error: {e.Message}");
         }
     }
+    // ============================================================
+    // ACTUALIZACIÓN 5: TicketApiService.cs (Frontend)
+    // Agregar este método al final de la clase TicketApiService
+    // ============================================================
+
+    // 🆕 NUEVO MÉTODO - Agregar al final de la clase
+    public async Task<(bool Success, string? ErrorMessage)> UpdateTicketStatusAsync(int ticketId, string newStatus)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync(
+                $"api/tickets/{ticketId}/status",
+                new { Status = newStatus });
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, $"Error al actualizar estado: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, $"Error: {e.Message}");
+        }
+    }
 }

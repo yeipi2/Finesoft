@@ -366,6 +366,45 @@ public class TicketsController : ControllerBase
 
         return Ok(new { message = "Actividad eliminada exitosamente" });
     }
+
+    // ============================================================
+    // ACTUALIZACIÓN 3: TicketsController.cs
+    // Agregar este endpoint al final de la clase TicketsController
+    // (antes del último corchete de cierre)
+    // ============================================================
+
+    /// <summary>
+    /// PUT: api/tickets/{id}/status
+    /// ⭐ REQUIERE: permiso "tickets.edit"
+    /// Actualiza solo el estado del ticket
+    /// </summary>
+    [HttpPut("{id}/status")]
+    [RequirePermission("tickets.edit")]
+    public async Task<IActionResult> UpdateTicketStatus(int id, [FromBody] UpdateTicketStatusRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "Usuario no autenticado" });
+        }
+
+        var result = await _ticketService.UpdateTicketStatusAsync(id, request.Status, userId);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result.Errors);
+        }
+
+        _logger.LogInformation("✅ Usuario {UserId} cambió estado del ticket #{TicketId} a {NewStatus}",
+            userId, id, request.Status);
+
+        return Ok(new { success = true, message = "Estado actualizado correctamente" });
+    }
+
+    // 🆕 DTO para la solicitud de actualización de estado
+    public class UpdateTicketStatusRequest
+    {
+        public string Status { get; set; } = string.Empty;
+    }
 }
 
 public class AssignTicketDto

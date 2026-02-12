@@ -44,17 +44,17 @@
                             @{
                                 var priorityClass = _ticket.Priority switch
                                 {
-                                    "Urgente" => "bg-danger",
-                                    "Alta" => "bg-warning",
-                                    "Media" => "bg-info",
+                                                "Urgente" => "bg-danger",
+                                                "Alta" => "bg-warning",
+                                                "Media" => "bg-info",
                                     _ => "bg-secondary"
                                 };
                                 var statusClass = _ticket.Status switch
                                 {
-                                    "Abierto" => "bg-primary",
-                                    "En Progreso" => "bg-warning",
-                                    "En Revisión" => "bg-info",
-                                    "Cerrado" => "bg-success",
+                                                "Abierto" => "bg-primary",
+                                                "En Progreso" => "bg-warning",
+                                                "En Revisión" => "bg-info",
+                                                "Cerrado" => "bg-success",
                                     _ => "bg-secondary"
                                 };
                             }
@@ -96,14 +96,61 @@
                 @if (_canManageActivities)
                 {
                     <div class="card mb-4">
-                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="bi bi-list-task"></i> Actividades a Realizar
-                                (@(_ticket.Activities?.Count(a => !a.IsCompleted) ?? 0) pendientes)
-                            </h5>
-                            <button class="btn btn-sm btn-dark" @onclick="ShowAddActivityModal">
-                                <i class="bi bi-plus-lg"></i> Agregar Actividad
-                            </button>
+                        <div class="card-header bg-warning text-dark">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-list-task"></i> Actividades a Realizar
+                                    </h5>
+                                    <small class="text-muted">
+                                        @(_ticket.Activities?.Count(a => !a.IsCompleted) ?? 0) pendientes •
+                                        @(_ticket.Activities?.Count(a => a.IsCompleted) ?? 0) completadas
+                                    </small>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    @* ⭐ CAMBIO: Solo mostrar botón Agregar si NO está bloqueado *@
+                                    @if (!ActivitiesAreLocked)
+                                    {
+                                        <button class="btn btn-sm btn-dark" @onclick="ShowAddActivityModal">
+                                            <i class="bi bi-plus-lg"></i> Agregar Actividad
+                                        </button>
+                                    }
+
+                                    @if (_ticket.Activities != null && _ticket.Activities.Any())
+                                    {
+                                        @* ⭐ CAMBIO: Mostrar botón según estado del ticket *@
+                                        @if (_ticket.Status == "Abierto")
+                                        {
+                                            <button class="btn btn-sm btn-success"
+                                                    @onclick="LockActivities"
+                                                    title="Bloquear actividades y comenzar trabajo">
+                                                <i class="bi bi-lock"></i> Bloquear y Comenzar
+                                            </button>
+                                        }
+                                        else if (_ticket.Status == "En Progreso")
+                                        {
+                                            <button class="btn btn-sm btn-secondary"
+                                                    @onclick="UnlockActivities"
+                                                    title="Desbloquear actividades para editar">
+                                                <i class="bi bi-unlock"></i> Desbloquear Actividades
+                                            </button>
+                                        }
+                                        else if (_ticket.Status == "En Revisión")
+                                        {
+                                            <button class="btn btn-sm btn-success"
+                                                    @onclick="CloseTicket"
+                                                    title="Marcar ticket como completado">
+                                                <i class="bi bi-check-circle-fill"></i> Cerrar Ticket
+                                            </button>
+                                            <button class="btn btn-sm btn-warning"
+                                                    @onclick="UnlockActivities"
+                                                    title="Regresar a edición">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Regresar a Edición
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             @if (_ticket.Activities != null && _ticket.Activities.Any())
@@ -131,38 +178,66 @@
                                                         | <i class="bi bi-person"></i> @activity.CreatedByUserName
                                                         @if (activity.IsCompleted && activity.CompletedAt.HasValue)
                                                         {
-                                                            <span> | Completada: @activity.CompletedAt.Value.ToString("dd/MM/yyyy")</span>
+                                                            <span> | Completada: @activity.CompletedAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
                                                         }
                                                     </small>
                                                 </div>
                                                 <div class="d-flex gap-1">
-                                                    @if (!activity.IsCompleted)
+                                                    @* ⭐ CAMBIO: Solo mostrar botón completar si está bloqueado Y no completada *@
+                                                    @if (!activity.IsCompleted && ActivitiesAreLocked)
                                                     {
                                                         <button class="btn btn-sm btn-success"
                                                                 @onclick="() => CompleteActivity(activity.Id)"
                                                                 title="Marcar como completada">
                                                             <i class="bi bi-check-lg"></i>
                                                         </button>
+                                                    }
+                                                    @* ⭐ CAMBIO: Solo mostrar editar/eliminar si NO está bloqueado *@
+                                                    @if (!activity.IsCompleted && !ActivitiesAreLocked)
+                                                    {
                                                         <button class="btn btn-sm btn-primary"
                                                                 @onclick="() => ShowEditActivityModal(activity)"
                                                                 title="Editar">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
+                                                        <button class="btn btn-sm btn-danger"
+                                                                @onclick="() => ConfirmDeleteActivity(activity)"
+                                                                title="Eliminar">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
                                                     }
-                                                    <button class="btn btn-sm btn-danger"
-                                                            @onclick="() => ConfirmDeleteActivity(activity)"
-                                                            title="Eliminar">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
                                     }
                                 </div>
+
+                                @* ⭐ CAMBIO: Mostrar mensaje apropiado según estado *@
+                                @if (ActivitiesAreLocked)
+                                {
+                                    @if (_ticket.Status == "En Progreso")
+                                    {
+                                        <div class="alert alert-info mt-3 mb-0">
+                                            <i class="bi bi-info-circle"></i>
+                                            Las actividades están bloqueadas. Marca todas como completadas para pasar a revisión.
+                                        </div>
+                                    }
+                                    else if (_ticket.Status == "En Revisión")
+                                    {
+                                        <div class="alert alert-success mt-3 mb-0">
+                                            <i class="bi bi-check-circle"></i>
+                                            Ticket en revisión. Todas las actividades han sido completadas.
+                                        </div>
+                                    }
+                                }
                             }
                             else
                             {
-                                <p class="text-muted text-center py-3">No hay actividades registradas.</p>
+                                <div class="text-center py-4">
+                                    <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
+                                    <p class="text-muted mt-2 mb-1">No hay actividades registradas.</p>
+                                    <p class="text-muted small">Comienza agregando las tareas que necesitas realizar para completar este ticket.</p>
+                                </div>
                             }
                         </div>
                     </div>
@@ -224,47 +299,58 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Cambios</h5>
+                    <div class="card-header bg-info text-white" style="cursor: pointer; user-select: none;" @onclick="ToggleHistoryCollapse">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-clock-history"></i> Historial de Cambios
+                                @if (_ticket.History != null && _ticket.History.Any())
+                                {
+                                    <span class="badge bg-light text-dark ms-2">@_ticket.History.Count</span>
+                                }
+                            </h5>
+                            <i class="bi @(_isHistoryCollapsed ? "bi-chevron-down" : "bi-chevron-up") fs-5"></i>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        @if (_ticket.History != null && _ticket.History.Any())
-                        {
-                            @foreach (var history in _ticket.History)
+                    <div class="collapse @(_isHistoryCollapsed ? "" : "show")" id="historyCollapse">
+                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                            @if (_ticket.History != null && _ticket.History.Any())
                             {
-                                <div class="mb-3">
-                                    <div class="d-flex gap-2 align-items-start">
-                                        <i class="bi bi-circle-fill text-primary" style="font-size: 0.5rem; margin-top: 0.5rem;"></i>
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div>
-                                                    <strong>@history.UserName</strong>
-                                                    <span class="text-muted"> - @history.Action</span>
+                                @foreach (var history in _ticket.History.OrderByDescending(h => h.ChangedAt))
+                                {
+                                    <div class="mb-3">
+                                        <div class="d-flex gap-2 align-items-start">
+                                            <i class="bi bi-circle-fill text-primary" style="font-size: 0.5rem; margin-top: 0.5rem;"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <strong>@history.UserName</strong>
+                                                        <span class="text-muted"> - @history.Action</span>
+                                                    </div>
+                                                    <small class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
                                                 </div>
-                                                <small class="text-muted">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                                                @if (!string.IsNullOrEmpty(history.OldValue) || !string.IsNullOrEmpty(history.NewValue))
+                                                {
+                                                    <small class="text-muted">
+                                                        @if (!string.IsNullOrEmpty(history.OldValue))
+                                                        {
+                                                            <span>De: <span class="text-decoration-line-through">@history.OldValue</span></span>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(history.NewValue))
+                                                        {
+                                                            <span> A: <strong>@history.NewValue</strong></span>
+                                                        }
+                                                    </small>
+                                                }
                                             </div>
-                                            @if (!string.IsNullOrEmpty(history.OldValue) || !string.IsNullOrEmpty(history.NewValue))
-                                            {
-                                                <small class="text-muted">
-                                                    @if (!string.IsNullOrEmpty(history.OldValue))
-                                                    {
-                                                        <span>De: <span class="text-decoration-line-through">@history.OldValue</span></span>
-                                                    }
-                                                    @if (!string.IsNullOrEmpty(history.NewValue))
-                                                    {
-                                                        <span> A: <strong>@history.NewValue</strong></span>
-                                                    }
-                                                </small>
-                                            }
                                         </div>
                                     </div>
-                                </div>
+                                }
                             }
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center py-3">No hay historial disponible.</p>
-                        }
+                            else
+                            {
+                                <p class="text-muted text-center py-3">No hay historial disponible.</p>
+                            }
+                        </div>
                     </div>
                 </div>
 
@@ -389,6 +475,10 @@
     private bool _hasAccess = false;
     private string? _currentUserId;
     private string? _currentRole;
+    private bool _isHistoryCollapsed = true; // ⭐ NUEVO: Control de colapso del historial
+
+    // ⭐ CAMBIO CRÍTICO: Propiedad computed que determina el bloqueo basado en el ESTADO del ticket
+    private bool ActivitiesAreLocked => _ticket?.Status == "En Progreso" || _ticket?.Status == "En Revisión";
 
     private bool _canEditTicket = false;
     private bool _canDeleteTicket = false;
@@ -406,16 +496,10 @@
         _currentUserId = await PermissionService.GetUserIdAsync();
         _currentRole = await PermissionService.GetRoleAsync();
 
-        var permEdit = await PermissionService.HasPermissionAsync("tickets.edit");
-        var permDelete = await PermissionService.HasPermissionAsync("tickets.delete");
-        var permActivity = await PermissionService.HasPermissionAsync("tickets.activity");
-        var permComment = await PermissionService.HasPermissionAsync("tickets.comment");
-
-        // Solo usar fallback si NO existe el permiso en la base de datos
-        _canEditTicket = permEdit;
-        _canDeleteTicket = permDelete;
-        _canManageActivities = permActivity;
-        _canComment = permComment;
+        _canEditTicket = await PermissionService.HasPermissionAsync("tickets.edit");
+        _canDeleteTicket = await PermissionService.HasPermissionAsync("tickets.delete");
+        _canManageActivities = await PermissionService.HasPermissionAsync("tickets.activity");
+        _canComment = await PermissionService.HasPermissionAsync("tickets.comment");
     }
 
     private async Task CheckAccess()
@@ -454,6 +538,7 @@
         try
         {
             _ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
+            // ⭐ Ya no necesitamos actualizar _activitiesLocked aquí porque es computed
         }
         catch (Exception ex)
         {
@@ -465,6 +550,54 @@
         }
     }
 
+    // ⭐ CAMBIO: Bloquear actividades ahora cambia el ESTADO del ticket
+    private async Task LockActivities()
+    {
+        var confirmed = await DialogService.Confirm(
+            "¿Bloquear las actividades y comenzar a trabajar en el ticket? Esto cambiará el estado a 'En Progreso'.",
+            "Confirmar Bloqueo",
+            new ConfirmOptions { OkButtonText = "Sí, comenzar", CancelButtonText = "Cancelar" });
+
+        if (confirmed == true)
+        {
+            await UpdateTicketStatus("En Progreso");
+        }
+    }
+
+    // ⭐ CAMBIO: Desbloquear actividades cambia el estado a "Abierto"
+    private async Task UnlockActivities()
+    {
+        var confirmed = await DialogService.Confirm(
+            "¿Desbloquear las actividades? Esto cambiará el estado del ticket a 'Abierto' y podrás agregar, editar y eliminar actividades.",
+            "Confirmar Desbloqueo",
+            new ConfirmOptions { OkButtonText = "Sí, desbloquear", CancelButtonText = "Cancelar" });
+
+        if (confirmed == true)
+        {
+            await UpdateTicketStatus("Abierto");
+        }
+    }
+
+    // ⭐ NUEVO: Cerrar ticket (cambiar a estado Cerrado)
+    private async Task CloseTicket()
+    {
+        var confirmed = await DialogService.Confirm(
+            "¿Marcar este ticket como cerrado? Esto indica que el trabajo ha sido completado y revisado satisfactoriamente.",
+            "Cerrar Ticket",
+            new ConfirmOptions { OkButtonText = "Sí, cerrar ticket", CancelButtonText = "Cancelar" });
+
+        if (confirmed == true)
+        {
+            await UpdateTicketStatus("Cerrado");
+        }
+    }
+
+    // ⭐ NUEVO: Toggle para mostrar/ocultar historial
+    private void ToggleHistoryCollapse()
+    {
+        _isHistoryCollapsed = !_isHistoryCollapsed;
+    }
+
     private async Task ShowAddActivityModal()
     {
         var newActivity = new TicketActivityDto { TicketId = TicketId };
@@ -474,19 +607,25 @@
     <EditForm Model="newActivity" OnValidSubmit="async () => await AddActivity(newActivity, ds)">
         <DataAnnotationsValidator />
         <div class="mb-3">
-            <label class="form-label fw-bold">Descripción *</label>
+            <label class="form-label fw-bold">Descripción de la Actividad *</label>
             <InputTextArea class="form-control" rows="3" @bind-Value="newActivity.Description"
-                           placeholder="Describe la actividad a realizar..." />
+                           placeholder="Ej: Revisar la base de datos, Implementar autenticación..." />
             <ValidationMessage For="@(() => newActivity.Description)" />
+            <small class="text-muted">Describe claramente qué se debe hacer en esta actividad.</small>
         </div>
         <div class="mb-3">
             <label class="form-label fw-bold">Horas Estimadas *</label>
-            <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent" placeholder="0.00" step="0.25" />
+            <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent" placeholder="0.00" step="0.25" min="0" />
             <ValidationMessage For="@(() => newActivity.HoursSpent)" />
+            <small class="text-muted">Tiempo estimado para completar esta actividad (en horas).</small>
+        </div>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <small>Las actividades te ayudan a desglosar el trabajo del ticket en tareas manejables.</small>
         </div>
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Agregar</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Agregar Actividad</button>
         </div>
     </EditForm>
 </div>
@@ -537,7 +676,7 @@
         </div>
         <div class="mb-3">
             <label class="form-label fw-bold">Horas Estimadas *</label>
-            <InputNumber class="form-control" @bind-Value="editActivity.HoursSpent" step="0.25" />
+            <InputNumber class="form-control" @bind-Value="editActivity.HoursSpent" step="0.25" min="0" />
             <ValidationMessage For="@(() => editActivity.HoursSpent)" />
         </div>
         <div class="d-flex justify-content-end gap-2">
@@ -603,6 +742,7 @@
         }
     }
 
+    // ⭐ CAMBIO: CompleteActivity ya no resetea el bloqueo, solo recarga el ticket
     private async Task CompleteActivity(int activityId)
     {
         var confirmed = await DialogService.Confirm(
@@ -618,7 +758,12 @@
                 if (result.Success)
                 {
                     ShowNotification("Éxito", "Actividad completada. Las horas se han sumado al total.", NotificationSeverity.Success);
+
+                    // ⭐ Recargar el ticket PRIMERO
                     await LoadTicket();
+
+                    // ⭐ LUEGO verificar si todas están completadas
+                    await CheckAllActivitiesCompleted();
                 }
                 else
                 {
@@ -629,6 +774,52 @@
             {
                 ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
             }
+        }
+    }
+
+    // ⭐ MEJORA: Verificar y ofrecer cambio a "En Revisión" automáticamente
+    private async Task CheckAllActivitiesCompleted()
+    {
+        if (_ticket?.Activities != null && _ticket.Activities.Any())
+        {
+            var allCompleted = _ticket.Activities.All(a => a.IsCompleted);
+
+            // ⭐ Solo ofrecer cambio si está "En Progreso" y TODAS están completadas
+            if (allCompleted && _ticket.Status == "En Progreso")
+            {
+                var confirmed = await DialogService.Confirm(
+                    "¡Todas las actividades están completadas! ¿Deseas pasar el ticket a 'En Revisión'?",
+                    "Ticket Listo para Revisión",
+                    new ConfirmOptions { OkButtonText = "Sí, pasar a revisión", CancelButtonText = "No, aún no" });
+
+                if (confirmed == true)
+                {
+                    await UpdateTicketStatus("En Revisión");
+                }
+            }
+        }
+    }
+
+    // ⭐ Método para actualizar el estado del ticket
+    private async Task UpdateTicketStatus(string newStatus)
+    {
+        try
+        {
+            var result = await TicketApiService.UpdateTicketStatusAsync(TicketId, newStatus);
+
+            if (result.Success)
+            {
+                ShowNotification("Éxito", $"Estado del ticket actualizado a '{newStatus}'.", NotificationSeverity.Success);
+                await LoadTicket(); // Recargar para reflejar el nuevo estado
+            }
+            else
+            {
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo actualizar el estado.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error al actualizar estado: {ex.Message}", NotificationSeverity.Error);
         }
     }
 

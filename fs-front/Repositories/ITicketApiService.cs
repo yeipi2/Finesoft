@@ -1,4 +1,9 @@
-﻿using fs_front.DTO;
+﻿// ============================================================
+// ACTUALIZACIÓN 4: ITicketApiService.cs (Frontend)
+// Agregar este método a la interfaz
+// ============================================================
+
+using fs_front.DTO;
 
 namespace fs_front.Services;
 
@@ -19,4 +24,7 @@ public interface ITicketApiService
     Task<(bool Success, TicketActivityDto? UpdatedActivity, string? ErrorMessage)> UpdateActivityAsync(int ticketId, int activityId, TicketActivityDto activity);
     Task<(bool Success, string? ErrorMessage)> DeleteActivityAsync(int ticketId, int activityId);
     Task<(bool Success, string? ErrorMessage)> CompleteActivityAsync(int ticketId, int activityId);
+
+    // 🆕 NUEVO MÉTODO para actualizar estado
+    Task<(bool Success, string? ErrorMessage)> UpdateTicketStatusAsync(int ticketId, string newStatus);
 }

@@ -543,6 +543,51 @@ public class TicketService : ITicketService
         return ServiceResult<bool>.Success(true);
     }
 
+    // ============================================================
+    // ACTUALIZACIÓN 2: TicketService.cs
+    // Agregar este método al final de la clase TicketService
+    // (antes del método MapToDetailDto)
+    // ============================================================
+
+    // 🆕 NUEVO MÉTODO - Agregar al final de la clase, antes de MapToDetailDto
+    public async Task<ServiceResult<bool>> UpdateTicketStatusAsync(int ticketId, string newStatus, string userId)
+    {
+        var ticket = await _context.Tickets.FindAsync(ticketId);
+
+        if (ticket == null)
+        {
+            return ServiceResult<bool>.Failure("Ticket no encontrado");
+        }
+
+        var oldStatus = ticket.Status;
+        ticket.Status = newStatus;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        // Si se cierra el ticket, registrar la fecha
+        if (newStatus == "Cerrado")
+        {
+            ticket.ClosedAt = DateTime.UtcNow;
+        }
+
+        _context.Tickets.Update(ticket);
+
+        // Registrar el cambio en el historial
+        var history = new TicketHistory
+        {
+            TicketId = ticketId,
+            UserId = userId,
+            Action = "StatusChanged",
+            OldValue = oldStatus,
+            NewValue = newStatus,
+            ChangedAt = DateTime.UtcNow
+        };
+
+        _context.Set<TicketHistory>().Add(history);
+        await _context.SaveChangesAsync();
+
+        return ServiceResult<bool>.Success(true);
+    }
+
     private async Task<TicketDetailDto> MapToDetailDto(Ticket ticket)
     {
         IdentityUser? assignedUser = null;
