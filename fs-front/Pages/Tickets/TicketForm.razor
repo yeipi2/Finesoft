@@ -132,20 +132,20 @@
                             <span>Cargando usuarios...</span>
                         </div>
                     }
-                    else if (_users == null || !_users.Any())
+                    else if (_employees == null || !_employees.Any())
                     {
                         <select id="AssignedTo" class="form-select" disabled>
                             <option value="">-- Sin asignar --</option>
                         </select>
-                        <small class="text-muted">No se pudieron cargar usuarios</small>
+                        <small class="text-muted">No hay empleados disponibles</small>
                     }
                     else
                     {
                         <select id="AssignedTo" class="form-select" @bind="_ticketDto.AssignedToUserId">
                             <option value="">-- Sin asignar --</option>
-                            @foreach (var user in _users)
+                            @foreach (var employee in _employees)
                             {
-                                <option value="@user.Id">@user.UserName (@user.RoleName)</option>
+                                <option value="@employee.Id">@employee.UserName</option>
                             }
                         </select>
                     }
@@ -207,6 +207,7 @@
     private TicketDto _ticketDto = new();
     private List<ProjectDetailDto>? _projects;
     private List<UserDto>? _users;
+    private List<UserDto>? _employees;  // ⭐ NUEVA LISTA FILTRADA
 
     private string? _selectedProjectName;
     private ProjectDetailDto? _selectedProject;
@@ -215,7 +216,7 @@
     private bool _isLoadingProjects = false;
     private bool _isLoadingUsers = false;
     private string? _errorMessage;
-    private bool _showProjectError = false;  // ⭐ NUEVO
+    private bool _showProjectError = false;
     private bool _isEditMode => TicketId.HasValue;
 
     protected override async Task OnInitializedAsync()
@@ -232,7 +233,7 @@
             {
                 Status = "Abierto",
                 Priority = "Media",
-                ProjectId = null,  // ⭐ CAMBIO: null en lugar de 0
+                ProjectId = null,
                 ServiceId = null
             };
         }
@@ -259,11 +260,19 @@
             try
             {
                 _users = await UserApiService.GetUsersAsync();
+
+                // ⭐ FILTRAR SOLO EMPLEADOS
+                _employees = _users?
+                    .Where(u => u.RoleName?.Equals("Empleado", StringComparison.OrdinalIgnoreCase) == true)
+                    .ToList() ?? new List<UserDto>();
+
+                Console.WriteLine($"✅ Empleados cargados: {_employees.Count}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error al cargar usuarios: {ex.Message}");
                 _users = new List<UserDto>();
+                _employees = new List<UserDto>();
             }
         }
         finally
@@ -286,7 +295,7 @@
                     Id = ticket.Id,
                     Title = ticket.Title,
                     Description = ticket.Description,
-                    ProjectId = ticket.ProjectId > 0 ? ticket.ProjectId : null,  // ⭐ CAMBIO
+                    ProjectId = ticket.ProjectId > 0 ? ticket.ProjectId : null,
                     ServiceId = ticket.ServiceId > 0 ? ticket.ServiceId : null,
                     Status = ticket.Status,
                     Priority = ticket.Priority,
@@ -310,7 +319,7 @@
 
     private void OnProjectSelected(object value)
     {
-        _showProjectError = false;  // ⭐ Limpiar error
+        _showProjectError = false;
 
         if (value == null)
         {

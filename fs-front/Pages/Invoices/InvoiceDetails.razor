@@ -353,10 +353,11 @@
     {
         var options = new DialogOptions
         {
-            Width = "900px",
-            Height = "80vh",
-            Resizable = false,
-            Draggable = true
+            Width = "1000px",          // ⭐ CAMBIO
+            Height = "80%",           // ⭐ CAMBIO
+            Resizable = true,
+            Draggable = false,
+            CloseDialogOnOverlayClick = false
         };
 
         var result = await DialogService.OpenAsync<InvoiceForm>("Editar Factura",

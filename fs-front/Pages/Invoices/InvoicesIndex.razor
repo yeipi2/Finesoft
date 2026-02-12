@@ -12,8 +12,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                    background:white;z-index:9999;
-                    display:flex;align-items:center;justify-content:center;">
+                                background:white;z-index:9999;
+                                display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -54,73 +54,65 @@ else
             </div>
         </div>
 
-        <!-- Estadísticas -->
+        <!-- Estadísticas CON ICONOS -->
         @if (_stats != null)
         {
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <div class="card border-warning shadow-sm">
+                    <div class="card bg-warning text-dark h-100 shadow-sm border-0">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Pendientes</h6>
-                                    <h3 class="mb-0">@_stats.PendingInvoices</h3>
-                                    <small class="text-muted">@_stats.TotalPending.ToString("C")</small>
+                                    <h6 class="opacity-75 mb-1">Pendientes</h6>
+                                    <h3 class="fw-bold mb-0">@_stats.PendingInvoices</h3>
+                                    <small class="opacity-75">@_stats.TotalPending.ToString("C")</small>
                                 </div>
-                                <div class="bg-warning bg-opacity-10 p-2 rounded">
-                                    <i class="bi bi-hourglass-split fs-4 text-warning"></i>
-                                </div>
+                                <i class="bi bi-hourglass-split fs-1 opacity-50"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-3">
-                    <div class="card border-success shadow-sm">
+                    <div class="card bg-success text-white h-100 shadow-sm border-0">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Pagadas</h6>
-                                    <h3 class="mb-0">@_stats.PaidInvoices</h3>
-                                    <small class="text-muted">@_stats.TotalPaid.ToString("C")</small>
+                                    <h6 class="opacity-75 mb-1">Pagadas</h6>
+                                    <h3 class="fw-bold mb-0">@_stats.PaidInvoices</h3>
+                                    <small class="opacity-75">@_stats.TotalPaid.ToString("C")</small>
                                 </div>
-                                <div class="bg-success bg-opacity-10 p-2 rounded">
-                                    <i class="bi bi-check-circle fs-4 text-success"></i>
-                                </div>
+                                <i class="bi bi-check-circle fs-1 opacity-50"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-3">
-                    <div class="card border-danger shadow-sm">
+                    <div class="card bg-danger text-white h-100 shadow-sm border-0">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Vencidas</h6>
-                                    <h3 class="mb-0">@_stats.OverdueInvoices</h3>
-                                    <small class="text-muted">@_stats.TotalOverdue.ToString("C")</small>
+                                    <h6 class="opacity-75 mb-1">Vencidas</h6>
+                                    <h3 class="fw-bold mb-0">@_stats.OverdueInvoices</h3>
+                                    <small class="opacity-75">@_stats.TotalOverdue.ToString("C")</small>
                                 </div>
-                                <div class="bg-danger bg-opacity-10 p-2 rounded">
-                                    <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
-                                </div>
+                                <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-3">
-                    <div class="card border-primary shadow-sm">
+                    <div class="card bg-primary text-white h-100 shadow-sm border-0">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Total Facturado</h6>
-                                    <h3 class="mb-0">@_stats.TotalInvoices</h3>
-                                    <small class="text-muted">@_stats.TotalBilled.ToString("C")</small>
+                                    <h6 class="opacity-75 mb-1">Total Facturado</h6>
+                                    <h3 class="fw-bold mb-0">@_stats.TotalInvoices</h3>
+                                    <small class="opacity-75">@_stats.TotalBilled.ToString("C")</small>
                                 </div>
-                                <div class="bg-primary bg-opacity-10 p-2 rounded">
-                                    <i class="bi bi-wallet2 fs-4 text-primary"></i>
-                                </div>
+                                <i class="bi bi-wallet2 fs-1 opacity-50"></i>
                             </div>
                         </div>
                     </div>
@@ -253,30 +245,32 @@ else
                                             </strong>
                                         </td>
                                         <td class="text-center">
-                                            <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-primary" @onclick="() => ViewInvoiceDetails(invoice.Id)"
-                                                        title="Ver detalles">
-                                                    <i class="bi bi-eye"></i>
+                                            <button class="btn btn-sm btn-outline-primary me-1"
+                                                    @onclick="() => ViewInvoiceDetails(invoice.Id)"
+                                                    title="Ver detalles">
+                                                <i class="bi bi-eye-fill"></i>
+                                            </button>
+                                            @if (_canEdit)
+                                            {
+                                                <button class="btn btn-sm btn-outline-info me-1"
+                                                        @onclick="() => OpenEditDialog(invoice.Id)"
+                                                        title="Editar">
+                                                    <i class="bi bi-pencil-fill"></i>
                                                 </button>
-                                                @if (_canEdit)
-                                                {
-                                                    <button class="btn btn-outline-secondary" @onclick="() => OpenEditDialog(invoice.Id)"
-                                                            title="Editar">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </button>
-                                                }
-                                                <button class="btn btn-outline-success" @onclick="() => DownloadPdf(invoice.Id)"
-                                                        title="Descargar PDF">
-                                                    <i class="bi bi-download"></i>
+                                            }
+                                            <button class="btn btn-sm btn-outline-success me-1"
+                                                    @onclick="() => DownloadPdf(invoice.Id)"
+                                                    title="Descargar PDF">
+                                                <i class="bi bi-file-earmark-pdf-fill"></i>
+                                            </button>
+                                            @if (_canDelete)
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        @onclick="() => ConfirmDelete(invoice.Id)"
+                                                        title="Eliminar">
+                                                    <i class="bi bi-trash-fill"></i>
                                                 </button>
-                                                @if (_canDelete)
-                                                {
-                                                    <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(invoice.Id)"
-                                                            title="Eliminar">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                }
-                                            </div>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -310,7 +304,6 @@ else
     private bool _isLoading = true;
     private bool _isGenerating = false;
 
-    // ⭐ Control de acceso integrado en la página
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
 
@@ -320,7 +313,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // ── 1. Verificar permiso ANTES de cargar cualquier dato ──
         var canView = await PermissionService.HasPermissionAsync("invoices.view");
 
         if (!canView)
@@ -332,7 +324,6 @@ else
             return;
         }
 
-        // ── 2. Tiene acceso: cargar permisos de acciones y datos ──
         _hasAccess = true;
         _checkingAccess = false;
 
@@ -403,10 +394,11 @@ else
     {
         var options = new DialogOptions
         {
-            Width = "900px",
-            Height = "80vh",
-            Resizable = false,
-            Draggable = true
+            Width = "1000px",          // ⭐ CAMBIO: Más ancho
+            Height = "80%",           // ⭐ CAMBIO: Altura automática
+            Resizable = true,
+            Draggable = false,
+            CloseDialogOnOverlayClick = false
         };
 
         var result = await DialogService.OpenAsync<InvoiceForm>("Nueva Factura",
@@ -423,10 +415,11 @@ else
     {
         var options = new DialogOptions
         {
-            Width = "900px",
-            Height = "80vh",
-            Resizable = false,
-            Draggable = true
+            Width = "1000px",          // ⭐ CAMBIO: Más ancho
+            Height = "80%",           // ⭐ CAMBIO: Altura automática
+            Resizable = true,
+            Draggable = false,
+            CloseDialogOnOverlayClick = false
         };
 
         var result = await DialogService.OpenAsync<InvoiceForm>("Editar Factura",
@@ -558,4 +551,3 @@ else
         });
     }
 }
-

@@ -1,6 +1,7 @@
 ﻿@using fs_front.DTO
+@using System.Globalization
 
-<section class="container px-2" style="max-height: 500px; overflow-y: auto;">
+<section class="container-fluid px-3 py-2">
     <EditForm Model="_invoiceDto" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
 
@@ -24,15 +25,18 @@
                                value="@_clientSearchText"
                                @oninput="OnClientSearchInput"
                                @onkeydown="OnKeyDown"
-                               @onclick="OnClientClick"
+                               @onfocus="OnClientFocus"
+                               @onblur="OnClientBlur"
                                autocomplete="off" />
 
-                        @if (_showSuggestions && _filteredClients.Any())
+                        @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
                         {
                             <div class="autocomplete-dropdown">
                                 @foreach (var client in _filteredClients.Take(10))
                                 {
-                                    <div class="autocomplete-item" @onclick="() => SelectClient(client)">
+                                    <div class="autocomplete-item"
+                                         @onmousedown="@(() => SelectClient(client))"
+                                         @onmousedown:preventDefault>
                                         @client.CompanyName
                                     </div>
                                 }
@@ -49,7 +53,7 @@
 
                     @if (_invoiceDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
                     {
-                        <div class="form-text text-danger mt-2">
+                        <div class="form-text text-danger mt-1">
                             <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
                         </div>
                     }
@@ -98,120 +102,114 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-bold small">Artículos de la Factura</label>
-            <div class="border rounded p-3 mb-3" style="max-height: 300px; overflow-y: auto;">
-                @foreach (var (item, index) in _invoiceDto.Items.Select((item, i) => (item, i)))
-                {
-                    <div class="card mb-2">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0">Artículo #@(index + 1)</h6>
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        @onclick="() => RemoveItem(index)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold small mb-0">Artículos de la Factura</label>
+                <button type="button" class="btn btn-sm btn-primary" @onclick="AddItem">
+                    <i class="bi bi-plus-lg"></i> Agregar Artículo
+                </button>
+            </div>
 
-                            <div class="row g-2">
-                                <div class="col-md-12">
-                                    <label class="form-label small">Descripción *</label>
-                                    <InputText class="form-control form-control-sm"
-                                               @bind-Value="item.Description"
-                                               placeholder="Descripción del servicio o producto" />
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label class="form-label small">Cantidad *</label>
-                                    <InputNumber class="form-control form-control-sm"
-                                                 @bind-Value="item.Quantity"
-                                                 @bind-Value:after="RecalculateTotals" />
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label class="form-label small">Precio Unitario *</label>
-                                    <InputNumber class="form-control form-control-sm"
-                                                 @bind-Value="item.UnitPrice"
-                                                 @bind-Value:after="RecalculateTotals" />
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label class="form-label small">Subtotal</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                           value="@((item.Quantity * item.UnitPrice).ToString("C"))"
-                                           readonly />
-                                </div>
-
-                                @*                                 <div class="col-md-6">
-                                    <label class="form-label small">Servicio (Opcional)</label>
-                                    <select class="form-select form-select-sm" @bind="item.ServiceId">
-                                        <option value="">-- Sin servicio asociado --</option>
-                                        @if (_services != null)
-                                        {
-                                            @foreach (var service in _services)
-                                            {
-                                                <option value="@service.Id">@service.Name -
-                                                    $@service.HourlyRate</option>
-                                            }
-                                        }
-                                    </select>
-                                </div> *@
-
-                                <div class="col-md-6">
-                                    <label class="form-label small">Ticket (Opcional)</label>
-                                    <select class="form-select form-select-sm" @bind="item.TicketId">
-                                        <option value="">-- Sin ticket asociado --</option>
-                                        @if (_tickets != null)
-                                        {
-                                            @foreach (var ticket in _tickets)
-                                            {
-                                                <option value="@ticket.Id">Ticket #@ticket.Id - @ticket.Title</option>
-                                            }
-                                        }
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-
+            <div class="border rounded p-3 mb-3 bg-light" style="max-height: 280px; overflow-y: auto;">
                 @if (!_invoiceDto.Items.Any())
                 {
                     <div class="text-center text-muted py-3">
-                        <i class="bi bi-inbox fs-4"></i>
-                        <p>No hay artículos. Agregue al menos uno.</p>
+                        <i class="bi bi-inbox fs-3"></i>
+                        <p class="mb-0 mt-2">No hay artículos. Agregue al menos uno.</p>
                     </div>
                 }
-            </div>
+                else
+                {
+                    @foreach (var (item, index) in _invoiceDto.Items.Select((item, i) => (item, i)))
+                    {
+                        <div class="card mb-2 shadow-sm">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0 text-primary small">
+                                        <i class="bi bi-card-list me-1"></i>
+                                        Artículo #@(index + 1)
+                                    </h6>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
+                                            @onclick="() => RemoveItem(index)"
+                                            title="Eliminar artículo">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
 
-            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddItem">
-                <i class="bi bi-plus-lg"></i> Agregar Artículo
-            </button>
+                                <div class="row g-2">
+                                    <div class="col-md-12">
+                                        <label class="form-label small mb-1">Descripción *</label>
+                                        <InputText class="form-control form-control-sm"
+                                                   @bind-Value="item.Description"
+                                                   placeholder="Descripción del servicio o producto" />
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Cantidad *</label>
+                                        <InputNumber class="form-control form-control-sm"
+                                                     @bind-Value="item.Quantity"
+                                                     @bind-Value:after="RecalculateTotals" />
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Precio Unitario *</label>
+                                        <InputNumber class="form-control form-control-sm"
+                                                     @bind-Value="item.UnitPrice"
+                                                     @bind-Value:after="RecalculateTotals" />
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Subtotal</label>
+                                        @* ⭐ CAMBIO: Formato con símbolo de pesos $ *@
+                                        <input type="text" class="form-control form-control-sm bg-white"
+                                               value="@FormatCurrency(item.Quantity * item.UnitPrice)"
+                                               readonly />
+                                    </div>
+
+                                    <div class="col-md-12">
+                                        <label class="form-label small mb-1">Ticket (Opcional)</label>
+                                        <select class="form-select form-select-sm" @bind="item.TicketId">
+                                            <option value="">-- Sin ticket asociado --</option>
+                                            @if (_tickets != null)
+                                            {
+                                                @foreach (var ticket in _tickets)
+                                                {
+                                                    <option value="@ticket.Id">Ticket #@ticket.Id - @ticket.Title</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
         </div>
 
         <div class="mb-3">
             <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
-            <InputTextArea id="Notes" class="form-control" rows="3"
+            <InputTextArea id="Notes" class="form-control" rows="2"
                            placeholder="Términos de pago, condiciones adicionales..."
                            @bind-Value="_invoiceDto.Notes" />
         </div>
 
-        <div class="card bg-light mb-3">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-8"></div>
-                    <div class="col-md-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Subtotal:</span>
-                            <strong>@_calculatedSubtotal.ToString("C")</strong>
+        @* ⭐ CAMBIO: Card de totales con símbolo de pesos *@
+        <div class="card bg-light border-primary mb-3">
+            <div class="card-body p-2">
+                <div class="row justify-content-end">
+                    <div class="col-md-5 col-lg-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Subtotal:</span>
+                            <strong class="small">@FormatCurrency(_calculatedSubtotal)</strong>
                         </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>IVA (16%):</span>
-                            <strong>@_calculatedTax.ToString("C")</strong>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">IVA (16%):</span>
+                            <strong class="small">@FormatCurrency(_calculatedTax)</strong>
                         </div>
-                        <hr />
+                        <hr class="my-1" />
                         <div class="d-flex justify-content-between">
-                            <span class="h5">Total:</span>
-                            <strong class="h5 text-success">@_calculatedTotal.ToString("C")</strong>
+                            <span class="fw-bold">Total:</span>
+                            <strong class="text-success h5 mb-0">@FormatCurrency(_calculatedTotal)</strong>
                         </div>
                     </div>
                 </div>
@@ -219,20 +217,25 @@
         </div>
 
         <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || !_invoiceDto.Items.Any() || _invoiceDto.ClientId == 0)">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                <i class="bi bi-x-lg me-1"></i>
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" 
+                    disabled="@(_isSaving || !_invoiceDto.Items.Any() || _invoiceDto.ClientId == 0)">
                 @if (_isSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-2"></span>
                 }
-                <i class="bi bi-check-lg"></i>
+                <i class="bi bi-check-lg me-1"></i>
                 @(_isEditMode ? "Actualizar" : "Crear") Factura
             </button>
         </div>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <div class="alert alert-danger mt-3">
+            <div class="alert alert-danger mt-2 py-2">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
                 @_errorMessage
             </div>
         }
@@ -246,27 +249,47 @@
         left: 0;
         right: 0;
         z-index: 1000;
-        max-height: 300px;
+        max-height: 250px;
         overflow-y: auto;
         background-color: white;
         border: 1px solid #ced4da;
         border-top: none;
-        border-radius: 0 0 0.25rem 0.25rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 0 0 0.375rem 0.375rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        margin-top: 2px;
     }
 
     .autocomplete-item {
-        padding: 0.75rem;
+        padding: 0.625rem 0.75rem;
         cursor: pointer;
         border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.15s ease;
     }
 
         .autocomplete-item:hover {
-            background-color: #f8f9fa;
+            background-color: #e7f3ff;
         }
 
         .autocomplete-item:last-child {
             border-bottom: none;
+        }
+
+    .bg-light::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .bg-light::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .bg-light::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+        .bg-light::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
 </style>
 
@@ -299,6 +322,9 @@
     private string? _errorMessage;
     private bool _isEditMode => InvoiceId.HasValue;
 
+    // ⭐ NUEVO: Cultura para formato de pesos mexicanos
+    private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
+
     protected override async Task OnInitializedAsync()
     {
         await LoadInitialData();
@@ -311,7 +337,7 @@
         {
             _invoiceDto = new InvoiceDto
             {
-                Status = "Pending",
+                Status = "Pendiente",
                 InvoiceType = "Event",
                 InvoiceDate = DateTime.Now,
                 DueDate = DateTime.Now.AddDays(30)
@@ -320,6 +346,12 @@
 
         RecalculateTotals();
     }
+
+    private string FormatCurrency(decimal amount)
+    {
+        return string.Format("$ {0:N2}", amount);
+    }
+
 
     private async Task LoadInitialData()
     {
@@ -335,7 +367,7 @@
             await Task.WhenAll(clientsTask, servicesTask, ticketsTask);
 
             _allClients = (await clientsTask) ?? new List<ClientDto>();
-            _filteredClients = _allClients;
+            _filteredClients = new List<ClientDto>();
             _services = await servicesTask;
             _tickets = await ticketsTask;
         }
@@ -382,11 +414,13 @@
                     }).ToList()
                 };
 
-                // Cargar el cliente seleccionado en modo edición
-                if (invoice.ClientId > 0 && !string.IsNullOrEmpty(invoice.ClientName))
+                if (invoice.ClientId > 0)
                 {
                     _selectedClient = _allClients.FirstOrDefault(c => c.Id == invoice.ClientId);
-                    _clientSearchText = invoice.ClientName;
+                    if (_selectedClient != null)
+                    {
+                        _clientSearchText = _selectedClient.CompanyName;
+                    }
                 }
 
                 RecalculateTotals();
@@ -398,13 +432,28 @@
         }
     }
 
+    private void OnClientFocus()
+    {
+        if (!string.IsNullOrWhiteSpace(_clientSearchText))
+        {
+            _showSuggestions = true;
+        }
+    }
+
+    private async Task OnClientBlur()
+    {
+        await Task.Delay(200);
+        _showSuggestions = false;
+        StateHasChanged();
+    }
+
     private void OnClientSearchInput(ChangeEventArgs e)
     {
         _clientSearchText = e.Value?.ToString() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(_clientSearchText))
         {
-            _filteredClients = _allClients;
+            _filteredClients = new List<ClientDto>();
             _showSuggestions = false;
             _selectedClient = null;
             _invoiceDto.ClientId = 0;
@@ -435,16 +484,6 @@
         if (e.Key == "Escape")
         {
             _showSuggestions = false;
-            StateHasChanged();
-        }
-    }
-
-    private void OnClientClick()
-    {
-        // Solo mostrar sugerencias si hay texto escrito o si hay clientes disponibles
-        if (!string.IsNullOrWhiteSpace(_clientSearchText) || _allClients.Any())
-        {
-            _showSuggestions = true;
             StateHasChanged();
         }
     }
@@ -551,5 +590,4 @@
             Duration = 4000
         });
     }
-
 }

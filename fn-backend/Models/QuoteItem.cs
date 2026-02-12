@@ -11,6 +11,10 @@ public class QuoteItem
     // public int? ServiceId { get; set; }
     // public Service? Service { get; set; }
 
+    // ⭐ NUEVO: Relación con Ticket
+    public int? TicketId { get; set; }
+    public Ticket? Ticket { get; set; }
+
     public string Description { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
