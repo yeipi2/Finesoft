@@ -147,12 +147,33 @@ public class QuotesController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("📥 Generando PDF para cotización {QuoteId}", id);
+
             var pdfBytes = await _quoteService.GenerateQuotePdfAsync(id);
-            return File(pdfBytes, "text/html", $"Cotizacion-{id}.html");
+
+            if (pdfBytes == null || pdfBytes.Length == 0)
+            {
+                return BadRequest(new { message = "No se pudo generar el PDF" });
+            }
+
+            _logger.LogInformation("✅ PDF generado: {Size} bytes", pdfBytes.Length);
+
+            // ⭐ CAMBIO CRÍTICO: inline en lugar de attachment
+            // Esto hace que el navegador descargue directamente sin mostrar diálogo
+            var cd = new System.Net.Http.Headers.ContentDispositionHeaderValue("inline")
+            {
+                FileName = $"Cotizacion-{id}.pdf"
+            };
+
+            Response.Headers.Add("Content-Disposition", cd.ToString());
+            Response.Headers.Add("X-Content-Type-Options", "nosniff");
+
+            return File(pdfBytes, "application/pdf");
         }
         catch (Exception ex)
         {
-            return NotFound(new { message = ex.Message });
+            _logger.LogError(ex, "❌ Error generando PDF para cotización {QuoteId}", id);
+            return StatusCode(500, new { message = "Error generando PDF" });
         }
     }
 }

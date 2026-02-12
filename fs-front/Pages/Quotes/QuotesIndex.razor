@@ -188,12 +188,12 @@ else
                                             </button>
                                             @if (quote.Status == "Aceptada" && !HasInvoice(quote) && _canCreate)
                                             {
-                                                <button class="btn btn-sm btn-outline-warning me-1"
+@*                                                 <button class="btn btn-sm btn-outline-warning me-1"
                                                         @onclick="() => ConvertToInvoice(quote.Id)"
                                                         title="Convertir a Factura"
                                                         style="position: relative;">
                                                     <i class="bi bi-file-earmark-arrow-up-fill"></i>
-                                                </button>
+                                                </button> *@
                                             }
                                             @if (quote.Status == "Aceptada" && HasInvoice(quote))
                                             {

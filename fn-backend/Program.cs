@@ -19,7 +19,11 @@ QuestPDF.Settings.License = LicenseType.Community;
 // 3) Servicios base (MVC, Swagger, Razor Pages)
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+    // Usa el namespace completo y reemplaza '+' por '.' para clases anidadas
+});
 builder.Services.AddRazorPages();
 
 // 4) Registro de servicios propios (DI)
