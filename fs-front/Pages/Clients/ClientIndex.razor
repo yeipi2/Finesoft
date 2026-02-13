@@ -14,8 +14,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                    background:white;z-index:9999;
-                    display:flex;align-items:center;justify-content:center;">
+        background:white;z-index:9999;
+        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -28,7 +28,7 @@ else if (!_hasAccess)
 else
 {
     <container class="container p-4">
-        <section class="container-fluid p-xl-5">
+        <section class="container-fluid px-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-people fs-1 text-primary me-3"></i>
@@ -39,25 +39,20 @@ else
                 </div>
                 @if (_canCreate)
                 {
-                    <button @onclick="ShowCreateModal"
-                            class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+                    <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
                         <i class="bi bi-plus-lg"></i> Nuevo Cliente
                     </button>
                 }
             </div>
-            <div class="row">
-                <div class="col-md-6 col-lg-4">
-                    <input type="text" class="form-control" placeholder="Buscar clientes..." />
-                </div>
-            </div>
+            <SearchBar Placeholder="Buscar clientes..." Value="@_searchText" ValueChanged="@(v => _searchText = v)" />
         </section>
 
         <section class="container-fluid p-xl-5">
             <table class="table table-hover mb-0">
                 <tbody>
-                    @if (_clients != null && _clients.Any())
+                    @if (_filteredClients.Any())
                     {
-                        @foreach (var client in _clients)
+                        @foreach (var client in _filteredClients)
                         {
                             <tr>
                                 <td class="fw-bold ps-4">@client.CompanyName</td>
@@ -88,8 +83,8 @@ else
                                 <td class="text-center">
                                     @if (_canEdit)
                                     {
-                                        <button @onclick="@(() => ShowEditModal(client.Id))"
-                                                class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                        <button @onclick="@(() => ShowEditModal(client.Id))" class="btn btn-sm btn-outline-primary me-1"
+                                                title="Editar">
                                             <i class="bi bi-pencil-fill"></i>
                                         </button>
                                     }
@@ -107,7 +102,18 @@ else
                     else
                     {
                         <tr>
-                            <td colspan="7" class="text-center py-4">No hay clientes registrados.</td>
+                            <td colspan="7" class="text-center py-4">
+                                @if (_clients == null || !_clients.Any())
+                                {
+                                    <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                                    <span>No hay clientes registrados.</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-search fs-1 text-muted d-block mb-2"></i>
+                                    <span>No se encontraron clientes con "@_searchText"</span>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -118,9 +124,21 @@ else
 
 @code {
     private List<ClientDto>? _clients = new();
+    private string _searchText = string.Empty;
+
+    private IEnumerable<ClientDto> _filteredClients
+        => _clients?
+            .Where(c =>
+                string.IsNullOrWhiteSpace(_searchText) ||
+                c.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                (c.ContactName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (c.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (c.Phone?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+            )
+            ?? Enumerable.Empty<ClientDto>();
 
     // ⭐ Control de acceso integrado en la página
-    private bool _checkingAccess = true;  // empieza bloqueando
+    private bool _checkingAccess = true; // empieza bloqueando
     private bool _hasAccess = false;
 
     private bool _canCreate;

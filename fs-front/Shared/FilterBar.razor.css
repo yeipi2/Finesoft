@@ -1,0 +1,228 @@
+/* ═══════════════════════════════════════════════════════════════
+   FilterBar - Modern Search & Filter Component
+   ═══════════════════════════════════════════════════════════════ */
+
+.filter-shell {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 10px 24px rgba(15, 23, 42, 0.06);
+  padding: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filter-shell:hover {
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+/* ── Grid Layout ── */
+.filter-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(320px, 1.2fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Search Input
+   ═══════════════════════════════════════════════════════════════ */
+
+.filter-input {
+  position: relative;
+  width: 100%;
+}
+
+.filter-input i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(15, 23, 42, 0.4);
+  pointer-events: none;
+  font-size: 15px;
+  transition: color 0.2s ease;
+  z-index: 1;
+}
+
+.filter-input input {
+  width: 100%;
+  height: 44px;
+  padding-left: 42px;
+  padding-right: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.filter-input input::placeholder {
+  color: rgba(15, 23, 42, 0.4);
+  font-weight: 400;
+}
+
+/* Focus State */
+.filter-input input:focus {
+  border-color: #1b6ec2;
+  box-shadow: 
+    0 0 0 3px rgba(27, 110, 194, 0.08),
+    0 1px 2px rgba(15, 23, 42, 0.05);
+  background: #ffffff;
+}
+
+.filter-input input:focus + i,
+.filter-input:focus-within i {
+  color: #1b6ec2;
+}
+
+.filter-input input:hover:not(:focus) {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.01);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Filter Selects
+   ═══════════════════════════════════════════════════════════════ */
+
+.filter-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.filter-filters .form-select {
+  height: 44px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  padding: 0 36px 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230f172a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  appearance: none;
+}
+
+.filter-filters .form-select:hover {
+  border-color: rgba(15, 23, 42, 0.18);
+  background-color: rgba(15, 23, 42, 0.01);
+}
+
+.filter-filters .form-select:focus {
+  border-color: #1b6ec2;
+  box-shadow: 
+    0 0 0 3px rgba(27, 110, 194, 0.08),
+    0 1px 2px rgba(15, 23, 42, 0.05);
+  outline: none;
+  background-color: #ffffff;
+}
+
+.filter-filters .form-select option {
+  padding: 8px;
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Actions (Clear Button)
+   ═══════════════════════════════════════════════════════════════ */
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-clear {
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: #ffffff;
+  color: rgba(15, 23, 42, 0.7);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.filter-clear i {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.filter-clear:hover {
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.04);
+  color: #dc3545;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.15);
+}
+
+.filter-clear:hover i {
+  transform: rotate(90deg);
+}
+
+.filter-clear:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(220, 53, 69, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Responsive Design
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 992px) {
+  .filter-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filter-actions {
+    justify-content: flex-start;
+  }
+
+  .filter-filters {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .filter-shell {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .filter-input input,
+  .filter-filters .form-select,
+  .filter-clear {
+    height: 42px;
+    font-size: 13px;
+  }
+
+  .filter-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-clear {
+    width: 100%;
+    justify-content: center;
+  }
+}

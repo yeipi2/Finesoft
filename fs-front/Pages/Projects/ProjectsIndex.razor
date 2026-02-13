@@ -23,7 +23,7 @@ else if (!_hasAccess)
 else
 {
     <container class="container p-4">
-        <section class="container-fluid p-xl-5">
+        <section class="container-fluid px-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-folder fs-1 text-primary me-3"></i>
@@ -41,12 +41,8 @@ else
                 }
             </div>
 
-            <div class="row mb-4 align-items-center">
-                <div class="col-md-5 col-lg-4">
-                    <input type="text" class="form-control" placeholder="Buscar proyectos..."
-                           @bind="_searchText" @bind:event="oninput" />
-                </div>
-            </div>
+            <SearchBar Placeholder="Buscar proyectos..." Value="@_searchText" ValueChanged="@(v => _searchText = v)"
+                       Class="mb-4" />
         </section>
 
         <section class="container-fluid p-xl-5">

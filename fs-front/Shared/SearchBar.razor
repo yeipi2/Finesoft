@@ -1,0 +1,40 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="filter-shell @Class">
+    <div class="filter-row">
+        <div class="filter-item filter-grow">
+            <div class="filter-input">
+                <i class="bi bi-search"></i>
+                <input type="text"  class="form-control"   placeholder="@Placeholder"    value="@Value"      @oninput="OnInput" />
+            </div>
+        </div>
+
+        @if (ShowClear && !string.IsNullOrWhiteSpace(Value))
+        {
+            <button type="button" class="btn btn-outline-secondary filter-clear" @onclick="Clear">
+                <i class="bi bi-x-circle"></i>
+                Limpiar
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Placeholder { get; set; } = "Buscar...";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public bool ShowClear { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(v);
+    }
+
+    private async Task Clear()
+    {
+        await ValueChanged.InvokeAsync(string.Empty);
+    }
+}

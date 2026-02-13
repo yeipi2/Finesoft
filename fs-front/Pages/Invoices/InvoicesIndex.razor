@@ -12,8 +12,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                                background:white;z-index:9999;
-                                display:flex;align-items:center;justify-content:center;">
+        background:white;z-index:9999;
+        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -58,81 +58,54 @@ else
         @if (_stats != null)
         {
             <StatGrid class="mb-5">
-                <StatCard Title="Pendientes"
-                        Value="@_stats.PendingInvoices.ToString()"
-                        SubValue="@_stats.TotalPending.ToString("C")"
-                        Accent="StatCard.StatAccent.Info"
-                        IconClass="bi bi-hourglass-split" />
+                <StatCard Title="Pendientes" Value="@_stats.PendingInvoices.ToString()"
+                          SubValue="@_stats.TotalPending.ToString("C")" Accent="StatCard.StatAccent.Info"
+                          IconClass="bi bi-hourglass-split" />
 
-                <StatCard Title="Pagadas"
-                        Value="@_stats.PaidInvoices.ToString()"
-                        SubValue="@_stats.TotalPaid.ToString("C")"
-                        Accent="StatCard.StatAccent.Success"
-                        IconClass="bi bi-check-circle" />
+                <StatCard Title="Pagadas" Value="@_stats.PaidInvoices.ToString()" SubValue="@_stats.TotalPaid.ToString("C")"
+                          Accent="StatCard.StatAccent.Success" IconClass="bi bi-check-circle" />
 
-                <StatCard Title="Vencidas"
-                        Value="@_stats.OverdueInvoices.ToString()"
-                        SubValue="@_stats.TotalOverdue.ToString("C")"
-                        Accent="StatCard.StatAccent.Danger"
-                        IconClass="bi bi-exclamation-triangle" />
+                <StatCard Title="Vencidas" Value="@_stats.OverdueInvoices.ToString()"
+                          SubValue="@_stats.TotalOverdue.ToString("C")" Accent="StatCard.StatAccent.Danger"
+                          IconClass="bi bi-exclamation-triangle" />
 
-                <StatCard Title="Total Facturado"
-                        Value="@_stats.TotalInvoices.ToString()"
-                        SubValue="@_stats.TotalBilled.ToString("C")"
-                        Accent="StatCard.StatAccent.Info"
-                        IconClass="bi bi-wallet2" />
+                <StatCard Title="Total Facturado" Value="@_stats.TotalInvoices.ToString()"
+                          SubValue="@_stats.TotalBilled.ToString("C")" Accent="StatCard.StatAccent.Info" IconClass="bi bi-wallet2" />
             </StatGrid>
         }
 
         <!-- Filtros -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <input type="text" class="form-control" placeholder="Buscar facturas..."
-                               @bind="_searchTerm" @bind:event="oninput" @bind:after="FilterInvoices" />
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select" @bind="_selectedStatus" @bind:after="FilterInvoices">
-                            <option value="">Todos los estados</option>
-                            <option value="Pendiente">Pendiente</option>
-                            <option value="Pagada">Pagada</option>
-                            <option value="Vencida">Vencida</option>
-                            <option value="Cancelada">Cancelada</option>
-                        </select>
-                    </div>
+        <FilterBar Class="mb-5" SearchPlaceholder="Buscar facturas..." SearchValue="@_searchTerm"
+                   SearchValueChanged="@(v => { _searchTerm = v; FilterInvoices(); })" OnClear="ClearFilters">
 
-                    <div class="col-md-3">
-                        <select class="form-select" @bind="_selectedType" @bind:after="FilterInvoices">
-                            <option value="">Todos los tipos</option>
-                            <option value="Event">Evento</option>
-                            <option value="Monthly">Mensual</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select" @bind="_selectedClientId" @bind:after="FilterInvoices">
-                            <option value="0">Todos los clientes</option>
-                            @if (_clients != null)
-                            {
-                                @foreach (var client in _clients)
-                                {
-                                    <option value="@client.Id">@client.CompanyName</option>
-                                }
-                            }
-                        </select>
-                    </div>
-                </div>
-                @if (!string.IsNullOrEmpty(_selectedStatus) || !string.IsNullOrEmpty(_selectedType) || _selectedClientId > 0 || !string.IsNullOrEmpty(_searchTerm))
-                {
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="ClearFilters">
-                            <i class="bi bi-x-circle"></i>
-                            Limpiar
-                        </button>
-                    </div>
-                }
-            </div>
-        </div>
+            <Filters>
+                <select class="form-select" @bind="_selectedStatus" @bind:event="onchange" @bind:after="FilterInvoices">
+                    <option value="">Todos los estados</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Pagada">Pagada</option>
+                    <option value="Vencida">Vencida</option>
+                    <option value="Cancelada">Cancelada</option>
+                </select>
+
+                <select class="form-select" @bind="_selectedType" @bind:event="onchange" @bind:after="FilterInvoices">
+                    <option value="">Todos los tipos</option>
+                    <option value="Event">Evento</option>
+                    <option value="Monthly">Mensual</option>
+                </select>
+
+                <select class="form-select" @bind="_selectedClientId" @bind:event="onchange" @bind:after="FilterInvoices">
+                    <option value="0">Todos los clientes</option>
+                    @if (_clients != null)
+                    {
+                        @foreach (var client in _clients)
+                        {
+                            <option value="@client.Id">@client.CompanyName</option>
+                        }
+                    }
+                </select>
+            </Filters>
+
+        </FilterBar>
 
         <!-- Tabla de Facturas -->
         <div class="card">
@@ -210,27 +183,23 @@ else
                                         </td>
                                         <td class="text-center">
                                             <button class="btn btn-sm btn-outline-primary me-1"
-                                                    @onclick="() => ViewInvoiceDetails(invoice.Id)"
-                                                    title="Ver detalles">
+                                                    @onclick="() => ViewInvoiceDetails(invoice.Id)" title="Ver detalles">
                                                 <i class="bi bi-eye-fill"></i>
                                             </button>
                                             @if (_canEdit)
                                             {
                                                 <button class="btn btn-sm btn-outline-info me-1"
-                                                        @onclick="() => OpenEditDialog(invoice.Id)"
-                                                        title="Editar">
+                                                        @onclick="() => OpenEditDialog(invoice.Id)" title="Editar">
                                                     <i class="bi bi-pencil-fill"></i>
                                                 </button>
                                             }
                                             <button class="btn btn-sm btn-outline-success me-1"
-                                                    @onclick="() => DownloadPdf(invoice.Id)"
-                                                    title="Descargar PDF">
+                                                    @onclick="() => DownloadPdf(invoice.Id)" title="Descargar PDF">
                                                 <i class="bi bi-file-earmark-pdf-fill"></i>
                                             </button>
                                             @if (_canDelete)
                                             {
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                        @onclick="() => ConfirmDelete(invoice.Id)"
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(invoice.Id)"
                                                         title="Eliminar">
                                                     <i class="bi bi-trash-fill"></i>
                                                 </button>
@@ -358,8 +327,8 @@ else
     {
         var options = new DialogOptions
         {
-            Width = "1000px",          // ⭐ CAMBIO: Más ancho
-            Height = "80%",           // ⭐ CAMBIO: Altura automática
+            Width = "1000px", // ⭐ CAMBIO: Más ancho
+            Height = "80%", // ⭐ CAMBIO: Altura automática
             Resizable = true,
             Draggable = false,
             CloseDialogOnOverlayClick = false
@@ -379,8 +348,8 @@ else
     {
         var options = new DialogOptions
         {
-            Width = "1000px",          // ⭐ CAMBIO: Más ancho
-            Height = "80%",           // ⭐ CAMBIO: Altura automática
+            Width = "1000px", // ⭐ CAMBIO: Más ancho
+            Height = "80%", // ⭐ CAMBIO: Altura automática
             Resizable = true,
             Draggable = false,
             CloseDialogOnOverlayClick = false

@@ -1,0 +1,68 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="filter-shell @Class">
+    <div class="filter-row">
+
+        @if (ShowSearch)
+        {
+            <div class="filter-item filter-grow">
+                <div class="filter-input">
+                    <i class="bi bi-search"></i>
+                    <input type="text"              class="form-control"           placeholder="@SearchPlaceholder"        value="@SearchValue"
+                           @oninput="OnSearchInput" />
+                </div>
+            </div>
+        }
+
+        @if (Filters is not null)
+        {
+            <div class="filter-item filter-filters">
+                @Filters
+            </div>
+        }
+
+        <div class="filter-item filter-actions">
+            @if (Actions is not null)
+            {
+                @Actions
+            }
+
+            @if (ShowClear)
+            {
+                <button type="button" class="btn btn-outline-secondary filter-clear" @onclick="OnClearClick">
+                    <i class="bi bi-x-circle"></i> @ClearText
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+
+    // Search
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Buscar...";
+    [Parameter] public string SearchValue { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SearchValueChanged { get; set; }
+
+    // Slots
+    [Parameter] public RenderFragment? Filters { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    // Clear
+    [Parameter] public bool ShowClear { get; set; } = true;
+    [Parameter] public string ClearText { get; set; } = "Limpiar Filtros";
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString() ?? string.Empty;
+        await SearchValueChanged.InvokeAsync(v);
+    }
+
+    private async Task OnClearClick()
+    {
+        if (OnClear.HasDelegate) await OnClear.InvokeAsync();
+    }
+}

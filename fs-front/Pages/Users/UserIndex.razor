@@ -19,7 +19,7 @@ else if (_hasAccess)
 {
     @* ↓↓↓ TODO EL HTML ORIGINAL SIN CAMBIAR NADA ↓↓↓ *@
     <div class="">
-        <section class="container-fluid p-xl-5">
+        <section class="container-fluid px-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-people fs-1 text-primary me-3"></i>
@@ -36,12 +36,10 @@ else if (_hasAccess)
                     </button>
                 }
             </div>
-            <div class="row mb-4 align-items-center">
-                <div class="col-md-5 col-lg-4">
-                    <input type="text" class="form-control" placeholder="Buscar usuarios..."
-                           @bind="_searchTerm" @bind:event="oninput" />
-                </div>
-            </div>
+            <SearchBar Placeholder="Buscar usuarios..."
+           Value="@_searchTerm"
+           ValueChanged="@(v => { _searchTerm = v; FilterUsers(); })"
+           Class="mb-4" />
         </section>
 
         <section class="container-fluid p-xl-5">
@@ -172,8 +170,6 @@ else if (_hasAccess)
                                 u.Email.ToLower().Contains(_searchTerm.ToLower()) ||
                                 u.RoleName.ToLower().Contains(_searchTerm.ToLower()));
     }
-
-    private void OnSearchInput(ChangeEventArgs e) { _searchTerm = e.Value?.ToString() ?? ""; FilterUsers(); StateHasChanged(); }
 
     private async Task ShowCreateModal()
     {
