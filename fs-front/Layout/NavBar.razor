@@ -21,18 +21,6 @@
                     </li>
                 }
 
-                @* ========== TICKETS ========== *@
-                @if (_canViewTickets)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="tickets" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-ticket-perforated me-2"></i>
-                            Tickets
-                        </NavLink>
-                    </li>
-                }
 
                 @* ========== CLIENTES ========== *@
                 @if (_canViewClients)
@@ -47,6 +35,19 @@
                     </li>
                 }
 
+                @* ========== EMPLEADOS ========== *@
+                @if (_canViewEmployees)
+                {
+                    <li class="nav-item me-2">
+                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
+                                 href="empleados" Match="NavLinkMatch.Prefix"
+                                 ActiveClass="active bg-light text-dark rounded fw-bold">
+                            <i class="bi bi-person-badge me-2"></i>
+                            Empleados
+                        </NavLink>
+                    </li>
+                }
+
                 @* ========== PROYECTOS ========== *@
                 @if (_canViewProjects)
                 {
@@ -56,6 +57,19 @@
                                  ActiveClass="active bg-light text-dark rounded fw-bold">
                             <i class="bi bi-folder me-2"></i>
                             Proyectos
+                        </NavLink>
+                    </li>
+                }
+
+                @* ========== TICKETS ========== *@
+                @if (_canViewTickets)
+                {
+                    <li class="nav-item me-2">
+                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
+                                 href="tickets" Match="NavLinkMatch.Prefix"
+                                 ActiveClass="active bg-light text-dark rounded fw-bold">
+                            <i class="bi bi-ticket-perforated me-2"></i>
+                            Tickets
                         </NavLink>
                     </li>
                 }
@@ -113,7 +127,6 @@
                     </Authorized>
                 </AuthorizeView>
 
-
                 @* ========== USUARIOS ========== *@
                 @if (_canViewUsers)
                 {
@@ -126,6 +139,8 @@
                         </NavLink>
                     </li>
                 }
+
+
 
             </ul>
 
@@ -184,6 +199,7 @@
     private bool _canViewInvoices;
     private bool _canViewReports;
     private bool _canViewUsers;
+    private bool _canViewEmployees;
 
     protected override async Task OnInitializedAsync()
     {
@@ -198,6 +214,7 @@
         _canViewInvoices = await authProvider.HasPermissionAsync("invoices.view");
         _canViewReports = await authProvider.HasPermissionAsync("reports.view");
         _canViewUsers = await authProvider.HasPermissionAsync("users.view");
+        _canViewEmployees = await authProvider.HasPermissionAsync("employees.view");
     }
 
     private void ToggleDropdown() => _isDropdownOpen = !_isDropdownOpen;

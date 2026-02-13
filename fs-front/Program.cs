@@ -41,6 +41,7 @@ builder.Services.AddAuthorizationCore();
 //    Aquí se conectan las interfaces con sus implementaciones.
 builder.Services.AddScoped<PermissionsRealtimeClient>();
 builder.Services.AddScoped<IAuthService, CustomAuthStateProvider>();
+builder.Services.AddScoped<IEmployeeApiService, EmployeeApiService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddScoped<IUserApiService, UserApiService>();
 builder.Services.AddScoped<IClientApiService, ClientApiService>();

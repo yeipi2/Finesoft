@@ -11,7 +11,9 @@ namespace fs_backend.Identity
         {
         }
 
+       
         public DbSet<Client> Clients { get; set; }
+        public DbSet<Employee> Employees { get; set; }
         public DbSet<Project> Projects { get; set; }
         public DbSet<Ticket> Tickets { get; set; }
         public DbSet<TicketComment> TicketComments { get; set; }
@@ -25,6 +27,7 @@ namespace fs_backend.Identity
         public DbSet<TicketActivity> TicketActivities { get; set; }
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
+        
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -140,6 +143,7 @@ namespace fs_backend.Identity
         }
 
         // ========== MÉTODO QUE INSERTA LOS 45 PERMISOS AUTOMÁTICAMENTE ==========
+        // ========== MÉTODO QUE INSERTA LOS PERMISOS AUTOMÁTICAMENTE ==========
         private void SeedPermissions(ModelBuilder builder)
         {
             var permissions = new List<Permission>();
@@ -172,6 +176,13 @@ namespace fs_backend.Identity
             permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Crear", Code = "clients.create", Description = "Crear clientes" });
             permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Editar", Code = "clients.edit", Description = "Editar clientes" });
             permissions.Add(new Permission { Id = id++, Module = "Clientes", Action = "Eliminar", Code = "clients.delete", Description = "Eliminar clientes" });
+
+            // ========== EMPLEADOS (5 permisos) - ⭐ NUEVOS ⭐ ==========
+            permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "Ver", Code = "employees.view", Description = "Ver lista de empleados" });
+            permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "VerDetalle", Code = "employees.view_detail", Description = "Ver detalles de empleado" });
+            permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "Crear", Code = "employees.create", Description = "Crear empleados" });
+            permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "Editar", Code = "employees.edit", Description = "Editar empleados" });
+            permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "Eliminar", Code = "employees.delete", Description = "Eliminar empleados" });
 
             // ========== PROYECTOS (5 permisos) ==========
             permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "Ver", Code = "projects.view", Description = "Ver lista de proyectos" });

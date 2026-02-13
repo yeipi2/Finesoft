@@ -28,6 +28,7 @@ builder.Services.AddRazorPages();
 
 // 4) Registro de servicios propios (DI)
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITicketService, TicketService>();

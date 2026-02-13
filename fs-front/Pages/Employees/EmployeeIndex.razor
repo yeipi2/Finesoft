@@ -1,0 +1,271 @@
+﻿@page "/empleados"
+@using fs_front.DTO
+@using fs_front.Services
+@using fs_front.Repositories
+@inject IEmployeeApiService EmployeeApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject PermissionService PermissionService
+@inject NavigationManager NavigationManager
+
+@attribute [Authorize]
+
+<PageTitle>Finesoft - Empleados</PageTitle>
+
+@if (_checkingAccess)
+{
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
+                    background:white;z-index:9999;
+                    display:flex;align-items:center;justify-content:center;">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (!_hasAccess)
+{
+    <div></div>
+}
+else
+{
+    <container class="container p-4">
+        <section class="container-fluid p-xl-5">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-person-badge fs-1 text-primary me-3"></i>
+                    <div>
+                        <p class="display-6 fw-bolder mb-2">Empleados Registrados</p>
+                        <p class="text-muted mb-0">Gestión del personal de la empresa</p>
+                    </div>
+                </div>
+                @if (_canCreate)
+                {
+                    <button @onclick="ShowCreateModal"
+                            class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+                        <i class="bi bi-plus-lg"></i> Nuevo Empleado
+                    </button>
+                }
+            </div>
+            <div class="row">
+                <div class="col-md-6 col-lg-4">
+                    <input type="text" class="form-control" placeholder="Buscar empleados..."
+                           @bind="_searchTerm" @bind:event="oninput" @onkeyup="FilterEmployees" />
+                </div>
+            </div>
+        </section>
+
+        <section class="container-fluid p-xl-5">
+            @if (_isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Cargando empleados...</p>
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Nombre</th>
+                            <th>Email / RFC</th>
+                            <th>Puesto</th>
+                            <th>Departamento</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_filteredEmployees != null && _filteredEmployees.Any())
+                        {
+                            @foreach (var employee in _filteredEmployees)
+                            {
+                                <tr>
+                                    <td class="fw-bold ps-4">
+                                        @employee.FullName
+                                        <div class="text-muted small">@employee.Phone</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">@employee.Email</div>
+                                        <div class="text-muted small">@employee.RFC</div>
+                                    </td>
+                                    <td>@employee.Position</td>
+                                    <td>@employee.Department</td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">@employee.RoleName</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @(employee.IsActive ? "bg-success" : "bg-secondary")">
+                                            @(employee.IsActive ? "Activo" : "Inactivo")
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (_canEdit)
+                                        {
+                                            <button @onclick="@(() => ShowEditModal(employee.Id))"
+                                                    class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                                <i class="bi bi-pencil-fill"></i>
+                                            </button>
+                                        }
+                                        @if (_canDelete)
+                                        {
+                                            <button @onclick="@(() => DeleteEmployee(employee.Id, employee.FullName))"
+                                                    class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    @if (string.IsNullOrEmpty(_searchTerm))
+                                    {
+                                        <text>No hay empleados registrados.</text>
+                                    }
+                                    else
+                                    {
+                                        <text>No se encontraron empleados con "@_searchTerm"</text>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    </container>
+}
+
+@code {
+    private List<EmployeeDto>? _employees = new();
+    private List<EmployeeDto>? _filteredEmployees = new();
+
+    private bool _checkingAccess = true;
+    private bool _hasAccess = false;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+    private bool _isLoading = false;
+
+    private string _searchTerm = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var canView = await PermissionService.HasPermissionAsync("employees.view");
+
+        if (!canView)
+        {
+            Console.WriteLine("⛔ Sin permiso employees.view → redirigiendo");
+            _checkingAccess = false;
+            _hasAccess = false;
+            NavigationManager.NavigateTo("/dashboard", forceLoad: true);
+            return;
+        }
+
+        _hasAccess = true;
+        _checkingAccess = false;
+
+        _canCreate = await PermissionService.HasPermissionAsync("employees.create");
+        _canEdit = await PermissionService.HasPermissionAsync("employees.edit");
+        _canDelete = await PermissionService.HasPermissionAsync("employees.delete");
+
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        _isLoading = true;
+        try
+        {
+            _employees = await EmployeeApiService.GetEmployeesAsync();
+            _filteredEmployees = _employees;
+            StateHasChanged();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            ShowNotification("Error", "No se pudo cargar la lista de empleados.", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void FilterEmployees()
+    {
+        if (_employees == null) return;
+
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _filteredEmployees = _employees;
+        }
+        else
+        {
+            var search = _searchTerm.ToLower();
+            _filteredEmployees = _employees
+                .Where(e => e.FullName.ToLower().Contains(search) ||
+                           e.Email.ToLower().Contains(search) ||
+                           e.RFC.ToLower().Contains(search) ||
+                           e.Position.ToLower().Contains(search) ||
+                           e.Department.ToLower().Contains(search))
+                .ToList();
+        }
+    }
+
+    private async Task ShowCreateModal()
+    {
+        var result = await DialogService.OpenAsync<EmployeeForm>("Crear Empleado",
+            options: new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
+        if (result == true) await LoadEmployees();
+    }
+
+    private async Task ShowEditModal(int? employeeId)
+    {
+        var parameters = new Dictionary<string, object> { { "EmployeeId", employeeId } };
+        var result = await DialogService.OpenAsync<EmployeeForm>("Editar Empleado", parameters,
+            options: new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
+        if (result == true) await LoadEmployees();
+    }
+
+    private async Task DeleteEmployee(int? employeeId, string employeeName)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Estás seguro de que quieres eliminar a {employeeName}? Esto también eliminará su usuario asociado.",
+            "Confirmar Eliminación",
+            new ConfirmOptions { OkButtonText = "Sí, Eliminar", CancelButtonText = "Cancelar" });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var (success, errorMessage) = await EmployeeApiService.DeleteEmployeeAsync(employeeId.Value);
+                if (success)
+                {
+                    ShowNotification("Éxito", "Empleado eliminado correctamente.", NotificationSeverity.Success);
+                    await LoadEmployees();
+                }
+                else
+                {
+                    ShowNotification("Error", errorMessage ?? "No se pudo eliminar.", NotificationSeverity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowNotification("Error Grave", ex.Message, NotificationSeverity.Error);
+            }
+        }
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity) =>
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+}

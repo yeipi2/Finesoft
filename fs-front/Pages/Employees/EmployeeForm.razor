@@ -1,0 +1,537 @@
+﻿@using fs_front.DTO
+@using fs_front.Repositories
+@inject IEmployeeApiService EmployeeApiService
+@inject IPermissionApiService PermissionApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center p-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <span class="ms-3 fs-5">Cargando datos del empleado...</span>
+    </div>
+}
+else
+{
+    <div style="max-width: 900px; margin: 0 auto;">
+        <EditForm Model="_employeeModel" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            @* ========== ALERTAS DE VALIDACIÓN ========== *@
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                </div>
+            }
+
+            @* ========== ACORDEÓN DE SECCIONES ========== *@
+            <div class="accordion mb-3" id="employeeAccordion">
+
+                @* ========== SECCIÓN 1: DATOS DE ACCESO ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingAccess">
+                        <button class="accordion-button @(_section1Complete ? "" : "text-danger")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseAccess"
+                                aria-expanded="true"
+                                aria-controls="collapseAccess"
+                                @onclick="() => ToggleSection(1)">
+                            <i class="bi bi-person-circle me-2"></i>
+                            <strong>Datos de Acceso al Sistema</strong>
+                            @if (!_section1Complete)
+                            {
+                                <span class="badge bg-danger ms-2">Incompleto</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                            }
+                        </button>
+                    </h2>
+                    <div id="collapseAccess"
+                         class="accordion-collapse collapse @(_activeSection == 1 ? "show" : "")"
+                         aria-labelledby="headingAccess">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="Email" class="form-label small fw-bold">
+                                        Email / Usuario <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText id="Email"
+                                               type="email"
+                                               class="form-control form-control-sm"
+                                               placeholder="correo@empresa.com"
+                                               @bind-Value="_employeeModel.Email"
+                                               @bind-Value:after="ValidateSections"
+                                               disabled="@_isEditMode" />
+                                    <small class="text-muted">Usuario de acceso al sistema</small>
+                                    <ValidationMessage For="@(() => _employeeModel.Email)" />
+                                </div>
+
+                                @if (!_isEditMode)
+                                {
+                                    <div class="col-md-6">
+                                        <label for="Password" class="form-label small fw-bold">
+                                            Contraseña <span class="text-danger">*</span>
+                                        </label>
+                                        <InputText id="Password"
+                                                   type="password"
+                                                   class="form-control form-control-sm"
+                                                   placeholder="Mínimo 6 caracteres"
+                                                   @bind-Value="_employeeModel.Password"
+                                                   @bind-Value:after="ValidateSections" />
+                                        <ValidationMessage For="@(() => _employeeModel.Password)" />
+                                    </div>
+                                }
+
+                                <div class="col-md-6">
+                                    <label for="RoleName" class="form-label small fw-bold">
+                                        Rol en el Sistema <span class="text-danger">*</span>
+                                    </label>
+                                    <InputSelect id="RoleName"
+                                                 class="form-select form-select-sm"
+                                                 @bind-Value="_employeeModel.RoleName"
+                                                 @bind-Value:after="ValidateSections">
+                                        <option value="">-- Seleccionar Rol --</option>
+                                        @foreach (var role in _employeeRoles)
+                                        {
+                                            <option value="@role">@role</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => _employeeModel.RoleName)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ========== SECCIÓN 2: DATOS PERSONALES ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingPersonal">
+                        <button class="accordion-button collapsed @(_section2Complete ? "" : "text-danger")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapsePersonal"
+                                aria-expanded="false"
+                                aria-controls="collapsePersonal"
+                                @onclick="() => ToggleSection(2)">
+                            <i class="bi bi-person-vcard me-2"></i>
+                            <strong>Datos Personales</strong>
+                            @if (!_section2Complete)
+                            {
+                                <span class="badge bg-danger ms-2">Incompleto</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                            }
+                        </button>
+                    </h2>
+                    <div id="collapsePersonal"
+                         class="accordion-collapse collapse @(_activeSection == 2 ? "show" : "")"
+                         aria-labelledby="headingPersonal">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="FullName" class="form-label small fw-bold">
+                                        Nombre Completo <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText id="FullName"
+                                               class="form-control form-control-sm"
+                                               placeholder="Juan Pérez García"
+                                               @bind-Value="_employeeModel.FullName"
+                                               @bind-Value:after="ValidateSections" />
+                                    <ValidationMessage For="@(() => _employeeModel.FullName)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="RFC" class="form-label small fw-bold">
+                                        RFC <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText id="RFC"
+                                               class="form-control form-control-sm"
+                                               placeholder="ABCD123456XXX"
+                                               @bind-Value="_employeeModel.RFC"
+                                               @bind-Value:after="ValidateSections"
+                                               maxlength="13" />
+                                    <ValidationMessage For="@(() => _employeeModel.RFC)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="CURP" class="form-label small fw-bold">CURP</label>
+                                    <InputText id="CURP"
+                                               class="form-control form-control-sm"
+                                               placeholder="ABCD123456HDFXXX00"
+                                               @bind-Value="_employeeModel.CURP"
+                                               maxlength="18" />
+                                    <ValidationMessage For="@(() => _employeeModel.CURP)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="Phone" class="form-label small fw-bold">Teléfono</label>
+                                    <InputText id="Phone"
+                                               class="form-control form-control-sm"
+                                               placeholder="+52 123 456 7890"
+                                               @bind-Value="_employeeModel.Phone" />
+                                    <ValidationMessage For="@(() => _employeeModel.Phone)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="Address" class="form-label small fw-bold">Dirección</label>
+                                    <InputText id="Address"
+                                               class="form-control form-control-sm"
+                                               placeholder="Calle, Colonia, Ciudad"
+                                               @bind-Value="_employeeModel.Address" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ========== SECCIÓN 3: DATOS LABORALES ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingWork">
+                        <button class="accordion-button collapsed @(_section3Complete ? "" : "text-danger")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseWork"
+                                aria-expanded="false"
+                                aria-controls="collapseWork"
+                                @onclick="() => ToggleSection(3)">
+                            <i class="bi bi-briefcase me-2"></i>
+                            <strong>Datos Laborales</strong>
+                            @if (!_section3Complete)
+                            {
+                                <span class="badge bg-danger ms-2">Incompleto</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                            }
+                        </button>
+                    </h2>
+                    <div id="collapseWork"
+                         class="accordion-collapse collapse @(_activeSection == 3 ? "show" : "")"
+                         aria-labelledby="headingWork">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="Position" class="form-label small fw-bold">
+                                        Puesto <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText id="Position"
+                                               class="form-control form-control-sm"
+                                               placeholder="Desarrollador, Gerente, etc."
+                                               @bind-Value="_employeeModel.Position"
+                                               @bind-Value:after="ValidateSections" />
+                                    <ValidationMessage For="@(() => _employeeModel.Position)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="Department" class="form-label small fw-bold">Departamento</label>
+                                    <InputText id="Department"
+                                               class="form-control form-control-sm"
+                                               placeholder="TI, Ventas, RRHH, etc."
+                                               @bind-Value="_employeeModel.Department" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="HireDate" class="form-label small fw-bold">
+                                        Fecha de Contratación <span class="text-danger">*</span>
+                                    </label>
+                                    <InputDate id="HireDate"
+                                               class="form-control form-control-sm"
+                                               @bind-Value="_employeeModel.HireDate"
+                                               @bind-Value:after="ValidateSections" />
+                                    <ValidationMessage For="@(() => _employeeModel.HireDate)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="Salary" class="form-label small fw-bold">
+                                        Salario (Mensual MXN)
+                                    </label>
+                                    <InputNumber id="Salary"
+                                                 class="form-control form-control-sm"
+                                                 placeholder="0.00"
+                                                 @bind-Value="_employeeModel.Salary" />
+                                    <small class="text-muted">Campo opcional y confidencial</small>
+                                    <ValidationMessage For="@(() => _employeeModel.Salary)" />
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <InputCheckbox id="IsActive"
+                                                       class="form-check-input"
+                                                       @bind-Value="_employeeModel.IsActive" />
+                                        <label class="form-check-label small fw-bold" for="IsActive">
+                                            Empleado Activo
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ========== SECCIÓN 4: CONTACTO DE EMERGENCIA (OPCIONAL) ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingEmergency">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseEmergency"
+                                aria-expanded="false"
+                                aria-controls="collapseEmergency"
+                                @onclick="() => ToggleSection(4)">
+                            <i class="bi bi-telephone me-2"></i>
+                            <strong>Contacto de Emergencia</strong>
+                            <span class="badge bg-secondary ms-2">Opcional</span>
+                        </button>
+                    </h2>
+                    <div id="collapseEmergency"
+                         class="accordion-collapse collapse @(_activeSection == 4 ? "show" : "")"
+                         aria-labelledby="headingEmergency">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="EmergencyContactName" class="form-label small fw-bold">
+                                        Nombre
+                                    </label>
+                                    <InputText id="EmergencyContactName"
+                                               class="form-control form-control-sm"
+                                               placeholder="María López"
+                                               @bind-Value="_employeeModel.EmergencyContactName" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="EmergencyContactPhone" class="form-label small fw-bold">
+                                        Teléfono
+                                    </label>
+                                    <InputText id="EmergencyContactPhone"
+                                               class="form-control form-control-sm"
+                                               placeholder="+52 123 456 7890"
+                                               @bind-Value="_employeeModel.EmergencyContactPhone" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ========== SECCIÓN 5: NOTAS (OPCIONAL) ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingNotes">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseNotes"
+                                aria-expanded="false"
+                                aria-controls="collapseNotes"
+                                @onclick="() => ToggleSection(5)">
+                            <i class="bi bi-journal-text me-2"></i>
+                            <strong>Notas Adicionales</strong>
+                            <span class="badge bg-secondary ms-2">Opcional</span>
+                        </button>
+                    </h2>
+                    <div id="collapseNotes"
+                         class="accordion-collapse collapse @(_activeSection == 5 ? "show" : "")"
+                         aria-labelledby="headingNotes">
+                        <div class="accordion-body">
+                            <label for="Notes" class="form-label small fw-bold">Observaciones</label>
+                            <InputTextArea id="Notes"
+                                           class="form-control form-control-sm"
+                                           rows="3"
+                                           placeholder="Información adicional sobre el empleado..."
+                                           @bind-Value="_employeeModel.Notes" />
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            @* ========== BOTONES DE ACCIÓN ========== *@
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    @if (!_allSectionsComplete)
+                    {
+                        <small class="text-danger">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            Complete las secciones obligatorias
+                        </small>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button"
+                            class="btn btn-secondary btn-sm"
+                            @onclick="Cancel">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="btn btn-primary btn-sm"
+                            disabled="@_isSaving">
+                        @if (_isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i>
+                        @(_isEditMode ? "Actualizar" : "Guardar")
+                    </button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public int? EmployeeId { get; set; }
+
+    private EmployeeDto _employeeModel = new();
+    private List<string> _employeeRoles = new() { "Empleado", "Supervisor", "Administracion" };
+
+    private bool _isSaving = false;
+    private bool _isLoading = false;
+    private string? _errorMessage;
+    private bool _isEditMode => EmployeeId.HasValue && EmployeeId.Value > 0;
+
+    // Control de secciones
+    private int _activeSection = 1;
+    private bool _section1Complete = false;
+    private bool _section2Complete = false;
+    private bool _section3Complete = false;
+    private bool _allSectionsComplete => _section1Complete && _section2Complete && _section3Complete;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isEditMode)
+        {
+            _isLoading = true;
+            try
+            {
+                var employee = await EmployeeApiService.GetEmployeeByIdAsync(EmployeeId!.Value);
+                if (employee == null)
+                {
+                    _errorMessage = "No se pudo encontrar el empleado para editar.";
+                }
+                else
+                {
+                    _employeeModel = employee;
+                    ValidateSections();
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Error al cargar los datos: {ex.Message}";
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+        else
+        {
+            _employeeModel = new EmployeeDto
+            {
+                IsActive = true,
+                HireDate = DateTime.Today,
+                RoleName = "Empleado"
+            };
+        }
+    }
+
+    private void ToggleSection(int section)
+    {
+        _activeSection = section;
+    }
+
+    private void ValidateSections()
+    {
+        // Sección 1: Datos de Acceso
+        if (_isEditMode)
+        {
+            _section1Complete = !string.IsNullOrWhiteSpace(_employeeModel.Email) &&
+                               !string.IsNullOrWhiteSpace(_employeeModel.RoleName);
+        }
+        else
+        {
+            _section1Complete = !string.IsNullOrWhiteSpace(_employeeModel.Email) &&
+                               !string.IsNullOrWhiteSpace(_employeeModel.Password) &&
+                               !string.IsNullOrWhiteSpace(_employeeModel.RoleName);
+        }
+
+        // Sección 2: Datos Personales
+        _section2Complete = !string.IsNullOrWhiteSpace(_employeeModel.FullName) &&
+                           !string.IsNullOrWhiteSpace(_employeeModel.RFC);
+
+        // Sección 3: Datos Laborales
+        _section3Complete = !string.IsNullOrWhiteSpace(_employeeModel.Position) &&
+                           _employeeModel.HireDate != default;
+
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            bool success = false;
+            string? errorMessage = null;
+
+            if (_isEditMode)
+            {
+                (success, errorMessage) = await EmployeeApiService.UpdateEmployeeAsync(
+                    EmployeeId!.Value, _employeeModel);
+            }
+            else
+            {
+                var createResult = await EmployeeApiService.CreateEmployeeAsync(_employeeModel);
+                success = createResult.Success;
+                errorMessage = createResult.ErrorMessage;
+            }
+
+            if (success)
+            {
+                ShowNotification("Éxito",
+                    _isEditMode ? "Empleado actualizado correctamente" : "Empleado creado correctamente",
+                    NotificationSeverity.Success);
+                DialogService.Close(true);
+            }
+            else
+            {
+                _errorMessage = errorMessage ?? "Ocurrió un error desconocido.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    {
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+    }
+}
