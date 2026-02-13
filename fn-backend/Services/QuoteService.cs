@@ -258,38 +258,54 @@ public class QuoteService : IQuoteService
 
     public async Task<byte[]> GenerateQuotePdfAsync(int id)
     {
-        var quote = await _context.Quotes
-            .Include(q => q.Client)
-            .Include(q => q.Items)
-            // ⭐ NUEVO: Incluir tickets en el PDF
-            .ThenInclude(i => i.Ticket)
-                .ThenInclude(t => t.Project)
-                    .ThenInclude(p => p.Client)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
-        if (quote == null)
+        try
         {
-            throw new Exception("Cotización no encontrada");
-        }
+            var quote = await _context.Quotes
+                .Include(q => q.Client)
+                .Include(q => q.Items)
+                    .ThenInclude(i => i.Ticket)
+                        .ThenInclude(t => t!.Project)
+                            .ThenInclude(p => p!.Client)
+                .AsNoTracking()
+                .AsSplitQuery() // ⭐ NUEVO: Evita problemas de cartesian explosion
+                .FirstOrDefaultAsync(q => q.Id == id);
 
-        var user = await _userManager.FindByIdAsync(quote.CreatedByUserId);
-
-        var document = Document.Create(container =>
-        {
-            container.Page(page =>
+            if (quote == null)
             {
-                page.Size(PageSizes.Letter);
-                page.Margin(40);
-                page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                throw new Exception("Cotización no encontrada");
+            }
 
-                page.Header().Element(c => ComposeHeader(c, quote));
-                page.Content().Element(c => ComposeContent(c, quote));
-                page.Footer().Element(c => ComposeFooter(c, user?.UserName ?? "Sistema"));
+            var user = await _userManager.FindByIdAsync(quote.CreatedByUserId);
+
+            Console.WriteLine("✅ Iniciando generación del PDF...");
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.Letter);
+                    page.Margin(40);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(10));
+
+                    page.Header().Element(c => ComposeHeader(c, quote));
+                    page.Content().Element(c => ComposeContent(c, quote));
+                    page.Footer().Element(c => ComposeFooter(c, user?.UserName ?? "Sistema"));
+                });
             });
-        });
 
-        return document.GeneratePdf();
+            Console.WriteLine("✅ Documento creado, generando PDF bytes...");
+            var pdfBytes = document.GeneratePdf();
+            Console.WriteLine($"✅ PDF generado exitosamente: {pdfBytes.Length} bytes");
+
+            return pdfBytes;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ ERROR en GenerateQuotePdfAsync: {ex.Message}");
+            Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     private void ComposeHeader(IContainer container, Quote quote)
@@ -374,10 +390,10 @@ public class QuoteService : IQuoteService
 
         container.PaddingVertical(20).Column(column =>
         {
-            // ⭐ NUEVA SECCIÓN: Tickets Asociados
-            var ticketItems = quote.Items
+            // ⭐ SECCIÓN: Tickets Asociados
+            var ticketItems = quote.Items?
                 .Where(i => i.TicketId.HasValue && i.Ticket != null)
-                .ToList();
+                .ToList() ?? new List<QuoteItem>();
 
             if (ticketItems.Any())
             {
@@ -386,70 +402,95 @@ public class QuoteService : IQuoteService
 
                 foreach (var item in ticketItems)
                 {
-                    var ticket = item.Ticket!;
+                    try
+                    {
+                        var ticket = item.Ticket!;
+                        var clientName = ticket.Project?.Client?.CompanyName ?? "N/A";
+                        var projectName = ticket.Project?.Name ?? "N/A";
+                        var hours = ticket.ActualHours;
+                        var hourlyRate = ticket.Project?.HourlyRate ?? 0;
+                        var description = ticket.Description ?? string.Empty;
+                        var ticketTitle = ticket.Title ?? "Sin título";
 
-                    column.Item().PaddingVertical(10).Border(1).BorderColor(Colors.Grey.Lighten2)
-                        .Background(Colors.Blue.Lighten5).Padding(10).Column(ticketCol =>
-                        {
-                            // Título del ticket
-                            ticketCol.Item().Row(row =>
+                        column.Item().PaddingVertical(10).Border(1).BorderColor(Colors.Grey.Lighten2)
+                            .Background(Colors.Blue.Lighten5).Padding(15).Column(ticketCol =>
                             {
-                                row.RelativeItem().Text($"Ticket #{ticket.Id}").FontSize(12).Bold().FontColor(infoColor);
-                                row.ConstantItem(10);
-                                row.RelativeItem().Text(ticket.Title).FontSize(11).Bold();
-                            });
-
-                            ticketCol.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-
-                            // Detalles en tabla
-                            ticketCol.Item().PaddingTop(5).Table(table =>
-                            {
-                                table.ColumnsDefinition(columns =>
+                                // Título del ticket
+                                ticketCol.Item().Row(row =>
                                 {
-                                    columns.RelativeColumn(1);
-                                    columns.RelativeColumn(2);
+                                    row.ConstantItem(80).Text($"Ticket #{ticket.Id}").FontSize(12).Bold().FontColor(infoColor);
+                                    row.RelativeItem().Text(ticketTitle).FontSize(12).Bold();
                                 });
 
-                                // Cliente
-                                if (ticket.Project?.Client != null)
-                                {
-                                    table.Cell().Text("Cliente:").FontSize(9).Bold();
-                                    table.Cell().Text(ticket.Project.Client.CompanyName).FontSize(9);
-                                }
+                                ticketCol.Item().PaddingVertical(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
-                                // Proyecto
-                                if (ticket.Project != null)
+                                // Información en 2 columnas
+                                ticketCol.Item().Row(row =>
                                 {
-                                    table.Cell().Text("Proyecto:").FontSize(9).Bold();
-                                    table.Cell().Text(ticket.Project.Name).FontSize(9);
-                                }
+                                    // Columna izquierda
+                                    row.RelativeItem().Column(leftCol =>
+                                    {
+                                        leftCol.Item().PaddingBottom(8).Row(infoRow =>
+                                        {
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Cliente:").FontSize(10).Bold();
+                                            infoRow.RelativeItem().AlignLeft().Text(clientName).FontSize(10);
+                                        });
 
-                                // Horas trabajadas
-                                table.Cell().Text("Horas:").FontSize(9).Bold();
-                                table.Cell().Text($"{ticket.ActualHours:0.0} h").FontSize(9);
+                                        leftCol.Item().PaddingBottom(8).Row(infoRow =>
+                                        {
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Proyecto:").FontSize(10).Bold();
+                                            infoRow.RelativeItem().AlignLeft().Text(projectName).FontSize(10);
+                                        });
+                                    });
 
-                                // Costo del ticket
-                                if (ticket.Project?.HourlyRate > 0)
+                                    row.ConstantItem(20);
+
+                                    // Columna derecha
+                                    row.RelativeItem().Column(rightCol =>
+                                    {
+                                        rightCol.Item().PaddingBottom(8).Row(infoRow =>
+                                        {
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Horas:").FontSize(10).Bold();
+                                            infoRow.RelativeItem().AlignLeft().Text($"{hours:0.0} h").FontSize(10);
+                                        });
+
+                                        if (hourlyRate > 0)
+                                        {
+                                            var ticketCost = hours * hourlyRate;
+                                            rightCol.Item().PaddingBottom(8).Row(infoRow =>
+                                            {
+                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10).Bold();
+                                                infoRow.RelativeItem().AlignLeft().Text($"${ticketCost:N2}").FontSize(10)
+                                                    .FontColor(Colors.Green.Medium);
+                                            });
+                                        }
+                                    });
+                                });
+
+                                // Descripción
+                                if (!string.IsNullOrWhiteSpace(description))
                                 {
-                                    var ticketCost = ticket.ActualHours * ticket.Project.HourlyRate;
-                                    table.Cell().Text("Costo:").FontSize(9).Bold();
-                                    table.Cell().Text($"${ticketCost:N2}").FontSize(9).FontColor(Colors.Green.Medium);
+                                    ticketCol.Item().PaddingTop(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                                    ticketCol.Item().PaddingTop(8).Column(descCol =>
+                                    {
+                                        descCol.Item().Text("Descripción:").FontSize(10).Bold();
+                                        descCol.Item().PaddingTop(4).Text(description).FontSize(9)
+                                            .FontColor(Colors.Grey.Darken1);
+                                    });
                                 }
                             });
-
-                            // Descripción
-                            if (!string.IsNullOrEmpty(ticket.Description))
-                            {
-                                ticketCol.Item().PaddingTop(5).Text("Descripción:").FontSize(9).Bold();
-                                ticketCol.Item().Text(ticket.Description).FontSize(8).FontColor(Colors.Grey.Darken1);
-                            }
-                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error renderizando ticket {item.TicketId}: {ex.Message}");
+                        // Continuar con el siguiente ticket
+                    }
                 }
 
                 column.Item().PaddingTop(20);
             }
 
-            // ⭐ TABLA DE ARTÍCULOS (actualizada con columna de ticket)
+            // ⭐ TABLA DE ARTÍCULOS
             column.Item().Text("ARTÍCULOS").FontSize(14).Bold().FontColor(purpleColor);
             column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(purpleColor);
 
@@ -458,7 +499,7 @@ public class QuoteService : IQuoteService
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(3);
-                    columns.RelativeColumn(1); // ⭐ NUEVA COLUMNA: Ticket
+                    columns.RelativeColumn(1);
                     columns.RelativeColumn(1);
                     columns.RelativeColumn(1.5f);
                     columns.RelativeColumn(1.5f);
@@ -467,29 +508,31 @@ public class QuoteService : IQuoteService
                 table.Header(header =>
                 {
                     header.Cell().Background(purpleColor).Padding(8).Text("Descripción").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Ticket").FontColor(Colors.White).Bold(); // ⭐ NUEVO
+                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Ticket").FontColor(Colors.White).Bold();
                     header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Cantidad").FontColor(Colors.White).Bold();
                     header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Precio Unit.").FontColor(Colors.White).Bold();
                     header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Subtotal").FontColor(Colors.White).Bold();
                 });
 
                 var isAlternate = false;
-                foreach (var item in quote.Items)
+                foreach (var item in quote.Items ?? new List<QuoteItem>())
                 {
                     var bgColor = isAlternate ? Colors.Grey.Lighten4 : Colors.White;
+                    var description = item.Description ?? "Sin descripción";
+                    var ticketText = item.TicketId.HasValue ? $"#{item.TicketId}" : "-";
 
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).Text(item.Description);
+                        .Padding(8).Text(description);
 
-                    // ⭐ NUEVA CELDA: Mostrar ticket si existe
-                    var ticketText = item.TicketId.HasValue ? $"#{item.TicketId}" : "-";
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignCenter().Text(ticketText).FontSize(9).FontColor(infoColor);
 
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).AlignCenter().Text(item.Quantity.ToString());
+                        .Padding(8).AlignCenter().Text(item.Quantity.ToString("0"));
+
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignRight().Text($"${item.UnitPrice:N2}");
+
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignRight().Text($"${item.Subtotal:N2}");
 
@@ -497,6 +540,7 @@ public class QuoteService : IQuoteService
                 }
             });
 
+            // ⭐ TOTALES
             column.Item().PaddingTop(20).AlignRight().Column(totalsColumn =>
             {
                 totalsColumn.Item().Border(2).BorderColor(purpleColor).Padding(15).Column(col =>
@@ -522,7 +566,8 @@ public class QuoteService : IQuoteService
                 });
             });
 
-            if (!string.IsNullOrEmpty(quote.Notes))
+            // ⭐ NOTAS
+            if (!string.IsNullOrWhiteSpace(quote.Notes))
             {
                 column.Item().PaddingTop(20).Border(1).BorderColor(orangeColor).Background("#FFF7ED")
                     .Padding(15).Column(col =>
