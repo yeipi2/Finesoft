@@ -17,24 +17,25 @@ public class InvoiceService : IInvoiceService
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IWebHostEnvironment _environment;
 
-    public InvoiceService(ApplicationDbContext context, UserManager<IdentityUser> userManager, IWebHostEnvironment environment)
+    public InvoiceService(ApplicationDbContext context, UserManager<IdentityUser> userManager,
+        IWebHostEnvironment environment)
     {
         _context = context;
         _userManager = userManager;
         _environment = environment;
     }
 
-    public async Task<IEnumerable<InvoiceDetailDto>> GetInvoicesAsync(string? status = null, string? invoiceType = null, int? clientId = null)
+    public async Task<IEnumerable<InvoiceDetailDto>> GetInvoicesAsync(string? status = null,
+        string? invoiceType = null, int? clientId = null)
     {
         var query = _context.Invoices
             .Include(i => i.Client)
-            .Include(i => i.Quote)
             .Include(i => i.Items)
-            // CÓDIGO FUTURO - Include de Service deshabilitado
-            // .ThenInclude(item => item.Service)
-            .Include(i => i.Items)
-            .ThenInclude(item => item.Ticket)
+                .ThenInclude(item => item.Ticket)
+                    .ThenInclude(t => t!.Project)
+                        .ThenInclude(p => p!.Client)
             .Include(i => i.Payments)
+            .Include(i => i.Quote)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
@@ -67,19 +68,19 @@ public class InvoiceService : IInvoiceService
     {
         var invoice = await _context.Invoices
             .Include(i => i.Client)
-            .Include(i => i.Quote)
             .Include(i => i.Items)
-            // CÓDIGO FUTURO - Include de Service deshabilitado
-            // .ThenInclude(item => item.Service)
-            .Include(i => i.Items)
-            .ThenInclude(item => item.Ticket)
+                .ThenInclude(item => item.Ticket)
+                    .ThenInclude(t => t!.Project)
+                        .ThenInclude(p => p!.Client)
             .Include(i => i.Payments)
+            .Include(i => i.Quote)
             .FirstOrDefaultAsync(i => i.Id == id);
 
         return invoice == null ? null : await MapToDetailDto(invoice);
     }
 
-    public async Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceAsync(InvoiceDto invoiceDto, string createdByUserId)
+    public async Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceAsync(InvoiceDto invoiceDto,
+        string createdByUserId)
     {
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == invoiceDto.ClientId);
         if (!clientExists)
@@ -120,8 +121,6 @@ public class InvoiceService : IInvoiceService
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
-                // CÓDIGO FUTURO - ServiceId deshabilitado
-                // ServiceId = itemDto.ServiceId,
                 TicketId = itemDto.TicketId
             };
 
@@ -138,16 +137,34 @@ public class InvoiceService : IInvoiceService
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
 
+        // Cargar relaciones de tickets
+        foreach (var item in invoice.Items)
+        {
+            if (item.TicketId.HasValue)
+            {
+                await _context.Entry(item)
+                    .Reference(i => i.Ticket)
+                    .Query()
+                    .Include(t => t.Project)
+                        .ThenInclude(p => p.Client)
+                    .LoadAsync();
+            }
+        }
+
         return ServiceResult<InvoiceDetailDto>.Success(await MapToDetailDto(invoice));
     }
 
-    public async Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceFromQuoteAsync(CreateInvoiceFromQuoteDto dto, string createdByUserId)
+    // ⭐ MÉTODO CORREGIDO: CreateInvoiceFromQuoteAsync
+    public async Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceFromQuoteAsync(
+        CreateInvoiceFromQuoteDto dto, string createdByUserId)
     {
+        // Cargar cotización con TODOS los datos necesarios
         var quote = await _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            // CÓDIGO FUTURO - Include de Service deshabilitado
-            // .ThenInclude(i => i.Service)
+                .ThenInclude(i => i.Ticket)
+                    .ThenInclude(t => t!.Project)
+                        .ThenInclude(p => p!.Client)
             .FirstOrDefaultAsync(q => q.Id == dto.QuoteId);
 
         if (quote == null)
@@ -160,6 +177,7 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("Solo se pueden facturar cotizaciones aceptadas");
         }
 
+        // Verificar si ya existe factura para esta cotización
         var existingInvoice = await _context.Invoices.AnyAsync(i => i.QuoteId == dto.QuoteId);
         if (existingInvoice)
         {
@@ -176,15 +194,16 @@ public class InvoiceService : IInvoiceService
             InvoiceDate = dto.InvoiceDate ?? DateTime.UtcNow,
             DueDate = dto.DueDate,
             InvoiceType = "Event",
-            Status = "Pending",
-            PaymentMethod = dto.PaymentMethod,
+            Status = "Pendiente",
+            PaymentMethod = dto.PaymentMethod ?? string.Empty,
             CreatedByUserId = createdByUserId,
-            Notes = dto.Notes,
             Subtotal = quote.Subtotal,
             Tax = quote.Tax,
-            Total = quote.Total
+            Total = quote.Total,
+            Notes = dto.Notes ?? quote.Notes
         };
 
+        // ⭐ CRÍTICO: Copiar items CON TicketId
         foreach (var quoteItem in quote.Items)
         {
             var invoiceItem = new InvoiceItem
@@ -192,9 +211,8 @@ public class InvoiceService : IInvoiceService
                 Description = quoteItem.Description,
                 Quantity = quoteItem.Quantity,
                 UnitPrice = quoteItem.UnitPrice,
-                Subtotal = quoteItem.Subtotal
-                // CÓDIGO FUTURO - ServiceId deshabilitado
-                // ServiceId = quoteItem.ServiceId
+                Subtotal = quoteItem.Subtotal,
+                TicketId = quoteItem.TicketId // ⭐ ESTO ES ESENCIAL
             };
 
             invoice.Items.Add(invoiceItem);
@@ -203,8 +221,22 @@ public class InvoiceService : IInvoiceService
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
+        // Cargar relaciones completas
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
+
+        foreach (var item in invoice.Items)
+        {
+            if (item.TicketId.HasValue)
+            {
+                await _context.Entry(item)
+                    .Reference(i => i.Ticket)
+                    .Query()
+                    .Include(t => t.Project)
+                        .ThenInclude(p => p.Client)
+                    .LoadAsync();
+            }
+        }
 
         return ServiceResult<InvoiceDetailDto>.Success(await MapToDetailDto(invoice));
     }
@@ -218,11 +250,6 @@ public class InvoiceService : IInvoiceService
         if (invoice == null)
         {
             return ServiceResult<InvoiceDetailDto>.Failure("Factura no encontrada");
-        }
-
-        if (invoice.Status == "Paid")
-        {
-            return ServiceResult<InvoiceDetailDto>.Failure("No se puede modificar una factura pagada");
         }
 
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == invoiceDto.ClientId);
@@ -261,8 +288,6 @@ public class InvoiceService : IInvoiceService
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
-                // CÓDIGO FUTURO - ServiceId deshabilitado
-                // ServiceId = itemDto.ServiceId,
                 TicketId = itemDto.TicketId
             };
 
@@ -279,23 +304,28 @@ public class InvoiceService : IInvoiceService
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
 
+        foreach (var item in invoice.Items)
+        {
+            if (item.TicketId.HasValue)
+            {
+                await _context.Entry(item)
+                    .Reference(i => i.Ticket)
+                    .Query()
+                    .Include(t => t.Project)
+                        .ThenInclude(p => p.Client)
+                    .LoadAsync();
+            }
+        }
+
         return ServiceResult<InvoiceDetailDto>.Success(await MapToDetailDto(invoice));
     }
 
     public async Task<ServiceResult<bool>> DeleteInvoiceAsync(int id)
     {
-        var invoice = await _context.Invoices
-            .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.Id == id);
-
+        var invoice = await _context.Invoices.FindAsync(id);
         if (invoice == null)
         {
             return ServiceResult<bool>.Failure("Factura no encontrada");
-        }
-
-        if (invoice.Payments.Any())
-        {
-            return ServiceResult<bool>.Failure("No se puede eliminar una factura con pagos registrados");
         }
 
         _context.Invoices.Remove(invoice);
@@ -312,7 +342,7 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<bool>.Failure("Factura no encontrada");
         }
 
-        var validStatuses = new[] { "Pending", "Paid", "Overdue", "Cancelled" };
+        var validStatuses = new[] { "Pendiente", "Pagada", "Vencida", "Cancelada" };
         if (!validStatuses.Contains(newStatus))
         {
             return ServiceResult<bool>.Failure("Estado no válido");
@@ -320,7 +350,7 @@ public class InvoiceService : IInvoiceService
 
         invoice.Status = newStatus;
 
-        if (newStatus == "Paid" && !invoice.PaidDate.HasValue)
+        if (newStatus == "Pagada")
         {
             invoice.PaidDate = DateTime.UtcNow;
         }
@@ -331,7 +361,8 @@ public class InvoiceService : IInvoiceService
         return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, InvoicePaymentDto paymentDto, string userId)
+    public async Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, InvoicePaymentDto paymentDto,
+        string userId)
     {
         var invoice = await _context.Invoices
             .Include(i => i.Payments)
@@ -340,14 +371,6 @@ public class InvoiceService : IInvoiceService
         if (invoice == null)
         {
             return ServiceResult<InvoicePaymentDto>.Failure("Factura no encontrada");
-        }
-
-        var totalPaid = invoice.Payments.Sum(p => p.Amount);
-        var balance = invoice.Total - totalPaid;
-
-        if (paymentDto.Amount > balance)
-        {
-            return ServiceResult<InvoicePaymentDto>.Failure($"El monto del pago excede el saldo pendiente de ${balance:N2}");
         }
 
         var payment = new InvoicePayment
@@ -361,21 +384,19 @@ public class InvoiceService : IInvoiceService
             RecordedByUserId = userId
         };
 
-        _context.Set<InvoicePayment>().Add(payment);
+        _context.InvoicePayments.Add(payment);
 
-        totalPaid += paymentDto.Amount;
+        var totalPaid = invoice.Payments.Sum(p => p.Amount) + payment.Amount;
 
         if (totalPaid >= invoice.Total)
         {
-            invoice.Status = "Paid";
+            invoice.Status = "Pagada";
             invoice.PaidDate = DateTime.UtcNow;
         }
 
-        _context.Invoices.Update(invoice);
         await _context.SaveChangesAsync();
 
         var user = await _userManager.FindByIdAsync(userId);
-
         return ServiceResult<InvoicePaymentDto>.Success(new InvoicePaymentDto
         {
             Id = payment.Id,
@@ -391,20 +412,26 @@ public class InvoiceService : IInvoiceService
 
     public async Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId)
     {
-        var monthlyClients = await _context.Clients
-            .Where(c => c.ServiceMode == "Mensualidad" && c.IsActive && c.MonthlyRate.HasValue)
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+
+        // Buscar clientes con facturación mensual activa
+        var clientsWithMonthly = await _context.Clients
+            .Where(c => c.BillingFrequency == "Monthly"
+                        && c.MonthlyRate.HasValue
+                        && c.MonthlyRate.Value > 0
+                        && c.IsActive)
             .ToListAsync();
 
-        if (!monthlyClients.Any())
+        if (!clientsWithMonthly.Any())
         {
-            return ServiceResult<bool>.Failure("No hay clientes con modalidad de mensualidad activos");
+            return ServiceResult<bool>.Failure("No se encontraron clientes con facturación mensual activa");
         }
 
-        var currentMonth = DateTime.UtcNow;
         var invoicesCreated = 0;
 
-        foreach (var client in monthlyClients)
+        foreach (var client in clientsWithMonthly)
         {
+            // Verificar si ya existe factura para este mes
             var existingInvoice = await _context.Invoices
                 .AnyAsync(i => i.ClientId == client.Id &&
                               i.InvoiceType == "Monthly" &&
@@ -412,7 +439,9 @@ public class InvoiceService : IInvoiceService
                               i.InvoiceDate.Year == currentMonth.Year);
 
             if (existingInvoice)
-                continue;
+            {
+                continue; // Ya tiene factura este mes
+            }
 
             var invoiceNumber = await GenerateInvoiceNumber();
 
@@ -420,10 +449,10 @@ public class InvoiceService : IInvoiceService
             {
                 InvoiceNumber = invoiceNumber,
                 ClientId = client.Id,
-                InvoiceDate = DateTime.UtcNow,
-                DueDate = DateTime.UtcNow.AddDays(30),
+                InvoiceDate = currentMonth,
+                DueDate = currentMonth.AddDays(30),
                 InvoiceType = "Monthly",
-                Status = "Pending",
+                Status = "Pendiente",
                 CreatedByUserId = userId,
                 Notes = $"Factura mensual - {currentMonth:MMMM yyyy}"
             };
@@ -449,6 +478,8 @@ public class InvoiceService : IInvoiceService
 
         await _context.SaveChangesAsync();
 
+        Console.WriteLine($"✅ Facturas mensuales generadas: {invoicesCreated}");
+
         return ServiceResult<bool>.Success(true);
     }
 
@@ -471,39 +502,58 @@ public class InvoiceService : IInvoiceService
         return stats;
     }
 
+    // ⭐ MÉTODO CORREGIDO: GenerateInvoicePdfAsync con tickets
     public async Task<byte[]> GenerateInvoicePdfAsync(int id)
     {
-        var invoice = await _context.Invoices
-            .Include(i => i.Client)
-            .Include(i => i.Items)
-            // CÓDIGO FUTURO - Include de Service deshabilitado
-            // .ThenInclude(item => item.Service)
-            .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.Id == id);
-
-        if (invoice == null)
+        try
         {
-            throw new Exception("Factura no encontrada");
-        }
+            var invoice = await _context.Invoices
+                .Include(i => i.Client)
+                .Include(i => i.Items)
+                    .ThenInclude(item => item.Ticket)
+                        .ThenInclude(t => t!.Project)
+                            .ThenInclude(p => p!.Client)
+                .Include(i => i.Payments)
+                .AsNoTracking()
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(i => i.Id == id);
 
-        var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
-
-        var document = Document.Create(container =>
-        {
-            container.Page(page =>
+            if (invoice == null)
             {
-                page.Size(PageSizes.Letter);
-                page.Margin(40);
-                page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                throw new Exception("Factura no encontrada");
+            }
 
-                page.Header().Element(c => ComposeHeader(c, invoice));
-                page.Content().Element(c => ComposeContent(c, invoice));
-                page.Footer().Element(c => ComposeFooter(c, user?.UserName ?? "Sistema"));
+            var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
+
+            Console.WriteLine("✅ Iniciando generación del PDF de factura...");
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.Letter);
+                    page.Margin(40);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(10));
+
+                    page.Header().Element(c => ComposeHeader(c, invoice));
+                    page.Content().Element(c => ComposeContent(c, invoice));
+                    page.Footer().Element(c => ComposeFooter(c, user?.UserName ?? "Sistema"));
+                });
             });
-        });
 
-        return document.GeneratePdf();
+            Console.WriteLine("✅ Documento creado, generando PDF bytes...");
+            var pdfBytes = document.GeneratePdf();
+            Console.WriteLine($"✅ PDF generado exitosamente: {pdfBytes.Length} bytes");
+
+            return pdfBytes;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ ERROR en GenerateInvoicePdfAsync: {ex.Message}");
+            Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     private void ComposeHeader(IContainer container, Invoice invoice)
@@ -544,9 +594,9 @@ public class InvoiceService : IInvoiceService
 
                     var statusColor = invoice.Status switch
                     {
-                        "Paid" => Colors.Green.Medium,
-                        "Cancelled" => Colors.Red.Medium,
-                        "Overdue" => Colors.Red.Darken1,
+                        "Pagada" => Colors.Green.Medium,
+                        "Cancelada" => Colors.Red.Medium,
+                        "Vencida" => Colors.Red.Darken1,
                         _ => orangeColor
                     };
                     col.Item().Text($"Estado: {invoice.Status}").FontSize(10).Bold().FontColor(statusColor);
@@ -588,14 +638,125 @@ public class InvoiceService : IInvoiceService
     {
         var purpleColor = "#6B46C1";
         var orangeColor = "#F97316";
+        var infoColor = "#0EA5E9";
 
         container.PaddingVertical(20).Column(column =>
         {
+            // ⭐ NUEVA SECCIÓN: Tickets Asociados (igual que en cotizaciones)
+            var ticketItems = invoice.Items?
+                .Where(i => i.TicketId.HasValue && i.Ticket != null)
+                .ToList() ?? new List<InvoiceItem>();
+
+            if (ticketItems.Any())
+            {
+                column.Item().Text("TICKETS ASOCIADOS").FontSize(14).Bold().FontColor(infoColor);
+                column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(infoColor);
+
+                foreach (var item in ticketItems)
+                {
+                    try
+                    {
+                        var ticket = item.Ticket!;
+                        var clientName = ticket.Project?.Client?.CompanyName ?? "N/A";
+                        var projectName = ticket.Project?.Name ?? "N/A";
+                        var hours = ticket.ActualHours;
+                        var hourlyRate = ticket.Project?.HourlyRate ?? 0;
+                        var description = ticket.Description ?? string.Empty;
+                        var ticketTitle = ticket.Title ?? "Sin título";
+
+                        column.Item().PaddingVertical(10).Border(1).BorderColor(Colors.Grey.Lighten2)
+                            .Background(Colors.Blue.Lighten5).Padding(15).Column(ticketCol =>
+                            {
+                                // Título del ticket
+                                ticketCol.Item().Row(row =>
+                                {
+                                    row.ConstantItem(80).Text($"Ticket #{ticket.Id}").FontSize(12).Bold()
+                                        .FontColor(infoColor);
+                                    row.RelativeItem().Text(ticketTitle).FontSize(12).Bold();
+                                });
+
+                                ticketCol.Item().PaddingVertical(8).LineHorizontal(1)
+                                    .LineColor(Colors.Grey.Lighten2);
+
+                                // Información en 2 columnas
+                                ticketCol.Item().Row(row =>
+                                {
+                                    // Columna izquierda
+                                    row.RelativeItem().Column(leftCol =>
+                                    {
+                                        leftCol.Item().PaddingBottom(8).Row(infoRow =>
+                                        {
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Cliente:").FontSize(10)
+                                                .Bold();
+                                            infoRow.RelativeItem().AlignLeft().Text(clientName).FontSize(10);
+                                        });
+
+                                        leftCol.Item().PaddingBottom(8).Row(infoRow =>
+                                        {
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Proyecto:").FontSize(10)
+                                                .Bold();
+                                            infoRow.RelativeItem().AlignLeft().Text(projectName).FontSize(10);
+                                        });
+                                    });
+
+                                    row.ConstantItem(20);
+
+                                    // Columna derecha
+                                    row.RelativeItem().Column(rightCol =>
+                                    {
+                                        rightCol.Item().PaddingBottom(8).Row(infoRow =>
+                                        {
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Horas:").FontSize(10).Bold();
+                                            infoRow.RelativeItem().AlignLeft().Text($"{hours:0.0} h").FontSize(10);
+                                        });
+
+                                        if (hourlyRate > 0)
+                                        {
+                                            var ticketCost = hours * hourlyRate;
+                                            rightCol.Item().PaddingBottom(8).Row(infoRow =>
+                                            {
+                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10)
+                                                    .Bold();
+                                                infoRow.RelativeItem().AlignLeft().Text($"${ticketCost:N2}")
+                                                    .FontSize(10).FontColor(Colors.Green.Medium);
+                                            });
+                                        }
+                                    });
+                                });
+
+                                // Descripción
+                                if (!string.IsNullOrWhiteSpace(description))
+                                {
+                                    ticketCol.Item().PaddingTop(8).LineHorizontal(1)
+                                        .LineColor(Colors.Grey.Lighten2);
+                                    ticketCol.Item().PaddingTop(8).Column(descCol =>
+                                    {
+                                        descCol.Item().Text("Descripción:").FontSize(10).Bold();
+                                        descCol.Item().PaddingTop(4).Text(description).FontSize(9)
+                                            .FontColor(Colors.Grey.Darken1);
+                                    });
+                                }
+                            });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error renderizando ticket {item.TicketId}: {ex.Message}");
+                    }
+                }
+
+                column.Item().PaddingTop(20);
+            }
+
+            // ⭐ TABLA DE ARTÍCULOS
+            column.Item().Text("ARTÍCULOS").FontSize(14).Bold().FontColor(purpleColor);
+            column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(purpleColor);
+
             column.Item().Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(3);
+                    columns.RelativeColumn(1);
                     columns.RelativeColumn(1);
                     columns.RelativeColumn(1.5f);
                     columns.RelativeColumn(1.5f);
@@ -603,23 +764,37 @@ public class InvoiceService : IInvoiceService
 
                 table.Header(header =>
                 {
-                    header.Cell().Background(purpleColor).Padding(8).Text("Descripción").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Cantidad").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Precio Unit.").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Subtotal").FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).Text("Descripción")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Ticket")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Cantidad")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Precio Unit.")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Subtotal")
+                        .FontColor(Colors.White).Bold();
                 });
 
                 var isAlternate = false;
-                foreach (var item in invoice.Items)
+                foreach (var item in invoice.Items ?? new List<InvoiceItem>())
                 {
                     var bgColor = isAlternate ? Colors.Grey.Lighten4 : Colors.White;
+                    var description = item.Description ?? "Sin descripción";
+                    var ticketText = item.TicketId.HasValue ? $"#{item.TicketId}" : "-";
 
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).Text(item.Description);
+                        .Padding(8).Text(description);
+
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).AlignCenter().Text(item.Quantity.ToString());
+                        .Padding(8).AlignCenter().Text(ticketText).FontSize(9).FontColor(infoColor);
+
+                    table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
+                        .Padding(8).AlignCenter().Text(item.Quantity.ToString("0"));
+
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignRight().Text($"${item.UnitPrice:N2}");
+
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignRight().Text($"${item.Subtotal:N2}");
 
@@ -627,6 +802,7 @@ public class InvoiceService : IInvoiceService
                 }
             });
 
+            // ⭐ TOTALES
             column.Item().PaddingTop(20).AlignRight().Column(totalsColumn =>
             {
                 totalsColumn.Item().Border(2).BorderColor(purpleColor).Padding(15).Column(col =>
@@ -646,7 +822,8 @@ public class InvoiceService : IInvoiceService
                     col.Item().PaddingTop(10).BorderTop(2).BorderColor(orangeColor).PaddingTop(10).Row(row =>
                     {
                         row.RelativeItem().Text("TOTAL:").FontSize(16).Bold().FontColor(purpleColor);
-                        row.RelativeItem().AlignRight().Text($"${invoice.Total:N2}").FontSize(16).Bold().FontColor(orangeColor);
+                        row.RelativeItem().AlignRight().Text($"${invoice.Total:N2}").FontSize(16).Bold()
+                            .FontColor(orangeColor);
                     });
 
                     if (invoice.Payments.Any())
@@ -657,7 +834,8 @@ public class InvoiceService : IInvoiceService
                         col.Item().PaddingTop(10).Row(row =>
                         {
                             row.RelativeItem().Text("Pagado:").FontSize(11).FontColor(Colors.Green.Medium);
-                            row.RelativeItem().AlignRight().Text($"${totalPaid:N2}").FontSize(11).FontColor(Colors.Green.Medium);
+                            row.RelativeItem().AlignRight().Text($"${totalPaid:N2}").FontSize(11)
+                                .FontColor(Colors.Green.Medium);
                         });
 
                         col.Item().PaddingTop(5).Row(row =>
@@ -686,18 +864,26 @@ public class InvoiceService : IInvoiceService
 
                         table.Header(header =>
                         {
-                            header.Cell().Background(purpleColor).Padding(5).Text("Fecha").FontColor(Colors.White).FontSize(9).Bold();
-                            header.Cell().Background(purpleColor).Padding(5).Text("Método").FontColor(Colors.White).FontSize(9).Bold();
-                            header.Cell().Background(purpleColor).Padding(5).AlignRight().Text("Monto").FontColor(Colors.White).FontSize(9).Bold();
-                            header.Cell().Background(purpleColor).Padding(5).Text("Referencia").FontColor(Colors.White).FontSize(9).Bold();
+                            header.Cell().Background(purpleColor).Padding(5).Text("Fecha")
+                                .FontColor(Colors.White).FontSize(9).Bold();
+                            header.Cell().Background(purpleColor).Padding(5).Text("Método")
+                                .FontColor(Colors.White).FontSize(9).Bold();
+                            header.Cell().Background(purpleColor).Padding(5).AlignRight().Text("Monto")
+                                .FontColor(Colors.White).FontSize(9).Bold();
+                            header.Cell().Background(purpleColor).Padding(5).Text("Referencia")
+                                .FontColor(Colors.White).FontSize(9).Bold();
                         });
 
                         foreach (var payment in invoice.Payments)
                         {
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{payment.PaymentDate:dd/MM/yyyy}").FontSize(8);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(payment.PaymentMethod).FontSize(8);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"${payment.Amount:N2}").FontSize(8);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(payment.Reference).FontSize(8);
+                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
+                                .Text($"{payment.PaymentDate:dd/MM/yyyy}").FontSize(8);
+                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
+                                .Text(payment.PaymentMethod).FontSize(8);
+                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight()
+                                .Text($"${payment.Amount:N2}").FontSize(8);
+                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
+                                .Text(payment.Reference).FontSize(8);
                         }
                     });
                 });
@@ -732,7 +918,8 @@ public class InvoiceService : IInvoiceService
 
                 row.RelativeItem().AlignCenter().Column(col =>
                 {
-                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Medium);
+                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8)
+                        .FontColor(Colors.Grey.Medium);
                 });
 
                 row.RelativeItem().AlignRight().Column(col =>
@@ -765,6 +952,7 @@ public class InvoiceService : IInvoiceService
         return $"INV-{year}-{nextNumber:D4}";
     }
 
+    // ⭐ MÉTODO CORREGIDO: MapToDetailDto con información completa de tickets
     private async Task<InvoiceDetailDto> MapToDetailDto(Invoice invoice)
     {
         var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
@@ -805,13 +993,16 @@ public class InvoiceService : IInvoiceService
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 Subtotal = i.Subtotal,
-                // CÓDIGO FUTURO - ServiceId y ServiceName deshabilitados
                 ServiceId = null,
                 ServiceName = null,
-                // ServiceId = i.ServiceId,
-                // ServiceName = i.Service?.Name,
+                // ⭐ CRÍTICO: Incluir información completa del ticket
                 TicketId = i.TicketId,
-                TicketTitle = i.Ticket?.Title
+                TicketTitle = i.Ticket?.Title,
+                TicketDescription = i.Ticket?.Description,
+                TicketClientName = i.Ticket?.Project?.Client?.CompanyName,
+                TicketProjectName = i.Ticket?.Project?.Name,
+                TicketActualHours = i.Ticket?.ActualHours,
+                TicketHourlyRate = i.Ticket?.Project?.HourlyRate
             }).ToList();
         }
 

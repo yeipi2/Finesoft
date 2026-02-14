@@ -3,155 +3,146 @@
 @using fs_front.Services
 @using Radzen
 
-<PageTitle>Detalles de Factura</PageTitle>
+<PageTitle>Factura @_invoice?.InvoiceNumber</PageTitle>
 
-<section class="container-fluid p-4">
+<div class="container p-4">
     @if (_isLoading)
     {
         <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="mt-2 text-muted">Cargando detalles de la factura...</p>
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando factura...</p>
         </div>
     }
-    else if (_invoice == null)
+    else if (_invoice != null)
     {
-        <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle"></i>
-            Factura no encontrada
-        </div>
-        <button class="btn btn-secondary" @onclick="GoBack">
-            <i class="bi bi-arrow-left"></i> Volver
-        </button>
-    }
-    else
-    {
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-start mb-4">
-            <div>
-                <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="GoBack">
-                    <i class="bi bi-arrow-left"></i> Volver
-                </button>
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-receipt fs-3 text-primary"></i>
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/facturas">Facturas</a>
+                        </li>
+                        <li class="breadcrumb-item active">@_invoice.InvoiceNumber</li>
+                    </ol>
+                </nav>
+
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <h2 class="mb-0">@_invoice.InvoiceNumber</h2>
-                        <p class="text-muted mb-0">
-                            <span class="badge @GetStatusBadgeClass(_invoice.Status)">
-                                @GetStatusLabel(_invoice.Status)
-                            </span>
-                        </p>
+                        <h1 class="display-6 fw-bold mb-2">@_invoice.InvoiceNumber</h1>
+                        <div class="d-flex gap-2 mb-2">
+                            <span class="badge @StatusClass fs-6">@GetStatusLabel(_invoice.Status)</span>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if (_invoice.Status == "Pending")
+                        {
+                            <button class="btn btn-success" @onclick="OpenAddPaymentDialog">
+                                <i class="bi bi-cash-coin"></i> Registrar Pago
+                            </button>
+                        }
+                        <button class="btn btn-primary" @onclick="DownloadPdf">
+                            <i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF
+                        </button>
+                        <button class="btn btn-warning" @onclick="() => OpenEditDialog(_invoice.Id)">
+                            <i class="bi bi-pencil-fill"></i> Editar
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="d-flex gap-2">
-                @if (_invoice.Status == "Pending")
-                {
-                    <button class="btn btn-success" @onclick="OpenAddPaymentDialog">
-                        <i class="bi bi-cash-coin"></i> Registrar Pago
-                    </button>
-                }
-                <button class="btn btn-outline-secondary" @onclick="() => OpenEditDialog(_invoice.Id)">
-                    <i class="bi bi-pencil"></i> Editar
-                </button>
-                <button class="btn btn-primary" @onclick="DownloadPdf">
-                    <i class="bi bi-download"></i> Descargar PDF
-                </button>
-            </div>
         </div>
 
-        <div class="row g-4">
-            <!-- Columna Principal - Información General -->
+
+        <div class="row">
+            <!-- Columna Principal -->
             <div class="col-lg-8">
-                <!-- Información General -->
+                <!-- Información del Cliente -->
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información General</h5>
+                        <h5 class="mb-0"><i class="bi bi-building"></i> Información del Cliente</h5>
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="text-muted small">Número de Factura</label>
-                                <p class="mb-0"><strong>@_invoice.InvoiceNumber</strong></p>
+                            <div class="col-md-6">
+                                <p><strong>Cliente:</strong> @_invoice.ClientName</p>
+                                <p><strong>Email:</strong> @_invoice.ClientEmail</p>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="text-muted small">Tipo</label>
-                                <p class="mb-0">
-                                    <span class="badge @(_invoice.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary")">
-                                        @(_invoice.InvoiceType == "Monthly" ? "Mensual" : "Evento")
-                                    </span>
-                                </p>
+                            <div class="col-md-6">
+                                <p><strong>RFC:</strong> @_invoice.ClientRFC</p>
+                                <p><strong>Creado por:</strong> @_invoice.CreatedByUserName</p>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="text-muted small">Fecha de Emisión</label>
-                                <p class="mb-0">@_invoice.InvoiceDate.ToString("dd/MM/yyyy")</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="text-muted small">Fecha de Vencimiento</label>
-                                <p class="mb-0">
-                                    @if (_invoice.DueDate.HasValue)
-                                    {
-                                        @_invoice.DueDate.Value.ToString("dd/MM/yyyy")
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">No especificada</span>
-                                    }
-                                </p>
-                            </div>
-                            @if (!string.IsNullOrEmpty(_invoice.PaymentMethod))
+                        </div>
+                    </div>
+                </div>
+
+                @* Tickets Asociados *@
+                @if (TicketsWithDetails.Any())
+                {
+                    <div class="card mb-4 border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-ticket-perforated-fill"></i>
+                                Tickets Asociados (@TicketsWithDetails.Count)
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var item in TicketsWithDetails)
                             {
-                                <div class="col-md-6 mb-3">
-                                    <label class="text-muted small">Método de Pago</label>
-                                    <p class="mb-0">@_invoice.PaymentMethod</p>
+                                <div class="card mb-2 shadow-sm">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-2">
+                                                    <span class="badge bg-info me-2">#@item.TicketId</span>
+                                                    <strong>@item.TicketTitle</strong>
+                                                </h6>
+                                                @if (!string.IsNullOrEmpty(item.TicketDescription))
+                                                {
+                                                    <p class="text-muted small mb-2">
+                                                        @(item.TicketDescription.Length > 150
+                                                            ? item.TicketDescription.Substring(0, 150) + "..." 
+                                                            : item.TicketDescription)
+                                                    </p>
+                                                }
+                                                <div class="row small">
+                                                    <div class="col-md-4">
+                                                        <i class="bi bi-building text-muted"></i>
+                                                        <strong>Cliente:</strong> @item.TicketClientName
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <i class="bi bi-folder text-muted"></i>
+                                                        <strong>Proyecto:</strong> @item.TicketProjectName
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <i class="bi bi-clock text-muted"></i>
+                                                        <strong>Horas:</strong> @item.TicketActualHours?.ToString("0.0") h
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <a href="/tickets/@item.TicketId" class="btn btn-sm btn-outline-info" target="_blank">
+                                                <i class="bi bi-box-arrow-up-right"></i> Ver Ticket
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
                             }
-                            <div class="col-md-6 mb-3">
-                                <label class="text-muted small">Creado por</label>
-                                <p class="mb-0">@_invoice.CreatedByUserName</p>
-                            </div>
                         </div>
                     </div>
-                </div>
+                }
 
-                <!-- Cliente -->
+                <!-- Artículos de la Factura -->
                 <div class="card mb-4">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Información del Cliente</h5>
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Artículos de la Factura</h5>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                <label class="text-muted small">Empresa</label>
-                                <p class="mb-0"><strong>@_invoice.ClientName</strong></p>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <label class="text-muted small">RFC</label>
-                                <p class="mb-0">@_invoice.ClientRFC</p>
-                            </div>
-                            <div class="col-md-12 mb-2">
-                                <label class="text-muted small">Email</label>
-                                <p class="mb-0">@_invoice.ClientEmail</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Items -->
-                <div class="card mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Artículos</h5>
-                    </div>
-                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                            <table class="table table-hover">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Descripción</th>
-                                        <th class="text-center" style="width: 100px;">Cantidad</th>
-                                        <th class="text-end" style="width: 120px;">P. Unitario</th>
-                                        <th class="text-end" style="width: 120px;">Subtotal</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-end">Precio Unit.</th>
+                                        <th class="text-end">Subtotal</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -159,29 +150,52 @@
                                     {
                                         <tr>
                                             <td>
-                                                <strong>@item.Description</strong>
+                                                <div>@item.Description</div>
                                                 @if (!string.IsNullOrEmpty(item.ServiceName))
                                                 {
-                                                    <br />
                                                     <small class="text-muted">
-                                                        <i class="bi bi-tag"></i> @item.ServiceName
+                                                        <i class="bi bi-gear"></i> @item.ServiceName
                                                     </small>
                                                 }
-                                                @if (item.TicketId.HasValue)
+                                                @if (item.TicketId.HasValue && item.TicketId.Value > 0)
                                                 {
                                                     <br />
-                                                    <small class="text-muted">
-                                                        <i class="bi bi-ticket"></i> Ticket #@item.TicketId
+                                                    <small class="text-info">
+                                                        <i class="bi bi-ticket-perforated"></i>
+                                                        Ticket #@item.TicketId: @item.TicketTitle
                                                     </small>
                                                 }
                                             </td>
                                             <td class="text-center">@item.Quantity</td>
                                             <td class="text-end">@item.UnitPrice.ToString("C")</td>
-                                            <td class="text-end"><strong>@item.Subtotal.ToString("C")</strong></td>
+                                            <td class="text-end fw-bold">@item.Subtotal.ToString("C")</td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-8"></div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Subtotal:</span>
+                                            <strong>@_invoice.Subtotal.ToString("C")</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>IVA (16%):</span>
+                                            <strong>@_invoice.Tax.ToString("C")</strong>
+                                        </div>
+                                        <hr />
+                                        <div class="d-flex justify-content-between">
+                                            <span class="h5">Total:</span>
+                                            <strong class="h5 text-success">@_invoice.Total.ToString("C")</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -193,7 +207,7 @@
                         <div class="card-header bg-success text-white">
                             <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Historial de Pagos</h5>
                         </div>
-                        <div class="card-body p-0">
+                        <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-light">
@@ -226,9 +240,9 @@
                 <!-- Notas -->
                 @if (!string.IsNullOrEmpty(_invoice.Notes))
                 {
-                    <div class="card mb-4">
-                        <div class="card-header bg-warning text-dark">
-                            <h5 class="mb-0"><i class="bi bi-sticky"></i> Notas</h5>
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="bi bi-sticky"></i> Notas Adicionales</h6>
                         </div>
                         <div class="card-body">
                             <p class="mb-0">@_invoice.Notes</p>
@@ -237,78 +251,162 @@
                 }
             </div>
 
-            <!-- Sidebar Derecha - Resumen Financiero -->
+            <!-- Sidebar Derecha -->
             <div class="col-lg-4">
-                <div class="card border-primary shadow">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-calculator"></i> Resumen Financiero</h5>
+                <!-- Detalles -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Detalles</h6>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between mb-3">
-                            <span>Subtotal:</span>
-                            <strong>@_invoice.Subtotal.ToString("C")</strong>
+                        <div class="mb-3">
+                            <small class="text-muted">Número de Factura</small>
+                            <div class="fw-bold">@_invoice.InvoiceNumber</div>
                         </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <span>IVA (16%):</span>
-                            <strong>@_invoice.Tax.ToString("C")</strong>
+                        <div class="mb-3">
+                            <small class="text-muted">Tipo</small>
+                            <div>
+                                <span class="badge @(_invoice.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary")">
+                                    @(_invoice.InvoiceType == "Monthly" ? "Mensual" : "Evento")
+                                </span>
+                            </div>
                         </div>
-                        <hr />
-                        <div class="d-flex justify-content-between mb-3">
-                            <span class="h5">Total:</span>
-                            <strong class="h5 text-primary">@_invoice.Total.ToString("C")</strong>
+                        <div class="mb-3">
+                            <small class="text-muted">Fecha de Emisión</small>
+                            <div>@_invoice.InvoiceDate.ToString("dd/MM/yyyy")</div>
                         </div>
-
-                        @if (_invoice.PaidAmount > 0)
+                        @if (_invoice.DueDate.HasValue)
                         {
-                            <div class="alert alert-success mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>Pagado:</span>
-                                    <strong>@_invoice.PaidAmount.ToString("C")</strong>
-                                </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Fecha de Vencimiento</small>
+                                <div>@_invoice.DueDate.Value.ToString("dd/MM/yyyy")</div>
                             </div>
                         }
-
-                        @if (_invoice.Balance > 0)
+                        @if (!string.IsNullOrEmpty(_invoice.PaymentMethod))
                         {
-                            <div class="alert alert-warning">
-                                <div class="d-flex justify-content-between">
-                                    <span>Saldo Pendiente:</span>
-                                    <strong>@_invoice.Balance.ToString("C")</strong>
-                                </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Método de Pago</small>
+                                <div>@_invoice.PaymentMethod</div>
                             </div>
                         }
-                        else if (_invoice.Status == "Paid")
-                        {
-                            <div class="alert alert-success text-center">
-                                <i class="bi bi-check-circle fs-1"></i>
-                                <p class="mb-0 mt-2"><strong>Factura Pagada</strong></p>
-                                @if (_invoice.PaidDate.HasValue)
-                                {
-                                    <small>@_invoice.PaidDate.Value.ToString("dd/MM/yyyy")</small>
-                                }
+                        <div class="mb-3">
+                            <small class="text-muted">Estado</small>
+                            <div>
+                                <span class="badge @StatusClass">@GetStatusLabel(_invoice.Status)</span>
                             </div>
-                        }
-
-                        <div class="d-grid gap-2 mt-3">
-                            @if (_invoice.Status == "Pending" && _invoice.Balance > 0)
-                            {
-                                <button class="btn btn-success" @onclick="OpenAddPaymentDialog">
-                                    <i class="bi bi-cash-coin"></i> Registrar Pago
-                                </button>
-                            }
-                            <button class="btn btn-primary" @onclick="DownloadPdf">
-                                <i class="bi bi-file-pdf"></i> Descargar PDF
-                            </button>
-                            <button class="btn btn-outline-secondary" @onclick="() => OpenEditDialog(_invoice.Id)">
-                                <i class="bi bi-pencil"></i> Editar Factura
-                            </button>
+                        </div>
+                        <div>
+                            <small class="text-muted">Creado Por</small>
+                            <div>@_invoice.CreatedByUserName</div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Resumen Financiero -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-calculator"></i> Resumen Financiero</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <small class="text-muted">Número de Artículos</small>
+                            <div class="fw-bold">@_invoice.Items.Count</div>
+                        </div>
+                        @if (TicketsWithDetails.Any())
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted">Tickets Asociados</small>
+                                <div class="fw-bold text-info">@TicketsWithDetails.Count</div>
+                            </div>
+                            @if (TotalHours > 0)
+                            {
+                                <div class="mb-2">
+                                    <small class="text-muted">Total Horas</small>
+                                    <div class="fw-bold">@TotalHours.ToString("0.0") h</div>
+                                </div>
+                            }
+                        }
+                        <div class="mb-2">
+                            <small class="text-muted">Subtotal</small>
+                            <div class="fw-bold">@_invoice.Subtotal.ToString("C")</div>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">IVA (16%)</small>
+                            <div class="fw-bold">@_invoice.Tax.ToString("C")</div>
+                        </div>
+                        <hr />
+                        <div class="mb-2">
+                            <small class="text-muted">Total</small>
+                            <div class="h4 text-success mb-0">@_invoice.Total.ToString("C")</div>
+                        </div>
+                        @if (_invoice.PaidAmount > 0)
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted">Pagado</small>
+                                <div class="h5 text-success mb-0">@_invoice.PaidAmount.ToString("C")</div>
+                            </div>
+                        }
+                        @if (_invoice.Balance > 0)
+                        {
+                            <div>
+                                <small class="text-muted">Saldo Pendiente</small>
+                                <div class="h5 text-warning mb-0">@_invoice.Balance.ToString("C")</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Estado de Pago -->
+                @if (_invoice.Status == "Paid")
+                {
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-check-circle-fill"></i> Pagada</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <i class="bi bi-check-circle fs-1 text-success mb-3"></i>
+                            <p class="mb-0">Esta factura ha sido pagada completamente.</p>
+                            @if (_invoice.PaidDate.HasValue)
+                            {
+                                <small class="text-muted">Fecha de pago: @_invoice.PaidDate.Value.ToString("dd/MM/yyyy")</small>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (_invoice.Status == "Pending" && _invoice.Balance > 0)
+                {
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente de Pago</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <i class="bi bi-clock-history fs-1 text-warning mb-3"></i>
+                            <p class="mb-3">Saldo pendiente: <strong>@_invoice.Balance.ToString("C")</strong></p>
+                            <button class="btn btn-success w-100" @onclick="OpenAddPaymentDialog">
+                                <i class="bi bi-cash-coin"></i> Registrar Pago
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col">
+                <button class="btn btn-secondary" @onclick="GoBack">
+                    <i class="bi bi-arrow-left"></i> Volver a Facturas
+                </button>
             </div>
         </div>
     }
-</section>
+    else
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Factura no encontrada.
+        </div>
+    }
+</div>
 
 @inject IInvoiceApiService InvoiceApiService
 @inject DialogService DialogService
@@ -353,8 +451,8 @@
     {
         var options = new DialogOptions
         {
-            Width = "1000px",          // ⭐ CAMBIO
-            Height = "80%",           // ⭐ CAMBIO
+            Width = "1000px",
+            Height = "80%",
             Resizable = true,
             Draggable = false,
             CloseDialogOnOverlayClick = false
@@ -378,7 +476,6 @@
             if (pdfBytes != null)
             {
                 var base64 = Convert.ToBase64String(pdfBytes);
-                // Usando la función que ya funcionaba
                 await JSRuntime.InvokeVoidAsync("downloadFile", $"Factura-{InvoiceId}.pdf", base64);
                 ShowNotification("Éxito", "PDF descargado correctamente", NotificationSeverity.Success);
             }
@@ -392,18 +489,6 @@
     private void GoBack()
     {
         NavigationManager.NavigateTo("/facturas");
-    }
-
-    private string GetStatusBadgeClass(string status)
-    {
-        return status switch
-        {
-            "Paid" => "bg-success",
-            "Pending" => "bg-warning text-dark",
-            "Overdue" => "bg-danger",
-            "Cancelled" => "bg-secondary",
-            _ => "bg-secondary"
-        };
     }
 
     private string GetStatusLabel(string status)
@@ -428,4 +513,21 @@
             Duration = 4000
         });
     }
+
+    private string StatusClass => _invoice?.Status switch
+    {
+        "Paid" => "bg-success",
+        "Pending" => "bg-warning",
+        "Overdue" => "bg-danger",
+        "Cancelled" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private List<InvoiceItemDetailDto> TicketsWithDetails => _invoice?.Items
+        ?.Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
+        .ToList() ?? new List<InvoiceItemDetailDto>();
+
+    private decimal TotalHours => TicketsWithDetails
+        .Where(t => t.TicketActualHours.HasValue)       
+        .Sum(t => t.TicketActualHours ?? 0m);
 }
