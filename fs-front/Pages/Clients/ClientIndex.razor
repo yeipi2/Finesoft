@@ -48,76 +48,82 @@ else
         </section>
 
         <section class="container-fluid p-xl-5">
-            <table class="table table-hover mb-0">
-                <tbody>
-                    @if (_filteredClients.Any())
-                    {
-                        @foreach (var client in _filteredClients)
-                        {
-                            <tr>
-                                <td class="fw-bold ps-4">@client.CompanyName</td>
-                                <td>
-                                    <div class="fw-bold">@client.ContactName</div>
-                                    <div class="text-muted small">@client.Phone</div>
-                                </td>
-                                <td class="fw-bold">@client.Email</td>
-                                <td>
-                                    @if (client.ServiceMode == "Póliza Mensual")
-                                    {
-                                        <div class="fw-bold">
-                                            <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
-                                            <div class="text-muted small">@client.MonthlyRate</div>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-light text-dark">@client.ServiceMode</span>
-                                    }
-                                </td>
-                                <td>
-                                    <span class="badge @(client.IsActive ? "bg-success" : "bg-secondary")">
-                                        @(client.IsActive ? "Activo" : "Inactivo")
-                                    </span>
-                                </td>
-                                <td><span class="badge bg-primary">1 proyectos</span></td>
-                                <td class="text-center">
-                                    @if (_canEdit)
-                                    {
-                                        <button @onclick="@(() => ShowEditModal(client.Id))" class="btn btn-sm btn-outline-primary me-1"
-                                                title="Editar">
-                                            <i class="bi bi-pencil-fill"></i>
-                                        </button>
-                                    }
-                                    @if (_canDelete)
-                                    {
-                                        <button @onclick="@(() => DeleteClient(client.Id, client.CompanyName))"
-                                                class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    }
-                    else
-                    {
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                @if (_clients == null || !_clients.Any())
-                                {
-                                    <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
-                                    <span>No hay clientes registrados.</span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-search fs-1 text-muted d-block mb-2"></i>
-                                    <span>No se encontraron clientes con "@_searchText"</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <FsDataTable TItem="ClientDto" Title="Clientes"
+                         Subtitle="Lista de todos los clientes con sus modalidades de servicio" Items="_sortedClients"
+                         IsLoading="_isLoading" ColSpan="7"
+                         EmptyTitle="@(_clients == null || !_clients.Any() ? "No hay clientes registrados" : "No se encontraron clientes")"
+                         EmptySubtitle="Prueba con otra búsqueda.">
+
+                <Header>
+                    <FsSortHeader Text="Empresa" Field="company" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" ThClass="ps-4" />
+                    <FsSortHeader Text="Contacto" Field="contact" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Email" Field="email" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Servicio" Field="service" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <th>Proyectos</th>
+                    <th class="text-center">Acciones</th>
+                </Header>
+
+                <RowTemplate Context="client">
+                    <tr>
+                        <td class="fw-bold ps-4">@client.CompanyName</td>
+
+                        <td>
+                            <div class="fw-bold">@client.ContactName</div>
+                            <div class="text-muted small">@client.Phone</div>
+                        </td>
+
+                        <td class="fw-bold">@client.Email</td>
+
+                        <td>
+                            @if (client.ServiceMode == "Póliza Mensual")
+                            {
+                                <div class="fw-bold">
+                                    <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
+                                    <div class="text-muted small">@client.MonthlyRate</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-dark">@client.ServiceMode</span>
+                            }
+                        </td>
+
+                        <td>
+                            <span class="badge @(client.IsActive ? "bg-success" : "bg-secondary")">
+                                @(client.IsActive ? "Activo" : "Inactivo")
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-primary">1 proyectos</span>
+                        </td>
+
+                        <td class="text-center">
+                            @if (_canEdit)
+                            {
+                                <button @onclick="@(() => ShowEditModal(client.Id))" class="btn btn-sm btn-outline-primary me-1"
+                                        title="Editar">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </button>
+                            }
+                            @if (_canDelete)
+                            {
+                                <button @onclick="@(() => DeleteClient(client.Id, client.CompanyName))"
+                                        class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                </RowTemplate>
+
+            </FsDataTable>
         </section>
     </container>
 }
@@ -125,6 +131,42 @@ else
 @code {
     private List<ClientDto>? _clients = new();
     private string _searchText = string.Empty;
+    private bool _isLoading = false;
+
+    private string _sortField = "company";
+    private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    {
+        _sortField = s.field;
+        _sortDir = s.dir;
+    }
+
+    private IEnumerable<ClientDto> _sortedClients => ApplySort(_filteredClients);
+
+    private IEnumerable<ClientDto> ApplySort(IEnumerable<ClientDto> q)
+    {
+        return (_sortField, _sortDir) switch
+        {
+            ("company", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CompanyName),
+            ("company", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CompanyName),
+
+            ("contact", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ContactName ?? ""),
+            ("contact", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ContactName ?? ""),
+
+            ("email", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Email ?? ""),
+            ("email", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Email ?? ""),
+
+            ("service", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ServiceMode ?? ""),
+            ("service", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ServiceMode ?? ""),
+
+            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
+            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
+
+            _ => q.OrderByDescending(x => x.CompanyName),
+        };
+    }
+
 
     private IEnumerable<ClientDto> _filteredClients
         => _clients?
@@ -172,17 +214,22 @@ else
 
     private async Task LoadClients()
     {
+        _isLoading = true;
         try
         {
             _clients = await ClientApiService.GetClientsAsync();
-            StateHasChanged();
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             ShowNotification("Error", "No se pudo cargar la lista de clientes.", NotificationSeverity.Error);
         }
+        finally
+        {
+            _isLoading = false;
+        }
     }
+
 
     private async Task ShowCreateModal()
     {
@@ -193,7 +240,7 @@ else
 
     private async Task ShowEditModal(int? clientId)
     {
-        var parameters = new Dictionary<string, object> { { "UserId", clientId } };
+        var parameters = new Dictionary<string, object> { { "ClientId", clientId } };
         var result = await DialogService.OpenAsync<ClientForm>("Editar Cliente", parameters,
             options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
         if (result == true) await LoadClients();

@@ -1,0 +1,64 @@
+<th class="@ThClass">
+    @if (!Sortable)
+    {
+        <span class="fs-th-label">@Text</span>
+    }
+    else
+    {
+        <button type="button" class="fs-th-btn" @onclick="OnClick">
+            <span class="fs-th-label">@Text</span>
+            <span class="fs-th-icon">
+                @if (IsActive)
+                {
+                    <i class="bi @(Direction == SortDirection.Asc ? "bi-arrow-up" : "bi-arrow-down")"></i>
+                }
+                else
+                {
+                    <i class="bi bi-arrow-down-up"></i>
+                }
+            </span>
+        </button>
+    }
+</th>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = default!;
+    [Parameter] public string? Field { get; set; }
+    [Parameter] public bool Sortable { get; set; } = true;
+
+    [Parameter] public string? ActiveField { get; set; }
+    [Parameter] public SortDirection Direction { get; set; } = SortDirection.Desc;
+
+    [Parameter] public EventCallback<(string field, SortDirection dir)> SortChanged { get; set; }
+
+    [Parameter] public string? ThClass { get; set; }
+
+    private bool IsActive =>
+    Sortable &&
+    !string.IsNullOrWhiteSpace(Field) &&
+    Field == ActiveField;
+
+
+    private async Task OnClick()
+    {
+        if (string.IsNullOrWhiteSpace(Field))
+            return;
+
+        SortDirection nextDir;
+
+        // Si ya estoy activo en esta misma columna, alterno
+        if (IsActive)
+            nextDir = Direction == SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
+        else
+            nextDir = SortDirection.Desc; // primera vez: desc (como tú querías)
+
+        await SortChanged.InvokeAsync((Field!, nextDir));
+    }
+
+
+    public enum SortDirection
+    {
+        Asc,
+        Desc
+    }
+}

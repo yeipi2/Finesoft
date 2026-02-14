@@ -6,24 +6,21 @@
 
 <PageTitle>Finesoft - Tickets</PageTitle>
 
-@* ── ESTADO: verificando acceso ── *@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                        background:white;z-index:9999;
-                        display:flex;align-items:center;justify-content:center;">
+        background:white;z-index:9999;
+        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
-@* ── ESTADO: sin acceso (seguridad extra mientras redirige) ── *@
 else if (!_hasAccess)
 {
     <div></div>
 }
-@* ── ESTADO: contenido real ── *@
 else
 {
-    <container class="p-4">
+    <div class="p-4">
         <section class="container-fluid px-xl-5 py-4">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
@@ -55,6 +52,7 @@ else
                         </p>
                     </div>
                 </div>
+
                 @if (_canCreate)
                 {
                     <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
@@ -67,198 +65,167 @@ else
             @if (_stats != null)
             {
                 <StatGrid>
-                    <StatCard Title="Abiertos" Value="@_stats.Open.ToString()"
-                                Accent="StatCard.StatAccent.Primary"
-                                IconClass="bi bi-inbox" />
+                    <StatCard Title="Abiertos" Value="@_stats.Open.ToString()" Accent="StatCard.StatAccent.Primary"
+                              IconClass="bi bi-inbox" />
 
-                    <StatCard Title="En Progreso" Value="@_stats.InProgress.ToString()"
-                                Accent="StatCard.StatAccent.Info"
-                                IconClass="bi bi-clock-history" />
+                    <StatCard Title="En Progreso" Value="@_stats.InProgress.ToString()" Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-clock-history" />
 
-                    <StatCard Title="En Revisión" Value="@_stats.InReview.ToString()"
-                                Accent="StatCard.StatAccent.Info"
-                                IconClass="bi bi-search" />
+                    <StatCard Title="En Revisión" Value="@_stats.InReview.ToString()" Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-search" />
 
-                    <StatCard Title="Cerrados" Value="@_stats.Closed.ToString()"
-                                Accent="StatCard.StatAccent.Success"
-                                IconClass="bi bi-check-circle" />
+                    <StatCard Title="Cerrados" Value="@_stats.Closed.ToString()" Accent="StatCard.StatAccent.Success"
+                              IconClass="bi bi-check-circle" />
                 </StatGrid>
             }
         </section>
 
         <section class="container-fluid px-xl-5 py-4">
-            <FilterBar
-                SearchPlaceholder="Buscar tickets..."
-                SearchValue="@_searchText"
-                SearchValueChanged="@(v => _searchText = v)"
-                OnClear="ClearFilters">
+            <FilterBar SearchPlaceholder="Buscar tickets..." SearchValue="@_searchText"
+                       SearchValueChanged="@(v => _searchText = v)" OnClear="ClearFilters">
 
-            <Filters>
-                <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
-                    <option value="">Todos los estados</option>
-                    <option value="Abierto">Abierto</option>
-                    <option value="En Progreso">En Progreso</option>
-                    <option value="En Revisión">En Revisión</option>
-                    <option value="Cerrado">Cerrado</option>
-                </select>
+                <Filters>
+                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
+                        <option value="">Todos los estados</option>
+                        <option value="Abierto">Abierto</option>
+                        <option value="En Progreso">En Progreso</option>
+                        <option value="En Revisión">En Revisión</option>
+                        <option value="Cerrado">Cerrado</option>
+                    </select>
 
-                <select class="form-select" @bind="_priorityFilter" @bind:event="onchange">
-                    <option value="">Todas las prioridades</option>
-                    <option value="Baja">Baja</option>
-                    <option value="Media">Media</option>
-                    <option value="Alta">Alta</option>
-                    <option value="Urgente">Urgente</option>
-                </select>
-            </Filters>
+                    <select class="form-select" @bind="_priorityFilter" @bind:event="onchange">
+                        <option value="">Todas las prioridades</option>
+                        <option value="Baja">Baja</option>
+                        <option value="Media">Media</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Urgente">Urgente</option>
+                    </select>
+                </Filters>
 
-        </FilterBar>
-
+            </FilterBar>
         </section>
 
         <section class="container-fluid px-xl-5 py-4">
-            @if (_isLoading)
-            {
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Cargando tickets...</p>
-                </div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>Título</th>
-                                <th>Cliente / Proyecto</th>
-                                <th>Prioridad</th>
-                                <th>Estado</th>
-                                @if (_canViewAll)
+            <FsDataTable TItem="TicketDetailDto" Title="@(_canViewAll ? "Tickets" : "Mis Tickets")"
+                         Subtitle="Ordena por columna y gestiona rápidamente" Items="_filteredTickets" IsLoading="_isLoading"
+                         ColSpan="@(_canViewAll ? 8 : 7)" EmptyTitle="No se encontraron tickets"
+                         EmptySubtitle="Prueba ajustando filtros o búsqueda.">
+
+                <Header>
+                    <FsSortHeader Text="ID" Field="id" ActiveField="@_sortField" Direction="_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Título" Field="title" ActiveField="@_sortField" Direction="_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <th>Cliente / Proyecto</th>
+                    <FsSortHeader Text="Prioridad" Field="priority" ActiveField="@_sortField" Direction="_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="_sortDir"
+                                  SortChanged="OnSortChanged" />
+
+                    @if (_canViewAll)
+                    {
+                        <th>Asignado a</th>
+                    }
+
+                    <th>Horas</th>
+                    <th class="text-center">Acciones</th>
+                </Header>
+
+                <RowTemplate Context="ticket">
+                    <tr>
+                        <td class="fw-bold">#@ticket.Id</td>
+
+                        <td>
+                            <div class="fw-bold">@ticket.Title</div>
+                            <small class="text-muted">
+                                @(ticket.Description?.Length > 50
+                                    ? ticket.Description.Substring(0, 50) + "..."
+                                    : ticket.Description)
+                            </small>
+                        </td>
+
+                        <td>
+                            <div><strong>@ticket.ClientName</strong></div>
+                            <small class="text-muted">@ticket.ProjectName</small>
+                        </td>
+
+                        <td>
+                            @{
+                                var priorityClass = ticket.Priority switch
                                 {
-                                    <th>Asignado a</th>
-                                }
-                                <th>Horas</th>
-                                <th class="text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (_filteredTickets.Any())
-                            {
-                                @foreach (var ticket in _filteredTickets)
+                                    "Urgente" => "bg-danger",
+                                    "Alta" => "bg-warning",
+                                    "Media" => "bg-info",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @priorityClass">@ticket.Priority</span>
+                        </td>
+
+                        <td>
+                            @{
+                                var statusClass = ticket.Status switch
                                 {
-                                    <tr>
-                                        <td class="fw-bold">#@ticket.Id</td>
-                                        <td>
-                                            <div class="fw-bold">@ticket.Title</div>
-                                            <small class="text-muted">
-                                                @(ticket.Description?.Length > 50 ? ticket.Description.Substring(0, 50) + "..." : ticket.Description)
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <div><strong>@ticket.ClientName</strong></div>
-                                            <small class="text-muted">@ticket.ProjectName</small>
-                                        </td>
-                                        <td>
-                                            @{
-                                                var priorityClass = ticket.Priority switch
-                                                {
-                                                                            "Urgente" => "bg-danger",
-                                                                            "Alta" => "bg-warning",
-                                                                            "Media" => "bg-info",
-                                                    _ => "bg-secondary"
-                                                };
-                                            }
-                                            <span class="badge @priorityClass">@ticket.Priority</span>
-                                        </td>
-                                        <td>
-                                            @{
-                                                var statusClass = ticket.Status switch
-                                                {
-                                                                            "Abierto" => "bg-primary",
-                                                                            "En Progreso" => "bg-warning",
-                                                                            "En Revisión" => "bg-info",
-                                                                            "Cerrado" => "bg-success",
-                                                    _ => "bg-secondary"
-                                                };
-                                            }
-                                            <span class="badge @statusClass">@ticket.Status</span>
-                                        </td>
-                                        @if (_canViewAll)
-                                        {
-                                            <td>
-                                                @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
-                                                {
-                                                    <span>@ticket.AssignedToUserName</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted">Sin asignar</span>
-                                                }
-                                            </td>
-                                        }
-                                        <td>
-                                            <div><small class="text-muted">Est:</small> @ticket.EstimatedHours.ToString("0.0")h</div>
-                                            <div><small class="text-muted">Real:</small> <strong class="text-success">@ticket.ActualHours.ToString("0.0")h</strong></div>
-                                        </td>
-                                        <td class="text-center">
-                                            @if (_currentRole != "Cliente")
-                                            {
-                                                <button class="btn btn-sm btn-outline-primary me-1"
-                                                        @onclick="() => ViewTicketDetails(ticket.Id)"
-                                                        title="Ver detalles">
-                                                    <i class="bi bi-eye-fill"></i>
-                                                </button>
-                                            }
-                                            @if (_canEdit)
-                                            {
-                                                <button class="btn btn-sm btn-outline-info me-1"
-                                                        @onclick="() => ShowEditModal(ticket.Id)"
-                                                        title="Editar">
-                                                    <i class="bi bi-pencil-fill"></i>
-                                                </button>
-                                            }
-                                            @if (_canDelete)
-                                            {
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                        @onclick="() => ConfirmDelete(ticket)"
-                                                        title="Eliminar">
-                                                    <i class="bi bi-trash-fill"></i>
-                                                </button>
-                                            }
-                                        </td>
-                                    </tr>
+                                    "Abierto" => "bg-primary",
+                                    "En Progreso" => "bg-warning",
+                                    "En Revisión" => "bg-info",
+                                    "Cerrado" => "bg-success",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass">@ticket.Status</span>
+                        </td>
+
+                        @if (_canViewAll)
+                        {
+                            <td>
+                                @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
+                                {
+                                    <span>@ticket.AssignedToUserName</span>
                                 }
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="@(_canViewAll ? 8 : 7)" class="text-center py-4">
-                                        <i class="bi bi-inbox fs-1 text-muted"></i>
-                                        <p class="text-muted mt-2">
-                                            @if (_canViewAll)
-                                            {
-                                                <span>No se encontraron tickets.</span>
-                                            }
-                                            else if (_currentRole == "Empleado")
-                                            {
-                                                <span>No tienes tickets asignados.</span>
-                                            }
-                                            else
-                                            {
-                                                <span>No has creado tickets aún.</span>
-                                            }
-                                        </p>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </section>
-    </container>
-}
+                                else
+                                {
+                                    <span class="text-muted">Sin asignar</span>
+                                }
+                            </td>
+                        }
+
+                        <td>
+                            <div><small class="text-muted">Est:</small> @ticket.EstimatedHours.ToString("0.0")h</div>
+                            <div><small class="text-muted">Real:</small> <strong
+                                class="text-success">@ticket.ActualHours.ToString("0.0")h</strong></div>
+                            </td>
+
+                            <td class="text-center">
+                                @if (_currentRole != "Cliente")
+                                {
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => ViewTicketDetails(ticket.Id)" title="Ver detalles">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+                                }
+                                @if (_canEdit)
+                                {
+                                    <button class="btn btn-sm btn-outline-info me-1" @onclick="() => ShowEditModal(ticket.Id)"
+                                            title="Editar">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                }
+                                @if (_canDelete)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(ticket)"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    </RowTemplate>
+
+                </FsDataTable>
+            </section>
+        </div>
+    }
 
 @inject ITicketApiService TicketApiService
 @inject DialogService DialogService
@@ -274,7 +241,6 @@ else
     private string _priorityFilter = string.Empty;
     private bool _isLoading = false;
 
-    // ⭐ Control de acceso integrado en la página
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
 
@@ -286,35 +252,80 @@ else
     private bool _canEdit = false;
     private bool _canDelete = false;
 
+    private string _sortField = "createdAt";
+    private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    {
+        _sortField = s.field;
+        _sortDir = s.dir;
+
+        Console.WriteLine($"SORT -> {_sortField} {_sortDir}");
+    }
+
+
     private IEnumerable<TicketDetailDto> _filteredTickets
-        => _tickets?
-            .Where(t =>
-                (string.IsNullOrWhiteSpace(_searchText) ||
-                 t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                 (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                 (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                 (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
-                && (string.IsNullOrEmpty(_statusFilter) || t.Status == _statusFilter)
-                && (string.IsNullOrEmpty(_priorityFilter) || t.Priority == _priorityFilter)
-            )
-            .OrderByDescending(t => t.CreatedAt)
-            ?? Enumerable.Empty<TicketDetailDto>();
+        => ApplySort(
+            _tickets?
+                .Where(t =>
+                    (string.IsNullOrWhiteSpace(_searchText) ||
+                     t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                     (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                     (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                     (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                    && (string.IsNullOrEmpty(_statusFilter) || t.Status == _statusFilter)
+                    && (string.IsNullOrEmpty(_priorityFilter) || t.Priority == _priorityFilter)
+                ) ?? Enumerable.Empty<TicketDetailDto>()
+          );
+
+    private IEnumerable<TicketDetailDto> ApplySort(IEnumerable<TicketDetailDto> q)
+    {
+        return (_sortField, _sortDir) switch
+        {
+            ("id", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Id),
+            ("id", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Id),
+
+            ("title", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Title),
+            ("title", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Title),
+
+            // ✅ Mejor: prioridad por “nivel” y no por texto (opcional pero recomendado)
+            ("priority", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => PriorityRank(x.Priority)),
+            ("priority", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => PriorityRank(x.Priority)),
+
+            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Status),
+            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
+
+            // ✅ FALTABAN ESTOS DOS:
+            ("createdAt", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CreatedAt),
+            ("createdAt", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedAt),
+
+            // ✅ fallback seguro (si te equivocas en Field)
+            _ => q.OrderByDescending(x => x.CreatedAt),
+        };
+    }
+
+    private static int PriorityRank(string? p) => p switch
+    {
+        "Urgente" => 4,
+        "Alta" => 3,
+        "Media" => 2,
+        "Baja" => 1,
+        _ => 0
+    };
+
 
     protected override async Task OnInitializedAsync()
     {
-        // ── 1. Verificar permiso ANTES de cargar cualquier dato ──
         var canView = await PermissionService.HasPermissionAsync("tickets.view");
 
         if (!canView)
         {
-            Console.WriteLine("⛔ Sin permiso tickets.view → redirigiendo");
             _checkingAccess = false;
             _hasAccess = false;
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
             return;
         }
 
-        // ── 2. Tiene acceso: cargar permisos de acciones y datos ──
         _hasAccess = true;
         _checkingAccess = false;
 

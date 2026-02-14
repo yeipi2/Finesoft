@@ -1,0 +1,90 @@
+.fs-table-card{
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, .08);
+  border-radius: 16px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, .06);
+  overflow: hidden;
+}
+
+.fs-table-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 16px 16px 10px 16px;
+  border-bottom: 1px solid rgba(15, 23, 42, .06);
+}
+
+.fs-table-title-text{
+  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.fs-table-subtitle{
+  font-size: .9rem;
+  margin-top: 2px;
+  color: rgba(15, 23, 42, .55);
+}
+
+.fs-table-toolbar{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fs-table-responsive{
+  padding: 8px 12px 12px 12px;
+}
+
+table.fs-table{
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table.fs-table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc; /* sutil, moderno */
+  font-size: .85rem;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: rgba(15,23,42,.75);
+  border-bottom: 1px solid rgba(15,23,42,.08);
+  padding: 10px 12px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+table.fs-table tbody td{
+  border-top: 1px solid rgba(15,23,42,.06);
+}
+
+table.fs-table tbody tr:hover{
+  background: rgba(59,130,246,.06); /* hover suave */
+}
+
+.fs-table-loading,
+.fs-table-empty{
+  padding: 34px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  text-align:center;
+}
+
+.fs-table-empty-title{
+  margin-top: 8px;
+  font-weight: 800;
+}
+
+.fs-table-footer{
+  padding: 10px 16px 14px 16px;
+  border-top: 1px solid rgba(15, 23, 42, .06);
+  background: #fff;
+}
+

@@ -1,0 +1,28 @@
+.fs-th-btn{
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;              /* ✅ QUITAR padding aquí */
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  font: inherit;
+  color: inherit;
+  text-align:left;
+}
+
+.fs-th-btn:hover{
+  background: rgba(15,23,42,.04);
+  border-radius: 10px;
+}
+
+.fs-th-label{
+  font-weight: 700;
+}
+
+.fs-th-icon{
+  opacity: .75;
+  display:flex;
+  align-items:center;
+}

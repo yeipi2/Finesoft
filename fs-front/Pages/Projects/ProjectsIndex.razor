@@ -9,8 +9,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                    background:white;z-index:9999;
-                    display:flex;align-items:center;justify-content:center;">
+        background:white;z-index:9999;
+        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -41,128 +41,85 @@ else
                 }
             </div>
 
-            <SearchBar Placeholder="Buscar proyectos..." Value="@_searchText" ValueChanged="@(v => _searchText = v)"
-                       Class="mb-4" />
+            <SearchBar Placeholder="Buscar proyectos..." Value="@_searchText"
+                       ValueChanged="@(v => { _searchText = v; StateHasChanged(); })" Class="mb-4" />
         </section>
 
         <section class="container-fluid p-xl-5">
-            @if (_isLoading)
-            {
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="mt-2 text-muted">Cargando proyectos...</p>
-                </div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th scope="col" class="ps-4">Proyecto</th>
-                                <th scope="col">Cliente</th>
-                                <th scope="col">Estado</th>
-                                <th scope="col" class="text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (_projects != null && _filteredProjects.Any())
+            <FsDataTable TItem="ProjectDetailDto" Title="Proyectos" Subtitle="Lista de todos los proyectos del sistema"
+                         Items="_sortedProjects" IsLoading="_isLoading" ColSpan="4" EmptyTitle="No se encontraron proyectos"
+                         EmptySubtitle="Prueba con otra búsqueda.">
+
+                <Header>
+                    <FsSortHeader Text="Proyecto" Field="name" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" ThClass="ps-4" />
+                    <FsSortHeader Text="Cliente" Field="client" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir"
+                                  SortChanged="OnSortChanged" />
+                    <th class="text-center">Acciones</th>
+                </Header>
+
+                <RowTemplate Context="project">
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-primary">@project.Name</div>
+                            <div class="text-muted small">@project.Description</div>
+                        </td>
+
+                        <td>
+                            @if (project.Client != null)
                             {
-                                @foreach (var project in _filteredProjects)
-                                {
-                                    <tr>
-                                        <td class="ps-4">
-                                            <div class="fw-bold text-primary">@project.Name</div>
-                                            <div class="text-muted small">@project.Description</div>
-                                        </td>
-                                        <td>
-                                            @if (project.Client != null)
-                                            {
-                                                <div>
-                                                    <div class="fw-bold">@project.Client.CompanyName</div>
-                                                    <div class="text-muted small">
-                                                        <i class="bi bi-person"></i> @project.Client.ContactName
-                                                    </div>
-                                                    <div class="text-muted small">
-                                                        <i class="bi bi-envelope"></i> @project.Client.Email
-                                                    </div>
-                                                    <div class="text-muted small">
-                                                        <i class="bi bi-telephone"></i> @project.Client.Phone
-                                                    </div>
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted small">Sin cliente</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (project.IsActive)
-                                            {
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-check-circle"></i> Activo
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-secondary">
-                                                    <i class="bi bi-x-circle"></i> Inactivo
-                                                </span>
-                                            }
-                                        </td>
-                                        <td class="text-center">
-                                            @if (_canEdit)
-                                            {
-                                                <button class="btn btn-sm btn-outline-primary me-1"
-                                                        @onclick="() => ShowEditModal(project.Id)"
-                                                        title="Editar">
-                                                    <i class="bi bi-pencil-fill"></i>
-                                                </button>
-                                            }
-                                            <button class="btn btn-sm btn-outline-info me-1"
-                                                    @onclick="() => ViewProjectDetails(project.Id)"
-                                                    title="Ver detalles">
-                                                <i class="bi bi-eye-fill"></i>
-                                            </button>
-                                            @if (_canDelete)
-                                            {
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                        @onclick="() => ConfirmDelete(project)"
-                                                        title="Eliminar">
-                                                    <i class="bi bi-trash-fill"></i>
-                                                </button>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
+                                <div>
+                                    <div class="fw-bold">@project.Client.CompanyName</div>
+                                    <div class="text-muted small"><i class="bi bi-person"></i> @project.Client.ContactName</div>
+                                    <div class="text-muted small"><i class="bi bi-envelope"></i> @project.Client.Email</div>
+                                    <div class="text-muted small"><i class="bi bi-telephone"></i> @project.Client.Phone</div>
+                                </div>
                             }
                             else
                             {
-                                <tr>
-                                    <td colspan="4" class="text-center py-4">
-                                        @if (string.IsNullOrWhiteSpace(_searchText))
-                                        {
-                                            <div>
-                                                <i class="bi bi-inbox fs-1 text-muted"></i>
-                                                <p class="text-muted mt-2">No hay proyectos registrados.</p>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div>
-                                                <i class="bi bi-search fs-1 text-muted"></i>
-                                                <p class="text-muted mt-2">No se encontraron proyectos que coincidan con "@_searchText"</p>
-                                            </div>
-                                        }
-                                    </td>
-                                </tr>
+                                <span class="text-muted small">Sin cliente</span>
                             }
-                        </tbody>
-                    </table>
-                </div>
-            }
+                        </td>
+
+                        <td>
+                            @if (project.IsActive)
+                            {
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Activo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Inactivo</span>
+                            }
+                        </td>
+
+                        <td class="text-center">
+                            @if (_canEdit)
+                            {
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ShowEditModal(project.Id)"
+                                        title="Editar">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </button>
+                            }
+
+                            <button class="btn btn-sm btn-outline-info me-1" @onclick="() => ViewProjectDetails(project.Id)"
+                                    title="Ver detalles">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
+
+                            @if (_canDelete)
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(project)"
+                                        title="Eliminar">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                </RowTemplate>
+
+            </FsDataTable>
         </section>
     </container>
 }
@@ -185,6 +142,34 @@ else
     private bool _canCreate;
     private bool _canEdit;
     private bool _canDelete;
+    private string _sortField = "name";
+    private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    {
+        _sortField = s.field;
+        _sortDir = s.dir;
+    }
+
+    private IEnumerable<ProjectDetailDto> _sortedProjects => ApplySort(_filteredProjects);
+
+    private IEnumerable<ProjectDetailDto> ApplySort(IEnumerable<ProjectDetailDto> q)
+    {
+        return (_sortField, _sortDir) switch
+        {
+            ("name", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Name),
+            ("name", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Name),
+
+            ("client", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Client?.CompanyName ?? ""),
+            ("client", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Client?.CompanyName ?? ""),
+
+            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
+            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
+
+            _ => q.OrderByDescending(x => x.Name),
+        };
+    }
+
 
     private IEnumerable<ProjectDetailDto> _filteredProjects =>
         _projects?.Where(p =>

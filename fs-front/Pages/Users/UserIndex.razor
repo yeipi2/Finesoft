@@ -17,6 +17,7 @@
 }
 else if (_hasAccess)
 {
+
     @* ↓↓↓ TODO EL HTML ORIGINAL SIN CAMBIAR NADA ↓↓↓ *@
     <div class="">
         <section class="container-fluid px-xl-5">
@@ -52,45 +53,55 @@ else if (_hasAccess)
             }
             else
             {
-                <div class="table-responsive">
-                    <RadzenDataGrid @ref="_grid" Data="@_filteredUsers" TItem="UserDto"
-                                    AllowPaging="false" AllowSorting="true"
-                                    GridLines="DataGridGridLines.Both" class="table table-hover">
-                        <Columns>
-                            <RadzenDataGridColumn TItem="UserDto" Property="UserName" Title="Usuario">
-                                <Template Context="user">
-                                    <div class="fw-bold text-primary">@user.UserName</div>
-                                    <div class="text-muted small">@user.Email</div>
-                                </Template>
-                            </RadzenDataGridColumn>
-                            <RadzenDataGridColumn TItem="UserDto" Property="RoleName" Title="Rol" Width="150px">
-                                <Template Context="user">
-                                    <span class="badge bg-info text-dark">@user.RoleName</span>
-                                </Template>
-                            </RadzenDataGridColumn>
-                            <RadzenDataGridColumn TItem="UserDto" Title="Acciones" TextAlign="TextAlign.Center" Width="120px">
-                                <Template Context="user">
-                                    <div class="d-flex gap-2 justify-content-center">
-                                        @if (_canEdit)
-                                        {
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                    @onclick="() => EditUser(user)" @onclick:stopPropagation="true">
-                                                <i class="bi bi-pencil-fill"></i>
-                                            </button>
-                                        }
-                                        @if (_canDelete)
-                                        {
-                                            <button class="btn btn-sm btn-outline-danger"
-                                                    @onclick="() => DeleteUser(user)" @onclick:stopPropagation="true">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
-                                        }
-                                    </div>
-                                </Template>
-                            </RadzenDataGridColumn>
-                        </Columns>
-                    </RadzenDataGrid>
-                </div>
+                <FsDataTable TItem="UserDto"
+                        Title="Usuarios"
+                        Subtitle="Administración de acceso y control de roles"
+                        Items="_sortedUsers"
+                        IsLoading="_isLoading"
+                        ColSpan="3"
+                        EmptyTitle="No se encontraron usuarios"
+                        EmptySubtitle="Prueba con otra búsqueda.">
+
+                <Header>
+                    <FsSortHeader Text="Usuario" Field="username" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Rol" Field="role" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <th class="text-center">Acciones</th>
+                </Header>
+
+                <RowTemplate Context="user">
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-primary">@user.UserName</div>
+                            <div class="text-muted small">@user.Email</div>
+                        </td>
+
+                        <td style="width:150px">
+                            <span class="badge bg-info text-dark">@user.RoleName</span>
+                        </td>
+
+                        <td class="text-center" style="width:120px">
+                            <div class="d-flex gap-2 justify-content-center">
+                                @if (_canEdit)
+                                {
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            @onclick="() => EditUser(user)" @onclick:stopPropagation="true">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                }
+                                @if (_canDelete)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteUser(user)" @onclick:stopPropagation="true">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                </RowTemplate>
+
+            </FsDataTable>
+
             }
             @if (!string.IsNullOrEmpty(_loadErrorMessage))
             {
@@ -110,7 +121,6 @@ else if (_hasAccess)
 @code {
     private List<UserDto>? _users;
     private IEnumerable<UserDto> _filteredUsers = Enumerable.Empty<UserDto>();
-    private RadzenDataGrid<UserDto>? _grid;
     private string? _loadErrorMessage;
     private bool _isLoading;
     private string _searchTerm = "";
@@ -121,6 +131,19 @@ else if (_hasAccess)
     private bool _canCreate;
     private bool _canEdit;
     private bool _canDelete;
+
+    private string _sortField = "username";
+
+    private IEnumerable<UserDto> _sortedUsers => ApplySort(_filteredUsers);
+
+private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+{
+    _sortField = s.field;
+    _sortDir = s.dir;
+}
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -198,6 +221,21 @@ else if (_hasAccess)
             catch (Exception ex) { ShowNotification("Error", $"Error inesperado: {ex.Message}", NotificationSeverity.Error); }
         }
     }
+
+    private IEnumerable<UserDto> ApplySort(IEnumerable<UserDto> q)
+{
+    return (_sortField, _sortDir) switch
+    {
+        ("username", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.UserName),
+        ("username", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.UserName),
+
+        ("role", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.RoleName),
+        ("role", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.RoleName),
+
+        _ => q.OrderByDescending(x => x.UserName),
+    };
+}
+
 
     private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage { Severity = severity, Summary = title, Detail = message, Duration = severity == NotificationSeverity.Error ? 6000 : 4000, ShowProgress = true });

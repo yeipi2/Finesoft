@@ -1,0 +1,99 @@
+@typeparam TItem
+
+<div class="fs-table-card">
+    @if (!string.IsNullOrWhiteSpace(Title) || Toolbar is not null)
+    {
+        <div class="fs-table-top">
+            <div class="fs-table-title">
+                @if (!string.IsNullOrWhiteSpace(Title))
+                {
+                    <div class="fs-table-title-text">@Title</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Subtitle))
+                {
+                    <div class="fs-table-subtitle">@Subtitle</div>
+                }
+            </div>
+
+            @if (Toolbar is not null)
+            {
+                <div class="fs-table-toolbar">
+                    @Toolbar
+                </div>
+            }
+        </div>
+    }
+
+    <div class="table-responsive fs-table-responsive">
+        <table class="table fs-table table-hover align-middle">
+            <thead>
+                <tr>
+                    @Header
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (IsLoading)
+                {
+                    <tr>
+                        <td colspan="@ColSpan">
+                            <div class="fs-table-loading">
+                                <div class="spinner-border" role="status"></div>
+                                <div class="text-muted mt-2">@LoadingText</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else if (Items is null || !Items.Any())
+                {
+                    <tr>
+                        <td colspan="@ColSpan">
+                            <div class="fs-table-empty">
+                                <i class="@EmptyIcon fs-1 text-muted"></i>
+                                <div class="fs-table-empty-title">@EmptyTitle</div>
+                                <div class="fs-table-empty-subtitle text-muted">@EmptySubtitle</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Items)
+                    {
+                        @RowTemplate(item)
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Footer is not null)
+    {
+        <div class="fs-table-footer">
+            @Footer
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter, EditorRequired] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter, EditorRequired] public RenderFragment Header { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+
+    // Slots opcionales
+    [Parameter] public RenderFragment? Toolbar { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    // Estados
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string LoadingText { get; set; } = "Cargando...";
+
+    // Empty state
+    [Parameter] public int ColSpan { get; set; } = 1;
+    [Parameter] public string EmptyIcon { get; set; } = "bi bi-inbox";
+    [Parameter] public string EmptyTitle { get; set; } = "Sin resultados";
+    [Parameter] public string EmptySubtitle { get; set; } = "No hay datos para mostrar.";
+}
