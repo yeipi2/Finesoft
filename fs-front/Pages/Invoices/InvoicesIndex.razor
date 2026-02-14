@@ -12,8 +12,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-        background:white;z-index:9999;
-        display:flex;align-items:center;justify-content:center;">
+            background:white;z-index:9999;
+            display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -327,8 +327,8 @@ else
     {
         var options = new DialogOptions
         {
-            Width = "1000px", // ⭐ CAMBIO: Más ancho
-            Height = "80%", // ⭐ CAMBIO: Altura automática
+            Width = "1000px",
+            Height = "80%",
             Resizable = true,
             Draggable = false,
             CloseDialogOnOverlayClick = false
@@ -348,8 +348,8 @@ else
     {
         var options = new DialogOptions
         {
-            Width = "1000px", // ⭐ CAMBIO: Más ancho
-            Height = "80%", // ⭐ CAMBIO: Altura automática
+            Width = "1000px",
+            Height = "80%",
             Resizable = true,
             Draggable = false,
             CloseDialogOnOverlayClick = false
@@ -372,23 +372,69 @@ else
 
     private async Task GenerateMonthlyInvoices()
     {
+        // ⭐ NUEVO: Confirmación antes de generar
+        var confirmed = await DialogService.Confirm(
+            "¿Desea generar las facturas mensuales automáticas para todos los clientes con póliza mensual?",
+            "Confirmar Generación",
+            new ConfirmOptions { OkButtonText = "Sí, generar", CancelButtonText = "Cancelar" }
+        );
+
+        if (confirmed != true) return;
+
         _isGenerating = true;
         try
         {
-            var result = await InvoiceApiService.GenerateMonthlyInvoicesAsync();
-            if (result.Success)
+            Console.WriteLine("🔄 Iniciando generación de facturas mensuales...");
+
+            var (success, errorMessage) = await InvoiceApiService.GenerateMonthlyInvoicesAsync();
+
+            Console.WriteLine($"📊 Resultado: Success={success}, Error={errorMessage}");
+
+            if (success)
             {
-                ShowNotification("Éxito", "Facturas mensuales generadas correctamente.", NotificationSeverity.Success);
+                ShowNotification("Éxito",
+                    "Facturas mensuales generadas correctamente.",
+                    NotificationSeverity.Success);
                 await LoadData();
             }
             else
             {
-                ShowNotification("Error", result.ErrorMessage ?? "Error al generar facturas", NotificationSeverity.Error);
+                // ⭐ MEJORADO: Mostrar el error específico del backend
+                var errorMsg = errorMessage ?? "Error desconocido al generar facturas";
+
+                Console.WriteLine($"❌ Error del backend: {errorMsg}");
+
+                // Si el error indica que no hay clientes
+                if (errorMsg.Contains("No se encontraron") ||
+                    errorMsg.Contains("no hay") ||
+                    errorMsg.Contains("Sin clientes") ||
+                    errorMsg.Contains("No hay"))
+                {
+                    ShowNotification("Información",
+                        "No hay clientes con modalidad mensual activos o ya tienen factura generada para este mes.",
+                        NotificationSeverity.Info);
+                }
+                else
+                {
+                    ShowNotification("Error", errorMsg, NotificationSeverity.Error);
+                }
             }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            Console.WriteLine($"❌ Error HTTP: {httpEx.Message}");
+            Console.WriteLine($"Detalles: {httpEx.StackTrace}");
+            ShowNotification("Error de Conexión",
+                "No se pudo conectar con el servidor. Verifique que el backend esté ejecutándose.",
+                NotificationSeverity.Error);
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+            Console.WriteLine($"❌ Error inesperado: {ex.Message}");
+            Console.WriteLine($"Detalles: {ex.StackTrace}");
+            ShowNotification("Error",
+                $"Error inesperado: {ex.Message}",
+                NotificationSeverity.Error);
         }
         finally
         {

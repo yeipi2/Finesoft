@@ -10,7 +10,7 @@ public class Client
     /// <summary>
     /// ID del usuario asociado (IdentityUser) - OPCIONAL al inicio, REQUERIDO después
     /// </summary>
-    public string? UserId { get; set; } // ⭐ NUEVO - Relación con IdentityUser
+    public string? UserId { get; set; } // ⭐ Relación con IdentityUser
 
     [Required]
     public string CompanyName { get; set; } = string.Empty;
@@ -33,9 +33,17 @@ public class Client
     [Required]
     public string ServiceMode { get; set; } = string.Empty;
 
+    // ⭐ NUEVA PROPIEDAD: Frecuencia de facturación
+    /// <summary>
+    /// Frecuencia de facturación: "Event" (por evento) o "Monthly" (mensual)
+    /// </summary>
+    public string BillingFrequency { get; set; } = "Event";
+
     public double? MonthlyRate { get; set; } = 0.0;
 
     public bool IsActive { get; set; } = true;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
     public DateTime? UpdatedAt { get; set; }
 }

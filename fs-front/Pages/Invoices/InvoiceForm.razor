@@ -159,24 +159,69 @@
 
                                     <div class="col-md-4">
                                         <label class="form-label small mb-1">Subtotal</label>
-                                        @* ⭐ CAMBIO: Formato con símbolo de pesos $ *@
                                         <input type="text" class="form-control form-control-sm bg-white"
                                                value="@FormatCurrency(item.Quantity * item.UnitPrice)"
                                                readonly />
                                     </div>
 
+                                    @* ⭐ FILTRO CORREGIDO: Incluye tickets de la factura actual *@
                                     <div class="col-md-12">
-                                        <label class="form-label small mb-1">Ticket (Opcional)</label>
-                                        <select class="form-select form-select-sm" @bind="item.TicketId">
-                                            <option value="">-- Sin ticket asociado --</option>
-                                            @if (_tickets != null)
-                                            {
-                                                @foreach (var ticket in _tickets)
+                                        <label class="form-label small mb-1">
+                                            Ticket Asociado (Opcional)
+                                            <i class="bi bi-info-circle text-muted"
+                                               title="Solo se muestran tickets cerrados sin cotización asociada"></i>
+                                        </label>
+
+                                        @if (_isLoadingTickets)
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                                <span class="small">Cargando tickets...</span>
+                                            </div>
+                                        }
+                                        else if (_availableTickets == null || !_availableTickets.Any())
+                                        {
+                                            <select class="form-select form-select-sm" disabled>
+                                                <option value="">-- No hay tickets disponibles --</option>
+                                            </select>
+                                            <small class="text-muted">
+                                                <i class="bi bi-exclamation-circle"></i>
+                                                Solo se pueden asociar tickets cerrados sin cotización
+                                            </small>
+                                        }
+                                        else
+                                        {
+                                            <select class="form-select form-select-sm"
+                                                    @bind="item.TicketId"
+                                                    @bind:after="() => OnTicketSelected(item)">
+                                                <option value="">-- Sin ticket asociado --</option>
+                                                @foreach (var ticket in _availableTickets)
                                                 {
-                                                    <option value="@ticket.Id">Ticket #@ticket.Id - @ticket.Title</option>
+                                                    <option value="@ticket.Id">
+                                                        #@ticket.Id - @ticket.Title
+                                                        (@ticket.ClientName - @ticket.ActualHours.ToString("0.0")h)
+                                                    </option>
+                                                }
+                                            </select>
+
+                                            @* ⭐ Mostrar info del ticket seleccionado *@
+                                            @if (item.TicketId.HasValue && item.TicketId.Value > 0)
+                                            {
+                                                var selectedTicket = _availableTickets.FirstOrDefault(t => t.Id == item.TicketId.Value);
+                                                if (selectedTicket != null)
+                                                {
+                                                    <div class="alert alert-info p-2 mt-2 mb-0">
+                                                        <small>
+                                                            <i class="bi bi-ticket-perforated"></i>
+                                                            <strong>@selectedTicket.Title</strong><br />
+                                                            Cliente: @selectedTicket.ClientName |
+                                                            Horas: @selectedTicket.ActualHours.ToString("0.0")h |
+                                                            Costo: $@((selectedTicket.ActualHours * selectedTicket.HourlyRate).ToString("N2"))
+                                                        </small>
+                                                    </div>
                                                 }
                                             }
-                                        </select>
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -193,7 +238,6 @@
                            @bind-Value="_invoiceDto.Notes" />
         </div>
 
-        @* ⭐ CAMBIO: Card de totales con símbolo de pesos *@
         <div class="card bg-light border-primary mb-3">
             <div class="card-body p-2">
                 <div class="row justify-content-end">
@@ -221,7 +265,7 @@
                 <i class="bi bi-x-lg me-1"></i>
                 Cancelar
             </button>
-            <button type="submit" class="btn btn-primary" 
+            <button type="submit" class="btn btn-primary"
                     disabled="@(_isSaving || !_invoiceDto.Items.Any() || _invoiceDto.ClientId == 0)">
                 @if (_isSaving)
                 {
@@ -297,6 +341,7 @@
 @inject IClientApiService ClientApiService
 @inject IServiceApiService ServiceApiService
 @inject ITicketApiService TicketApiService
+@inject IQuoteApiService QuoteApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
@@ -311,7 +356,11 @@
     private bool _showSuggestions = false;
 
     private List<ServiceDetailDto>? _services;
-    private List<TicketDetailDto>? _tickets;
+    private List<TicketDetailDto>? _allTickets;
+
+    // ⭐ Lista filtrada de tickets disponibles (cerrados sin cotización + los de esta factura)
+    private List<TicketDetailDto>? _availableTickets;
+    private bool _isLoadingTickets = false;
 
     private decimal _calculatedSubtotal = 0;
     private decimal _calculatedTax = 0;
@@ -322,7 +371,6 @@
     private string? _errorMessage;
     private bool _isEditMode => InvoiceId.HasValue;
 
-    // ⭐ NUEVO: Cultura para formato de pesos mexicanos
     private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
 
     protected override async Task OnInitializedAsync()
@@ -352,10 +400,11 @@
         return string.Format("$ {0:N2}", amount);
     }
 
-
+    // ⭐ MÉTODO CORREGIDO: Incluye tickets de la factura actual en modo edición
     private async Task LoadInitialData()
     {
         _isLoadingClients = true;
+        _isLoadingTickets = true;
         StateHasChanged();
 
         try
@@ -363,24 +412,65 @@
             var clientsTask = ClientApiService.GetClientsAsync();
             var servicesTask = ServiceApiService.GetServicesAsync();
             var ticketsTask = TicketApiService.GetTicketsAsync();
+            var quotesTask = QuoteApiService.GetQuotesAsync();
 
-            await Task.WhenAll(clientsTask, servicesTask, ticketsTask);
+            await Task.WhenAll(clientsTask, servicesTask, ticketsTask, quotesTask);
 
             _allClients = (await clientsTask) ?? new List<ClientDto>();
             _filteredClients = new List<ClientDto>();
             _services = await servicesTask;
-            _tickets = await ticketsTask;
+            _allTickets = await ticketsTask;
+            var allQuotes = await quotesTask;
+
+            // ⭐ Paso 1: Obtener tickets usados en cotizaciones
+            var ticketsInQuotes = allQuotes?
+                .SelectMany(q => q.Items)
+                .Where(item => item.TicketId.HasValue)
+                .Select(item => item.TicketId!.Value)
+                .Distinct()
+                .ToHashSet() ?? new HashSet<int>();
+
+            // ⭐ Paso 2: Obtener tickets ya asociados a ESTA factura (si está en modo edición)
+            var ticketsInCurrentInvoice = new HashSet<int>();
+            if (_isEditMode && InvoiceId.HasValue)
+            {
+                var currentInvoice = await InvoiceApiService.GetInvoiceByIdAsync(InvoiceId.Value);
+                if (currentInvoice != null)
+                {
+                    ticketsInCurrentInvoice = currentInvoice.Items
+                        .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
+                        .Select(i => i.TicketId!.Value)
+                        .ToHashSet();
+                }
+            }
+
+            // ⭐ Paso 3: Filtro CORREGIDO
+            // Incluir tickets que:
+            // 1. Estén cerrados, Y
+            // 2. NO estén en cotizaciones O sí estén en la factura actual
+            _availableTickets = _allTickets?
+                .Where(t =>
+                    t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true &&
+                    (!ticketsInQuotes.Contains(t.Id) || ticketsInCurrentInvoice.Contains(t.Id)))
+                .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
+                .ToList() ?? new List<TicketDetailDto>();
+
+            Console.WriteLine($"✅ Tickets disponibles para factura: {_availableTickets.Count} de {_allTickets?.Count ?? 0} totales");
+            Console.WriteLine($"   - Tickets en cotizaciones: {ticketsInQuotes.Count}");
+            Console.WriteLine($"   - Tickets en factura actual: {ticketsInCurrentInvoice.Count}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error al cargar datos: {ex.Message}");
+            Console.WriteLine($"❌ Error al cargar datos: {ex.Message}");
             _allClients = new List<ClientDto>();
             _filteredClients = new List<ClientDto>();
-            _errorMessage = "Error al cargar la lista de clientes.";
+            _availableTickets = new List<TicketDetailDto>();
+            _errorMessage = "Error al cargar datos iniciales.";
         }
         finally
         {
             _isLoadingClients = false;
+            _isLoadingTickets = false;
             StateHasChanged();
         }
     }
@@ -429,6 +519,19 @@
         catch (Exception ex)
         {
             _errorMessage = $"Error al cargar factura: {ex.Message}";
+        }
+    }
+
+    private void OnTicketSelected(InvoiceItemDto item)
+    {
+        if (item.TicketId.HasValue && item.TicketId.Value > 0)
+        {
+            var ticket = _availableTickets?.FirstOrDefault(t => t.Id == item.TicketId.Value);
+            if (ticket != null)
+            {
+                Console.WriteLine($"✅ Ticket seleccionado: #{ticket.Id} - {ticket.Title}");
+                StateHasChanged();
+            }
         }
     }
 
@@ -529,6 +632,16 @@
         {
             _errorMessage = "Debe seleccionar un cliente de la lista.";
             return;
+        }
+
+        // Normalizar valores vacíos de TicketId
+        foreach (var item in _invoiceDto.Items)
+        {
+            if (!item.TicketId.HasValue || item.TicketId.Value == 0)
+            {
+                item.TicketId = null;
+            }
+            Console.WriteLine($"Item: {item.Description}, TicketId: {item.TicketId?.ToString() ?? "null"}");
         }
 
         _isSaving = true;
