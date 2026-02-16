@@ -1,0 +1,167 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using fs_front.Services
+@implements IDisposable
+@inject AuthenticationStateProvider Provider
+
+<AuthorizeView Context="authCtx">
+    <Authorized>
+        <aside class="fs-sidebar @(Collapsed ? "is-collapsed" : "")">
+
+            <div class="fs-sidebar__section">
+                <div class="fs-sidebar__title">General</div>
+
+                @if (_canViewDashboard)
+                {
+                    <NavLink class="fs-navlink" href="/dashboard" Match="NavLinkMatch.All" title="Panel">
+                        <i class="bi bi-house"></i><span>Panel</span>
+                    </NavLink>
+                }
+            </div>
+
+            <div class="fs-sidebar__section">
+                <div class="fs-sidebar__title">Catálogos</div>
+
+                @if (_canViewClients)
+                {
+                    <NavLink class="fs-navlink" href="clientes" Match="NavLinkMatch.Prefix" title="Clientes">
+                        <i class="bi bi-people"></i><span>Clientes</span>
+                    </NavLink>
+                }
+
+                @if (_canViewEmployees)
+                {
+                    <NavLink class="fs-navlink" href="empleados" Match="NavLinkMatch.Prefix" title="Empleados">
+                        <i class="bi bi-person-badge"></i><span>Empleados</span>
+                    </NavLink>
+                }
+            </div>
+
+            <div class="fs-sidebar__section">
+                <div class="fs-sidebar__title">Operación</div>
+
+                @if (_canViewProjects)
+                {
+                    <NavLink class="fs-navlink" href="proyectos" Match="NavLinkMatch.Prefix" title="Proyectos">
+                        <i class="bi bi-folder"></i><span>Proyectos</span>
+                    </NavLink>
+                }
+
+                @if (_canViewTickets)
+                {
+                    <NavLink class="fs-navlink" href="tickets" Match="NavLinkMatch.Prefix" title="Tickets">
+                        <i class="bi bi-ticket-perforated"></i><span>Tickets</span>
+                    </NavLink>
+                }
+            </div>
+
+            <div class="fs-sidebar__section">
+                <div class="fs-sidebar__title">Ventas</div>
+
+                @if (_canViewQuotes)
+                {
+                    <NavLink class="fs-navlink" href="cotizaciones" Match="NavLinkMatch.Prefix" title="Cotizaciones">
+                        <i class="bi bi-receipt"></i><span>Cotizaciones</span>
+                    </NavLink>
+                }
+
+                @if (_canViewInvoices)
+                {
+                    <NavLink class="fs-navlink" href="facturas" Match="NavLinkMatch.Prefix" title="Facturas">
+                        <i class="bi bi-receipt-cutoff"></i><span>Facturas</span>
+                    </NavLink>
+                }
+            </div>
+
+            <div class="fs-sidebar__section">
+                <div class="fs-sidebar__title">Análisis</div>
+
+                @if (_canViewReports)
+                {
+                    <NavLink class="fs-navlink" href="reportes" Match="NavLinkMatch.Prefix" title="Reportes">
+                        <i class="bi bi-flag"></i><span>Reportes</span>
+                    </NavLink>
+                }
+            </div>
+
+            @if (_isAdminArea)
+            {
+                <div class="fs-sidebar__section">
+                    <div class="fs-sidebar__title">Admin</div>
+
+                    <NavLink class="fs-navlink" href="permisos" Match="NavLinkMatch.Prefix" title="Permisos">
+                        <i class="bi bi-shield-lock"></i><span>Permisos</span>
+                    </NavLink>
+
+                    @if (_canViewUsers)
+                    {
+                        <NavLink class="fs-navlink" href="usuarios" Match="NavLinkMatch.Prefix" title="Usuarios">
+                            <i class="bi bi-person-gear"></i><span>Usuarios</span>
+                        </NavLink>
+                    }
+                </div>
+            }
+        </aside>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public bool Collapsed { get; set; }
+
+    private bool _isAdminArea;
+
+    private bool _canViewDashboard;
+    private bool _canViewTickets;
+    private bool _canViewClients;
+    private bool _canViewProjects;
+    private bool _canViewQuotes;
+    private bool _canViewInvoices;
+    private bool _canViewReports;
+    private bool _canViewUsers;
+    private bool _canViewEmployees;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Provider.AuthenticationStateChanged += OnAuthStateChanged;
+        await LoadPermissionsAsync();
+    }
+
+    private async void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadPermissionsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadPermissionsAsync()
+    {
+        var state = await Provider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            // reset
+            _isAdminArea = false;
+            _canViewDashboard = _canViewTickets = _canViewClients = _canViewProjects = false;
+            _canViewQuotes = _canViewInvoices = _canViewReports = _canViewUsers = _canViewEmployees = false;
+            return;
+        }
+
+        _isAdminArea = user.IsInRole("Admin") || user.IsInRole("Administracion");
+
+        var authProvider = (CustomAuthStateProvider)Provider;
+
+        _canViewDashboard = await authProvider.HasPermissionAsync("dashboard.view");
+        _canViewTickets = await authProvider.HasPermissionAsync("tickets.view");
+        _canViewClients = await authProvider.HasPermissionAsync("clients.view");
+        _canViewProjects = await authProvider.HasPermissionAsync("projects.view");
+        _canViewQuotes = await authProvider.HasPermissionAsync("quotes.view");
+        _canViewInvoices = await authProvider.HasPermissionAsync("invoices.view");
+        _canViewReports = await authProvider.HasPermissionAsync("reports.view");
+        _canViewUsers = await authProvider.HasPermissionAsync("users.view");
+        _canViewEmployees = await authProvider.HasPermissionAsync("employees.view");
+    }
+
+    public void Dispose()
+    {
+        Provider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+}

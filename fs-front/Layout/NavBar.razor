@@ -1,223 +1,52 @@
-﻿@* 
-   NavBar.razor CON PERMISOS DINÁMICOS
-   Ubicación: fs-front/Layout/NavBar.razor
-*@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using fs_front.Services
 
 <AuthorizeView Context="authCtx">
     <Authorized>
-        <div class="navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav mx-auto">
+        <div class="fs-user-menu">
+            <button type="button"                    class="fs-avatar"                    @onclick="ToggleDropdown"                    aria-label="Menú de usuario"
+                    title="@authCtx.User.Identity?.Name">
+                @GetUserInitials(authCtx.User.Identity?.Name)
+            </button>
 
-                @* ========== DASHBOARD ========== *@
-                @if (_canViewDashboard)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="/dashboard" Match="NavLinkMatch.All"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-house me-2"></i>
-                            Panel
-                        </NavLink>
-                    </li>
-                }
+            @if (_isDropdownOpen)
+            {
+                <!-- Overlay para cerrar al click fuera -->
+                <div class="fs-overlay" @onclick="CloseDropdown"></div>
 
-
-                @* ========== CLIENTES ========== *@
-                @if (_canViewClients)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="clientes" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-people me-2"></i>
-                            Clientes
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== EMPLEADOS ========== *@
-                @if (_canViewEmployees)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="empleados" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-person-badge me-2"></i>
-                            Empleados
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== PROYECTOS ========== *@
-                @if (_canViewProjects)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="proyectos" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-folder me-2"></i>
-                            Proyectos
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== TICKETS ========== *@
-                @if (_canViewTickets)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="tickets" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-ticket-perforated me-2"></i>
-                            Tickets
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== COTIZACIONES ========== *@
-                @if (_canViewQuotes)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="cotizaciones" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-receipt me-2"></i>
-                            Cotizaciones
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== FACTURAS ========== *@
-                @if (_canViewInvoices)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="facturas" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-receipt-cutoff me-2"></i>
-                            Facturas
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== REPORTES ========== *@
-                @if (_canViewReports)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="reportes" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-flag me-2"></i>
-                            Reportes
-                        </NavLink>
-                    </li>
-                }
-
-                @* ========== PERMISOS ========== *@
-                <AuthorizeView Roles="Admin,Administracion">
-                    <Authorized>
-                        <li class="nav-item me-2">
-                            <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                     href="permisos" Match="NavLinkMatch.Prefix"
-                                     ActiveClass="active bg-light text-dark rounded fw-bold">
-                                <i class="bi bi-shield-lock me-2"></i>
-                                Permisos
-                            </NavLink>
-                        </li>
-                    </Authorized>
-                </AuthorizeView>
-
-                @* ========== USUARIOS ========== *@
-                @if (_canViewUsers)
-                {
-                    <li class="nav-item me-2">
-                        <NavLink class="nav-link fw-medium d-flex align-items-center px-3 text-secondary rounded"
-                                 href="usuarios" Match="NavLinkMatch.Prefix"
-                                 ActiveClass="active bg-light text-dark rounded fw-bold">
-                            <i class="bi bi-person-gear me-2"></i>
-                            Usuarios
-                        </NavLink>
-                    </li>
-                }
-
-
-
-            </ul>
-
-            @* ========== MENÚ DE USUARIO ========== *@
-            <div class="position-relative">
-                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-semibold"
-                     style="width: 32px; height: 32px; font-size: 0.875rem; cursor: pointer;" @onclick="ToggleDropdown">
-                    @GetUserInitials(authCtx.User.Identity?.Name)
-                </div>
-
-                @if (_isDropdownOpen)
-                {
-                    <Animated Animation="Animation.FadeIn" Duration="300">
-                        <div class="position-absolute bg-white border rounded shadow-sm mt-2 end-0"
-                             style="min-width: 250px; z-index: 1000;">
-                            <div class="p-3">
-                                <p class="mb-2 fw-semibold">@authCtx.User.Identity?.Name</p>
-                                <p class="mb-1 text-muted small">
-                                    @authCtx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-                                </p>
-                                <p class="mb-0">
-                                    <span class="badge bg-primary">
-                                        @GetUserRole(authCtx.User)
-                                    </span>
-                                </p>
-                            </div>
-                            <hr class="my-0" />
-                            <div class="p-2">
-                                <a @onclick="Logout" class="d-block px-3 py-2 text-decoration-none text-danger rounded"
-                                       style="cursor: pointer;">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
-                                </a>
-                            </div>
+                <!-- Dropdown (no debe cerrar cuando haces click dentro) -->
+                <div class="fs-user-dropdown" @onclick:stopPropagation="true">
+                    <div class="p-3">
+                        <div class="fw-semibold">@authCtx.User.Identity?.Name</div>
+                        <div class="text-muted small">
+                            @authCtx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
                         </div>
-                    </Animated>
-                }
-            </div>
+                        <div class="mt-2">
+                            <span class="badge bg-primary">@GetUserRole(authCtx.User)</span>
+                        </div>
+                    </div>
+
+                    <div class="fs-user-dropdown__divider"></div>
+
+                    <button type="button" class="fs-user-dropdown__item-danger" @onclick="Logout">
+                        <i class="bi bi-box-arrow-right me-2"></i>
+                        Cerrar sesión
+                    </button>
+                </div>
+            }
         </div>
     </Authorized>
 </AuthorizeView>
 
-@inject AuthenticationStateProvider Provider
-@inject NavigationManager Navigation
-@using fs_front.Services
-@using System.Security.Claims
-
 @code {
+    [Inject] public AuthenticationStateProvider Provider { get; set; } = default!;
+    [Inject] public NavigationManager Navigation { get; set; } = default!;
+
     private bool _isDropdownOpen;
 
-    // ⭐ Variables de permisos
-    private bool _canViewDashboard;
-    private bool _canViewTickets;
-    private bool _canViewClients;
-    private bool _canViewProjects;
-    private bool _canViewQuotes;
-    private bool _canViewInvoices;
-    private bool _canViewReports;
-    private bool _canViewUsers;
-    private bool _canViewEmployees;
-
-    protected override async Task OnInitializedAsync()
-    {
-        var authProvider = (CustomAuthStateProvider)Provider;
-
-        // ⭐ Cargar permisos del JWT
-        _canViewDashboard = await authProvider.HasPermissionAsync("dashboard.view");
-        _canViewTickets = await authProvider.HasPermissionAsync("tickets.view");
-        _canViewClients = await authProvider.HasPermissionAsync("clients.view");
-        _canViewProjects = await authProvider.HasPermissionAsync("projects.view");
-        _canViewQuotes = await authProvider.HasPermissionAsync("quotes.view");
-        _canViewInvoices = await authProvider.HasPermissionAsync("invoices.view");
-        _canViewReports = await authProvider.HasPermissionAsync("reports.view");
-        _canViewUsers = await authProvider.HasPermissionAsync("users.view");
-        _canViewEmployees = await authProvider.HasPermissionAsync("employees.view");
-    }
-
     private void ToggleDropdown() => _isDropdownOpen = !_isDropdownOpen;
+    private void CloseDropdown() => _isDropdownOpen = false;
 
     private void Logout()
     {
@@ -226,19 +55,21 @@
         Navigation.NavigateTo("/iniciar-sesion");
     }
 
-    private string GetUserInitials(string? userName)
+    private static string GetUserInitials(string? userName)
     {
-        if (string.IsNullOrEmpty(userName))
+        if (string.IsNullOrWhiteSpace(userName))
             return "??";
 
-        var parts = userName.Split('@')[0].Split('.');
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        var local = userName.Split('@')[0];
+        var parts = local.Split('.', StringSplitOptions.RemoveEmptyEntries);
 
-        return userName.Length >= 2 ? userName.Substring(0, 2).ToUpper() : userName.ToUpper();
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+
+        return local.Length >= 2 ? local[..2].ToUpperInvariant() : local.ToUpperInvariant();
     }
 
-    private string GetUserRole(ClaimsPrincipal user)
+    private static string GetUserRole(ClaimsPrincipal user)
     {
         var role = user.FindFirst(ClaimTypes.Role)?.Value;
         return role switch

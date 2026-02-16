@@ -122,3 +122,256 @@ code {
 .bg-inactive {
     background-color: #f16868;
 }
+/* =========================
+   TOPBAR
+   ========================= */
+
+.fs-topbar{
+  height: 56px;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.06);
+}
+
+.fs-topbar__toggle{
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-topbar__inner{
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* left | center | right */
+  align-items: center;
+  column-gap: 12px;
+}
+
+.fs-topbar__left{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-topbar__center{
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.fs-topbar__right{
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fs-topbar__title{
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 520px;
+}
+
+/* =========================
+   GRID LAYOUT (SIDEBAR + MAIN)
+   ========================= */
+
+.fs-content{
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: calc(100vh - 56px);
+}
+
+.fs-content.is-collapsed{
+  grid-template-columns: 76px 1fr;
+}
+
+.fs-main{
+  padding: 24px;
+  background: #f6f7fb;
+}
+
+/* =========================
+   SIDEBAR
+   ========================= */
+
+.fs-sidebar{
+  background: #fff;
+  border-right: 1px solid rgba(0,0,0,.06);
+  padding: 12px;
+  margin-top: -1px;
+}
+
+.fs-sidebar__title{
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #6c757d;
+  margin: 14px 10px 6px;
+}
+
+.fs-navlink{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #495057;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.fs-navlink i{
+  font-size: 1.05rem;
+  width: 22px;
+  text-align: center;
+}
+
+.fs-navlink.active{
+  background: rgba(13,110,253,.10);
+  color: #0d6efd;
+}
+
+.fs-navlink:hover{
+  background: rgba(0,0,0,.04);
+}
+
+/* Collapsed state */
+.fs-sidebar.is-collapsed{
+  padding: 12px 8px;
+}
+
+.fs-sidebar.is-collapsed .fs-navlink{
+  justify-content: center;
+  padding: 10px 8px;
+}
+
+.fs-sidebar.is-collapsed .fs-navlink span,
+.fs-sidebar.is-collapsed .fs-sidebar__title{
+  display: none;
+}
+
+/* =========================
+   USER MENU (Topbar)
+   ========================= */
+
+.fs-user-menu{
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fs-avatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  outline: none;
+  padding: 0;
+  background: #6c757d;
+  color: #fff;
+  font-weight: 800;
+  font-size: .85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+}
+
+.fs-avatar:hover{ filter: brightness(.95); }
+
+.fs-avatar:focus-visible{
+  box-shadow: 0 0 0 .2rem rgba(13,110,253,.25);
+}
+
+.fs-user-dropdown{
+  position: absolute;
+  top: 44px;
+  right: 0;
+  min-width: 260px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.fs-user-dropdown__divider{
+  height: 1px;
+  background: rgba(0,0,0,.08);
+}
+
+.fs-user-dropdown__item-danger{
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 10px 12px;
+  color: #dc3545;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fs-user-dropdown__item-danger:hover{
+  background: rgba(220,53,69,.08);
+}
+
+/* Overlay para cerrar */
+.fs-overlay{
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 999;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 992px){
+  .fs-content{
+    grid-template-columns: 1fr;
+  }
+
+  .fs-sidebar{
+    display: none; /* luego offcanvas */
+  }
+
+  .fs-topbar__title{
+    max-width: 260px;
+  }
+}
+    
+/* Unificar topbar + sidebar como una sola pieza */
+.fs-topbar{
+  border-bottom: 0 !important; /* evita la línea que lo separa */
+}
+
+.fs-content{
+  background: #fff; /* mismo fondo para todo el “frame” */
+}
+
+/* Marco exterior sutil (opcional pero recomendado) */
+.fs-appshell{
+  background: #fff;
+}
+
+/* Si quieres una línea horizontal muy sutil (más pro que border-bottom de bootstrap) */
+.fs-topbar{
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.06);
+}
+
+.card{
+  border: 1px solid rgba(15, 23, 42, .06);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+  border-radius: 14px;
+}

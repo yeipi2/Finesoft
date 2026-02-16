@@ -15,27 +15,26 @@
 
 <section class="auth-shell @(IsRegister ? "is-register" : "")">
 
-    <AuthOverlay AnimationKey="@LogoKey"
-                 Title="@(IsRegister ? "¡Qué bueno verte!" : "Hola, Bienvenido!")"
+    <AuthOverlay AnimationKey="@LogoKey" Title="@(IsRegister ? "¡Qué bueno verte!" : "Hola, Bienvenido!")"
                  Subtitle="@(IsRegister ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?")"
-                 ActionText="@(IsRegister ? "Iniciar sesión" : "Registrarse")"
-                 OnAction="@(IsRegister ? GoLogin : GoRegister)" />
+                 ActionText="@(IsRegister ? "Iniciar sesión" : "Registrarse")" OnAction="@(IsRegister ? GoLogin : GoRegister)" />
 
     <div class="form-panel">
         @if (!IsRegister)
         {
-            <LoginForm Model="@Login" OnSubmit="@LoginAsync" IsLoading="@Loading"
+            <LoginForm Model="@Login" OnSubmit="@LoginAsync" IsLoading="@Loading" ErrorMessage="@LoginError"
                        OnSwitchToRegister="@GoRegister" />
+
         }
         else
         {
-            <RegisterForm Model="@Register" OnSubmit="@RegisterAsync" IsLoading="@Loading"
-                          OnSwitchToLogin="@GoLogin" />
+            <RegisterForm Model="@Register" OnSubmit="@RegisterAsync" IsLoading="@Loading" OnSwitchToLogin="@GoLogin" />
         }
     </div>
 </section>
 
 @code {
+    private string? LoginError;
     private bool IsRegister;
     private bool Loading;
     private string LogoKey = Guid.NewGuid().ToString();
@@ -95,18 +94,24 @@
 
     private async Task LoginAsync()
     {
+        LoginError = null;
         Loading = true;
 
         var result = await AuthService.LoginAsync(Login);
+
         if (!result.Succeeded)
         {
+            LoginError = result.Errors.FirstOrDefault() ?? "Correo o contraseña incorrectos.";
+
+            // puedes dejar la notificación si quieres
             NotificationService.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
                 Summary = "Error de inicio de sesión",
-                Detail = result.Errors.FirstOrDefault() ?? "Error desconocido",
+                Detail = LoginError,
                 Duration = 5000
             });
+
             Loading = false;
             return;
         }
@@ -114,7 +119,6 @@
         var state = await AuthProvider.GetAuthenticationStateAsync();
         Loading = false;
 
-        // ✅ CORRECCIÓN: usar el helper que valida contra los roles del sistema actual
         Nav.NavigateTo(GetRedirectUrl(state.User));
     }
 

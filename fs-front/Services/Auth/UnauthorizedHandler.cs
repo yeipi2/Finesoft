@@ -18,23 +18,35 @@ public class UnauthorizedHandler : DelegatingHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
-        // Adjunta token SI existe (así ya no dependes de DefaultRequestHeaders)
+        var path = request.RequestUri?.AbsolutePath?.ToLowerInvariant() ?? "";
+
+        // ✅ No interceptar 401 del flujo de auth (si no, rompes mensajes de "credenciales incorrectas")
+        var isAuthEndpoint =
+            path.Contains("/api/auth/login") ||
+            path.Contains("/api/auth/register") ||
+            path.Contains("/api/auth/refresh");
+
         var token = _localStorage.GetItem<string>("accessToken");
-        if (!string.IsNullOrWhiteSpace(token))
+        var hadToken = !string.IsNullOrWhiteSpace(token);
+
+        if (hadToken)
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await base.SendAsync(request, ct);
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        if (!isAuthEndpoint && response.StatusCode == HttpStatusCode.Unauthorized && hadToken)
         {
-            // sesión expirada o token inválido -> limpiar y redirigir
+            // sesión expirada o token inválido (solo si había token)
             _localStorage.RemoveItem("accessToken");
             _localStorage.RemoveItem("refreshToken");
 
-            // fuerza recarga para resetear estado visual y AuthorizeView
-            _nav.NavigateTo("/iniciar-sesion", forceLoad: true);
+            // ✅ OJO: evita forceLoad si puedes. Si tu app lo necesita, déjalo,
+            // pero ya no afectará al login porque login está excluido.
+            _nav.NavigateTo("/iniciar-sesion");
+            // _nav.NavigateTo("/iniciar-sesion", forceLoad: true);
         }
 
         return response;
     }
+
 }

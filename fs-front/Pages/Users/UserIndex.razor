@@ -39,8 +39,7 @@ else if (_hasAccess)
             </div>
             <SearchBar Placeholder="Buscar usuarios..."
            Value="@_searchTerm"
-           ValueChanged="@(v => { _searchTerm = v; FilterUsers(); })"
-           Class="mb-4" />
+           ValueChanged="@(v => { _searchTerm = v; FilterUsers(); })"/>
         </section>
 
         <section class="container-fluid p-xl-5">

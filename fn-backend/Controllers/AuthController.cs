@@ -33,11 +33,11 @@ public class AuthController : ControllerBase
     {
         var user = await _userManager.FindByEmailAsync(req.Email);
         if (user is null)
-            return Unauthorized(new { message = "Correo o contraseña incorrecto" });
+            return Unauthorized(new { message = "Correo o contraseña incorrectos." });
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, req.Password, lockoutOnFailure: false);
         if (!result.Succeeded)
-            return Unauthorized(new { message = "Correo o contraseña incorrecto" });
+            return Unauthorized(new { message = "Correo o contraseña incorrectos." });
 
         var token = await _jwt.CreateTokenAsync(user);
 

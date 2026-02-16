@@ -6,19 +6,21 @@
         <DataAnnotationsValidator />
 
         <AuthInput TValue="string" Label="Correo electrónico" Icon="bi bi-envelope" Type="email"
-                   Placeholder="micorreo@empresa.mx"        @bind-Value="Model.Email"        ValidationFor="@(() => Model.Email)" />
+                   Placeholder="micorreo@empresa.mx" @bind-Value="Model.Email" ValidationFor="@(() => Model.Email)" />
 
-        <AuthInput TValue="string"        Label="Contraseña"        Icon="bi bi-lock"        IsPassword="true"
-                   Placeholder="Mínimo 8 caracteres"               @bind-Value="Model.Password"              ValidationFor="@(() => Model.Password)" />
+        <AuthInput TValue="string" Label="Contraseña" Icon="bi bi-lock" IsPassword="true"
+                   Placeholder="Mínimo 8 caracteres" @bind-Value="Model.Password" ValidationFor="@(() => Model.Password)" />
 
-        <GlassButton Type="submit"                Icon="bi bi-box-arrow-in-right"
-                     Text="@(IsLoading ? "Iniciando..." : "Iniciar sesión")"     Disabled="@IsLoading" />
+        <GlassButton Type="submit" Icon="bi bi-box-arrow-in-right"
+                     Text="@(IsLoading ? "Iniciando..." : "Iniciar sesión")" Disabled="@IsLoading" />
     </EditForm>
 
-    <AuthFormFooter Question="¿No tienes cuenta?"     ActionText="Regístrate"     OnAction="@OnSwitchToRegister" />
+
+    <AuthFormFooter Question="¿No tienes cuenta?" ActionText="Regístrate" OnAction="@OnSwitchToRegister" />
 </div>
 
 @code {
+    [Parameter] public string? ErrorMessage { get; set; }
     [Parameter, EditorRequired] public LoginModel Model { get; set; } = null!;
     [Parameter, EditorRequired] public EventCallback OnSubmit { get; set; }
     [Parameter] public bool IsLoading { get; set; }
