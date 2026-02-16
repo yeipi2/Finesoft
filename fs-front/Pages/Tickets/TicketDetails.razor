@@ -641,10 +641,6 @@
             <ValidationMessage For="@(() => newActivity.HoursSpent)" />
             <small class="text-muted">Tiempo estimado para completar esta actividad (en horas).</small>
         </div>
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            <small>Las actividades te ayudan a desglosar el trabajo del ticket en tareas manejables.</small>
-        </div>
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
             <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Agregar Actividad</button>

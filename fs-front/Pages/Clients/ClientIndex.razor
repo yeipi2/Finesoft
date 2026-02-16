@@ -44,7 +44,48 @@ else
                     </button>
                 }
             </div>
-            <SearchBar Placeholder="Buscar clientes..." Value="@_searchText" ValueChanged="@(v => _searchText = v)" />
+            
+        </section> <section class="container-fluid px-xl-5 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+
+                        <!-- 🔍 Buscar -->
+                        <div class="col-md-5">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text"
+                                       class="form-control"
+                                       placeholder="Buscar clientes..."
+                                       @bind="_searchText"
+                                       @bind:event="oninput" />
+                            </div>
+                        </div>
+
+                        <!-- 📊 Estado -->
+                        <div class="col-md-3">
+                            <select class="form-select"
+                                    @bind="_statusFilter">
+                                <option value="Todos">Todos los estados</option>
+                                <option value="Activos">Activos</option>
+                                <option value="Inactivos">Inactivos</option>
+                            </select>
+                        </div>
+
+                        <!-- 🧹 Limpiar -->
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary w-100"
+                                    @onclick="ClearFilters">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Limpiar Filtros
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section class="container-fluid p-xl-5">
@@ -114,11 +155,14 @@ else
                             }
                             @if (_canDelete)
                             {
-                                <button @onclick="@(() => DeleteClient(client.Id, client.CompanyName))"
-                                        class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                    <i class="bi bi-trash-fill"></i>
+                                <button @onclick="@(() => ToggleClientStatus(client))"
+                                        class="btn btn-sm @(client.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                        title="@(client.IsActive ? "Desactivar" : "Activar")">
+
+                                    <i class="bi @(client.IsActive ? "bi-person-x-fill" : "bi-person-check-fill")"></i>
                                 </button>
                             }
+
                         </td>
                     </tr>
                 </RowTemplate>
@@ -132,6 +176,7 @@ else
     private List<ClientDto>? _clients = new();
     private string _searchText = string.Empty;
     private bool _isLoading = false;
+    private string _statusFilter = "Todos";
 
     private string _sortField = "company";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
@@ -169,15 +214,23 @@ else
 
 
     private IEnumerable<ClientDto> _filteredClients
-        => _clients?
-            .Where(c =>
-                string.IsNullOrWhiteSpace(_searchText) ||
-                c.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                (c.ContactName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (c.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (c.Phone?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false)
-            )
-            ?? Enumerable.Empty<ClientDto>();
+    => _clients?
+        .Where(c =>
+
+            // 🔎 Filtro texto
+            (string.IsNullOrWhiteSpace(_searchText) ||
+             c.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+             (c.ContactName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+             (c.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+             (c.Phone?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+
+            // 📊 Filtro estado
+            && (_statusFilter == "Todos"
+                || (_statusFilter == "Activos" && c.IsActive)
+                || (_statusFilter == "Inactivos" && !c.IsActive))
+        )
+        ?? Enumerable.Empty<ClientDto>();
+
 
     // ⭐ Control de acceso integrado en la página
     private bool _checkingAccess = true; // empieza bloqueando
@@ -240,32 +293,45 @@ else
 
     private async Task ShowEditModal(int? clientId)
     {
-        var parameters = new Dictionary<string, object> { { "ClientId", clientId } };
+        var parameters = new Dictionary<string, object> { { "UserId", clientId } };
         var result = await DialogService.OpenAsync<ClientForm>("Editar Cliente", parameters,
             options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
         if (result == true) await LoadClients();
     }
 
-    private async Task DeleteClient(int? clientId, string clientName)
+    private async Task ToggleClientStatus(ClientDto client)
     {
+        var actionText = client.IsActive ? "desactivar" : "activar";
+
         var confirmed = await DialogService.Confirm(
-            $"¿Estás seguro de que quieres eliminar a {clientName}?",
-            "Confirmar Eliminación",
-            new ConfirmOptions { OkButtonText = "Sí, Eliminar", CancelButtonText = "Cancelar" });
+            $"¿Estás seguro de que quieres {actionText} a {client.CompanyName}?",
+            $"Confirmar {actionText}",
+            new ConfirmOptions
+            {
+                OkButtonText = $"Sí, {actionText}",
+                CancelButtonText = "Cancelar"
+            });
 
         if (confirmed == true)
         {
             try
             {
-                var (success, errorMessage) = await ClientApiService.DeleteClientAsync(clientId);
+                var (success, errorMessage) =
+                    await ClientApiService.DeleteClientAsync(client.Id);
+
                 if (success)
                 {
-                    ShowNotification("Éxito", "Cliente eliminado correctamente.", NotificationSeverity.Success);
+                    ShowNotification("Éxito",
+                        $"Cliente {(client.IsActive ? "desactivado" : "activado")} correctamente.",
+                        NotificationSeverity.Success);
+
                     await LoadClients();
                 }
                 else
                 {
-                    ShowNotification("Error", errorMessage ?? "No se pudo eliminar.", NotificationSeverity.Error);
+                    ShowNotification("Error",
+                        errorMessage ?? "No se pudo actualizar el estado.",
+                        NotificationSeverity.Error);
                 }
             }
             catch (Exception ex)
@@ -274,6 +340,13 @@ else
             }
         }
     }
+
+    private void ClearFilters()
+    {
+        _searchText = string.Empty;
+        _statusFilter = "Todos";
+    }
+
 
     private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage

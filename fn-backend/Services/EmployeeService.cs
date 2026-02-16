@@ -101,6 +101,34 @@ public class EmployeeService : IEmployeeService
         return await GetEmployeeByIdAsync(employee.Id);
     }
 
+    public async Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id)
+    {
+        try
+        {
+            var employee = await _context.Employees.FindAsync(id);
+
+            if (employee == null)
+                return (false, "Empleado no encontrado");
+
+            // 🔄 Cambiar estado
+            employee.IsActive = !employee.IsActive;
+            employee.UpdatedAt = DateTime.UtcNow;
+
+            _context.Employees.Update(employee);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("🔄 Estado de empleado cambiado: {Id}", id);
+
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error al cambiar estado del empleado {Id}", id);
+            return (false, ex.Message);
+        }
+    }
+
+
     public async Task<ServiceResult<EmployeeDto>> CreateEmployeeAsync(EmployeeDto dto)
     {
         // ✅ 1. Validar que el rol sea válido para empleados

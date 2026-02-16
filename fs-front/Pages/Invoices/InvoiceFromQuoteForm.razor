@@ -218,21 +218,9 @@
         }
     }
 
-    // ⭐ NUEVO: Método para verificar si una cotización ya tiene factura
     private bool HasInvoice(QuoteDetailDto quote)
     {
-        // Opción 1: Si el DTO tiene propiedad InvoiceId
-        // return quote.InvoiceId.HasValue && quote.InvoiceId.Value > 0;
-
-        // Opción 2: Si el DTO tiene propiedad HasInvoice
-        // return quote.HasInvoice;
-
-        // Opción 3: Si el DTO tiene propiedad InvoiceNumber
-        // return !string.IsNullOrEmpty(quote.InvoiceNumber);
-
-        // ⚠️ TEMPORAL: Mientras defines cuál propiedad usar
-        // Reemplaza esto con la lógica correcta según tu DTO
-        return false;
+        return quote.InvoiceId.HasValue && quote.InvoiceId.Value > 0;
     }
 
     private async Task OnQuoteSelected()

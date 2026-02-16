@@ -639,6 +639,10 @@ public class QuoteService : IQuoteService
     {
         var user = await _userManager.FindByIdAsync(quote.CreatedByUserId);
 
+        // ⭐ NUEVO: Buscar si existe factura asociada a esta cotización
+        var invoice = await _context.Invoices
+            .FirstOrDefaultAsync(i => i.QuoteId == quote.Id);
+
         return new QuoteDetailDto
         {
             Id = quote.Id,
@@ -655,6 +659,10 @@ public class QuoteService : IQuoteService
             Tax = quote.Tax,
             Total = quote.Total,
             Notes = quote.Notes,
+
+            // ⭐ NUEVO: Incluir InvoiceId si existe
+            InvoiceId = invoice?.Id,
+
             Items = quote.Items?.Select(i => new QuoteItemDetailDto
             {
                 Id = i.Id,
@@ -664,7 +672,6 @@ public class QuoteService : IQuoteService
                 Subtotal = i.Subtotal,
                 ServiceId = null,
                 ServiceName = null,
-                // ⭐ NUEVO: Mapear información del ticket
                 TicketId = i.TicketId,
                 TicketTitle = i.Ticket?.Title,
                 TicketDescription = i.Ticket?.Description,

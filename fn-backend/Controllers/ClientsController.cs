@@ -129,4 +129,20 @@ public class ClientsController : ControllerBase
         var clients = await _clientService.SearchClientsAsync(query);
         return Ok(clients);
     }
+
+    /// <summary>
+    /// PATCH: api/clients/{id}/toggle-status
+    /// Alterna el estado activo/inactivo de un cliente
+    /// </summary>
+    [HttpPatch("{id}/toggle-status")]
+    public async Task<IActionResult> ToggleClientStatus(int id)
+    {
+        var result = await _clientService.DeleteClientAsync(id);
+        if (!result)
+        {
+            return NotFound(new { message = "Cliente no encontrado" });
+        }
+
+        return Ok(new { message = "Estado actualizado correctamente" });
+    }
 }

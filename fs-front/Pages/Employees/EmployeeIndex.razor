@@ -43,10 +43,24 @@ else
                     </button>
                 }
             </div>
-            <SearchBar Placeholder="Buscar empleados..." Value="@_searchTerm"
-                       ValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })" Class="mb-4" />
 
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <div class="flex-grow-1">
+                <SearchBar Placeholder="Buscar empleados..."
+                           Value="@_searchTerm"
+                           ValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })" />
+                </div>
+                <div class="mb-3">
+                    <select class="form-select w-auto"
+                            @onchange="OnStatusFilterChanged">
+                        <option value="Todos">Todos</option>
+                        <option value="Activos">Activos</option>
+                        <option value="Inactivos">Inactivos</option>
+                    </select>
+                </div>
+            </div>
         </section>
+
 
         <section class="container-fluid p-xl-5">
             <FsDataTable TItem="EmployeeDto" Title="Empleados" Subtitle="Gestión del personal de la empresa"
@@ -103,13 +117,15 @@ else
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
                             }
-                            @if (_canDelete)
+                            @if (_canEdit)
                             {
-                                <button @onclick="@(() => DeleteEmployee(employee.Id, employee.FullName))"
-                                        class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                    <i class="bi bi-trash-fill"></i>
+                                <button @onclick="@(() => ToggleEmployeeStatus(employee))"
+                                        class="btn btn-sm @(employee.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                        title="Cambiar estado">
+                                    <i class="bi @(employee.IsActive ? "bi-person-x-fill" : "bi-person-check-fill")"></i>
                                 </button>
                             }
+
                         </td>
                     </tr>
                 </RowTemplate>
@@ -122,6 +138,8 @@ else
 @code {
     private List<EmployeeDto>? _employees = new();
     private List<EmployeeDto>? _filteredEmployees = new();
+    private string _statusFilter = "Todos";
+
 
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
@@ -217,21 +235,28 @@ else
     {
         if (_employees == null) return;
 
-        if (string.IsNullOrWhiteSpace(_searchTerm))
-        {
-            _filteredEmployees = _employees;
-            return;
-        }
+        IEnumerable<EmployeeDto> query = _employees;
 
-        _filteredEmployees = _employees
-            .Where(e =>
+        // 🔎 Filtro por búsqueda
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            query = query.Where(e =>
                 e.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 e.Email.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 e.RFC.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 e.Position.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                e.Department.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+                e.Department.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // 🔘 Filtro por estado
+        if (_statusFilter == "Activos")
+            query = query.Where(e => e.IsActive);
+        else if (_statusFilter == "Inactivos")
+            query = query.Where(e => !e.IsActive);
+
+        _filteredEmployees = query.ToList();
     }
+
 
     private async Task ShowCreateModal()
     {
@@ -276,6 +301,35 @@ else
             }
         }
     }
+    private void OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        _statusFilter = e.Value?.ToString() ?? "Todos";
+        FilterEmployees();
+    }
+
+    private async Task ToggleEmployeeStatus(EmployeeDto employee)
+    {
+        try
+        {
+            var (success, errorMessage) =
+                await EmployeeApiService.ToggleEmployeeStatusAsync(employee.Id!.Value);
+
+            if (success)
+            {
+                ShowNotification("Éxito", "Estado actualizado correctamente.", NotificationSeverity.Success);
+                await LoadEmployees();
+            }
+            else
+            {
+                ShowNotification("Error", errorMessage ?? "No se pudo actualizar.", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", ex.Message, NotificationSeverity.Error);
+        }
+    }
+
 
     private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage

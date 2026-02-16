@@ -147,26 +147,42 @@ public class ClientService : IClientService
     {
         var client = await _context.Clients.FindAsync(id);
         if (client == null)
-        {
             return false;
-        }
 
-        // ✅ Eliminar también el usuario asociado si existe
+        // ⭐ CAMBIO: Alternar estado en lugar de solo desactivar
+        client.IsActive = !client.IsActive;
+        client.UpdatedAt = DateTime.UtcNow;
+
+        // ⭐ Actualizar usuario según el nuevo estado
         if (!string.IsNullOrEmpty(client.UserId))
         {
             var user = await _userManager.FindByIdAsync(client.UserId);
             if (user != null)
             {
-                await _userManager.DeleteAsync(user);
+                if (client.IsActive)
+                {
+                    // ✅ Reactivar: quitar bloqueo
+                    user.LockoutEnabled = false;
+                    user.LockoutEnd = null;
+                    _logger.LogInformation("✅ Cliente reactivado: {Id}", id);
+                }
+                else
+                {
+                    // ❌ Desactivar: bloquear acceso
+                    user.LockoutEnabled = true;
+                    user.LockoutEnd = DateTimeOffset.MaxValue;
+                    _logger.LogInformation("✅ Cliente desactivado: {Id}", id);
+                }
+
+                await _userManager.UpdateAsync(user);
             }
         }
 
-        _context.Clients.Remove(client);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("✅ Cliente eliminado: {Id}", id);
         return true;
     }
+
 
     public async Task<List<ClientDto>> SearchClientsAsync(string query)
     {

@@ -114,6 +114,27 @@ public class EmployeeApiService : IEmployeeApiService
         }
     }
 
+    public async Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"api/employees/toggle-status/{id}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, $"Error al cambiar estado: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, $"Error: {e.Message}");
+        }
+    }
+
+
     public async Task<List<EmployeeDto>> SearchEmployeesAsync(string query)
     {
         try

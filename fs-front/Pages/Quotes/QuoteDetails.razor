@@ -413,15 +413,10 @@
             _isLoading = false;
         }
     }
-
     private bool HasInvoice()
     {
         if (_quote == null) return false;
-        // ⚠️ Ajusta según tu DTO real:
-        // return _quote.InvoiceId.HasValue && _quote.InvoiceId.Value > 0;
-        // return _quote.HasInvoice;
-        // return !string.IsNullOrEmpty(_quote.InvoiceNumber);
-        return false;
+        return _quote.InvoiceId.HasValue && _quote.InvoiceId.Value > 0;
     }
 
     private async Task EditQuote()

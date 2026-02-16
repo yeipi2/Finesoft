@@ -137,6 +137,18 @@ public class EmployeesController : ControllerBase
         return Ok(new { message = "Empleado eliminado exitosamente" });
     }
 
+    [HttpPut("toggle-status/{id}")]
+    public async Task<IActionResult> ToggleStatus(int id)
+    {
+        var result = await _employeeService.ToggleEmployeeStatusAsync(id);
+
+        if (!result.Success)
+            return BadRequest(result.ErrorMessage);
+
+        return NoContent();
+    }
+
+
     /// <summary>
     /// GET: api/employees/search
     /// Cualquier usuario autenticado puede buscar empleados

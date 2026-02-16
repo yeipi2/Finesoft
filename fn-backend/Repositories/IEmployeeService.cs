@@ -13,4 +13,6 @@ public interface IEmployeeService
     Task<ServiceResult<bool>> UpdateEmployeeAsync(int id, EmployeeDto dto);
     Task<ServiceResult<bool>> DeleteEmployeeAsync(int id);
     Task<List<EmployeeDto>> SearchEmployeesAsync(string query);
+    Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id);
+
 }

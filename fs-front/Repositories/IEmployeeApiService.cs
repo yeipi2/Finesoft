@@ -11,4 +11,6 @@ public interface IEmployeeApiService
     Task<(bool Success, string? ErrorMessage)> UpdateEmployeeAsync(int id, EmployeeDto employee);
     Task<(bool Success, string? ErrorMessage)> DeleteEmployeeAsync(int id);
     Task<List<EmployeeDto>> SearchEmployeesAsync(string query);
+    Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id);
+
 }

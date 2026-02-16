@@ -140,12 +140,12 @@
                                                readonly />
                                     </div>
 
-                                    @* ⭐ CAMBIO CRÍTICO: Solo mostrar tickets CERRADOS *@
+                                    @* ⭐ BUSCADOR DE TICKETS CON AUTOCOMPLETADO *@
                                     <div class="col-md-12">
                                         <label class="form-label small mb-1">
                                             Ticket Asociado (Opcional)
                                             <i class="bi bi-info-circle text-muted"
-                                               title="Solo se muestran tickets cerrados"></i>
+                                               title="Buscar por #ID, título o cliente"></i>
                                         </label>
 
                                         @if (_isLoadingTickets)
@@ -157,9 +157,9 @@
                                         }
                                         else if (_closedTickets == null || !_closedTickets.Any())
                                         {
-                                            <select class="form-select form-select-sm" disabled>
-                                                <option value="">-- No hay tickets cerrados disponibles --</option>
-                                            </select>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   value="-- No hay tickets cerrados disponibles --"
+                                                   disabled />
                                             <small class="text-muted">
                                                 <i class="bi bi-exclamation-circle"></i>
                                                 Solo se pueden asociar tickets con estado "Cerrado"
@@ -167,35 +167,72 @@
                                         }
                                         else
                                         {
-                                            <select class="form-select form-select-sm"
-                                                    @bind="item.TicketId"
-                                                    @bind:after="() => OnTicketSelected(item)">
-                                                <option value="">-- Sin ticket asociado --</option>
-                                                @foreach (var ticket in _closedTickets)
-                                                {
-                                                    <option value="@ticket.Id">
-                                                        #@ticket.Id - @ticket.Title
-                                                        (@ticket.ClientName - @ticket.ActualHours.ToString("0.0")h)
-                                                    </option>
-                                                }
-                                            </select>
+                                            <div class="position-relative">
+                                                <input type="text"
+                                                       class="form-control form-control-sm"
+                                                       placeholder="Buscar ticket por #ID, título o cliente..."
+                                                       value="@GetTicketSearchText(item)"
+                                                       @oninput="@(e => OnTicketSearchInput(e, item, index))"
+                                                       @onfocus="@(() => OnTicketFocus(index))"
+                                                       @onblur="@(() => OnTicketBlur(index))"
+                                                       @onkeydown="OnKeyDown"
+                                                       autocomplete="off" />
 
-                                            @* ⭐ NUEVO: Mostrar info del ticket seleccionado *@
+                                                @if (IsTicketSuggestionsVisible(index) && GetFilteredTickets(item, index).Any())
+                                                {
+                                                    <div class="autocomplete-dropdown">
+                                                        @foreach (var ticket in GetFilteredTickets(item, index).Take(8))
+                                                        {
+                                                            <div class="autocomplete-item"
+                                                                 @onmousedown="@(() => SelectTicket(item, ticket, index))"
+                                                                 @onmousedown:preventDefault>
+                                                                <div class="d-flex justify-content-between align-items-start">
+                                                                    <div class="flex-grow-1">
+                                                                        <strong class="text-primary">#@ticket.Id</strong> - @ticket.Title
+                                                                        <br />
+                                                                        <small class="text-muted">
+                                                                            <i class="bi bi-building"></i> @ticket.ClientName |
+                                                                            <i class="bi bi-clock"></i> @ticket.ActualHours.ToString("0.0")h
+                                                                        </small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            @* Mostrar ticket seleccionado *@
                                             @if (item.TicketId.HasValue && item.TicketId.Value > 0)
                                             {
                                                 var selectedTicket = _closedTickets.FirstOrDefault(t => t.Id == item.TicketId.Value);
                                                 if (selectedTicket != null)
                                                 {
-                                                    <div class="alert alert-info p-2 mt-2 mb-0">
-                                                        <small>
-                                                            <i class="bi bi-ticket-perforated"></i>
-                                                            <strong>@selectedTicket.Title</strong><br />
-                                                            Cliente: @selectedTicket.ClientName |
-                                                            Horas: @selectedTicket.ActualHours.ToString("0.0")h |
-                                                            Costo: $@((selectedTicket.ActualHours * selectedTicket.HourlyRate).ToString("N2"))
-                                                        </small>
+                                                    <div class="alert alert-success p-2 mt-2 mb-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <small>
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                <strong>#@selectedTicket.Id - @selectedTicket.Title</strong><br />
+                                                                Cliente: @selectedTicket.ClientName |
+                                                                Horas: @selectedTicket.ActualHours.ToString("0.0")h |
+                                                                Costo: $@((selectedTicket.ActualHours * selectedTicket.HourlyRate).ToString("N2"))
+                                                            </small>
+                                                            <button type="button"
+                                                                    class="btn btn-sm btn-link text-danger p-0"
+                                                                    @onclick="() => ClearTicket(item, index)"
+                                                                    title="Quitar ticket">
+                                                                <i class="bi bi-x-lg"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 }
+                                            }
+                                            else if (!string.IsNullOrEmpty(GetTicketSearchText(item)))
+                                            {
+                                                <small class="text-warning d-block mt-1">
+                                                    <i class="bi bi-exclamation-triangle"></i>
+                                                    Debe seleccionar un ticket de la lista o dejar vacío
+                                                </small>
                                             }
                                         }
                                     </div>
@@ -332,10 +369,13 @@
 
     private List<ServiceDetailDto>? _services;
     private List<TicketDetailDto>? _tickets;
-
-    // ⭐ NUEVO: Lista filtrada de solo tickets cerrados
     private List<TicketDetailDto>? _closedTickets;
     private bool _isLoadingTickets = false;
+
+    // ⭐ Variables para el autocompletado de tickets
+    private Dictionary<int, string> _ticketSearchTexts = new();
+    private Dictionary<int, List<TicketDetailDto>> _filteredTicketsCache = new();
+    private HashSet<int> _ticketSuggestionsVisible = new();
 
     private decimal _calculatedSubtotal = 0;
     private decimal _calculatedTax = 0;
@@ -392,7 +432,6 @@
             _services = await servicesTask;
             _tickets = await ticketsTask;
 
-            // ⭐ CRÍTICO: Filtrar solo tickets CERRADOS
             _closedTickets = _tickets?
                 .Where(t => t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true)
                 .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
@@ -437,7 +476,7 @@
                         Quantity = i.Quantity,
                         UnitPrice = i.UnitPrice,
                         ServiceId = i.ServiceId,
-                        TicketId = i.TicketId  // ⭐ Asegurar que se carga el TicketId
+                        TicketId = i.TicketId
                     }).ToList()
                 };
 
@@ -450,6 +489,25 @@
                     }
                 }
 
+                // ⭐ Inicializar textos de búsqueda para tickets existentes
+                for (int i = 0; i < _quoteDto.Items.Count; i++)
+                {
+                    var item = _quoteDto.Items[i];
+                    if (item.TicketId.HasValue && item.TicketId.Value > 0)
+                    {
+                        var ticket = _closedTickets?.FirstOrDefault(t => t.Id == item.TicketId.Value);
+                        if (ticket != null)
+                        {
+                            _ticketSearchTexts[i] = $"#{ticket.Id} - {ticket.Title}";
+                        }
+                    }
+                    else
+                    {
+                        _ticketSearchTexts[i] = string.Empty;
+                    }
+                    _filteredTicketsCache[i] = new List<TicketDetailDto>();
+                }
+
                 RecalculateTotals();
             }
         }
@@ -459,20 +517,108 @@
         }
     }
 
-    // ⭐ NUEVO: Método para cuando se selecciona un ticket
-    private void OnTicketSelected(QuoteItemDto item)
+    // ⭐ MÉTODOS DE AUTOCOMPLETADO DE TICKETS
+    private string GetTicketSearchText(QuoteItemDto item)
     {
+        var itemIndex = _quoteDto.Items.IndexOf(item);
+        if (itemIndex < 0) return string.Empty;
+
+        if (_ticketSearchTexts.ContainsKey(itemIndex))
+        {
+            return _ticketSearchTexts[itemIndex];
+        }
+
         if (item.TicketId.HasValue && item.TicketId.Value > 0)
         {
             var ticket = _closedTickets?.FirstOrDefault(t => t.Id == item.TicketId.Value);
             if (ticket != null)
             {
-                Console.WriteLine($"✅ Ticket seleccionado: #{ticket.Id} - {ticket.Title}");
-                StateHasChanged();
+                return $"#{ticket.Id} - {ticket.Title}";
             }
+        }
+
+        return string.Empty;
+    }
+
+    private void OnTicketSearchInput(ChangeEventArgs e, QuoteItemDto item, int index)
+    {
+        var searchText = e.Value?.ToString() ?? string.Empty;
+        _ticketSearchTexts[index] = searchText;
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            _filteredTicketsCache[index] = new List<TicketDetailDto>();
+            _ticketSuggestionsVisible.Remove(index);
+            item.TicketId = null;
+        }
+        else
+        {
+            var filtered = _closedTickets?
+                .Where(t =>
+                    t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(t => t.Id)
+                .ToList() ?? new List<TicketDetailDto>();
+
+            _filteredTicketsCache[index] = filtered;
+            _ticketSuggestionsVisible.Add(index);
+        }
+
+        StateHasChanged();
+    }
+
+    private List<TicketDetailDto> GetFilteredTickets(QuoteItemDto item, int index)
+    {
+        if (_filteredTicketsCache.ContainsKey(index))
+        {
+            return _filteredTicketsCache[index];
+        }
+        return new List<TicketDetailDto>();
+    }
+
+    private bool IsTicketSuggestionsVisible(int index)
+    {
+        return _ticketSuggestionsVisible.Contains(index);
+    }
+
+    private void OnTicketFocus(int index)
+    {
+        var searchText = _ticketSearchTexts.ContainsKey(index) ? _ticketSearchTexts[index] : string.Empty;
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            _ticketSuggestionsVisible.Add(index);
+            StateHasChanged();
         }
     }
 
+    private async Task OnTicketBlur(int index)
+    {
+        await Task.Delay(200);
+        _ticketSuggestionsVisible.Remove(index);
+        StateHasChanged();
+    }
+
+    private void SelectTicket(QuoteItemDto item, TicketDetailDto ticket, int index)
+    {
+        item.TicketId = ticket.Id;
+        _ticketSearchTexts[index] = $"#{ticket.Id} - {ticket.Title}";
+        _ticketSuggestionsVisible.Remove(index);
+        _filteredTicketsCache[index] = new List<TicketDetailDto>();
+
+        Console.WriteLine($"✅ Ticket seleccionado: #{ticket.Id} - {ticket.Title}");
+        StateHasChanged();
+    }
+
+    private void ClearTicket(QuoteItemDto item, int index)
+    {
+        item.TicketId = null;
+        _ticketSearchTexts[index] = string.Empty;
+        _filteredTicketsCache[index] = new List<TicketDetailDto>();
+        StateHasChanged();
+    }
+
+    // ⭐ MÉTODOS DE CLIENTES
     private void OnClientFocus()
     {
         if (!string.IsNullOrWhiteSpace(_clientSearchText))
@@ -540,17 +686,48 @@
 
     private void AddItem()
     {
-        _quoteDto.Items.Add(new QuoteItemDto
+        var newItem = new QuoteItemDto
         {
             Quantity = 1,
             UnitPrice = 0
-        });
+        };
+        _quoteDto.Items.Add(newItem);
+
+        var index = _quoteDto.Items.Count - 1;
+        _ticketSearchTexts[index] = string.Empty;
+        _filteredTicketsCache[index] = new List<TicketDetailDto>();
+
         RecalculateTotals();
     }
 
     private void RemoveItem(int index)
     {
         _quoteDto.Items.RemoveAt(index);
+
+        var newSearchTexts = new Dictionary<int, string>();
+        var newFilteredCache = new Dictionary<int, List<TicketDetailDto>>();
+        var newVisibleSet = new HashSet<int>();
+
+        for (int i = 0; i < _quoteDto.Items.Count; i++)
+        {
+            if (_ticketSearchTexts.ContainsKey(i < index ? i : i + 1))
+            {
+                newSearchTexts[i] = _ticketSearchTexts[i < index ? i : i + 1];
+            }
+            if (_filteredTicketsCache.ContainsKey(i < index ? i : i + 1))
+            {
+                newFilteredCache[i] = _filteredTicketsCache[i < index ? i : i + 1];
+            }
+            if (_ticketSuggestionsVisible.Contains(i < index ? i : i + 1))
+            {
+                newVisibleSet.Add(i);
+            }
+        }
+
+        _ticketSearchTexts = newSearchTexts;
+        _filteredTicketsCache = newFilteredCache;
+        _ticketSuggestionsVisible = newVisibleSet;
+
         RecalculateTotals();
     }
 
@@ -572,12 +749,11 @@
             return;
         }
 
-        // ⭐ VALIDACIÓN: Asegurar que los TicketId se envían correctamente
         foreach (var item in _quoteDto.Items)
         {
             if (!item.TicketId.HasValue || item.TicketId.Value == 0)
             {
-                item.TicketId = null; // Normalizar valores vacíos
+                item.TicketId = null;
             }
             Console.WriteLine($"Item: {item.Description}, TicketId: {item.TicketId?.ToString() ?? "null"}");
         }

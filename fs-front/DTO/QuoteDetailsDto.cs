@@ -15,11 +15,8 @@
     public decimal Tax { get; set; }
     public decimal Total { get; set; }
 
-    // ⭐ CRÍTICO: Debe incluir los items con toda la info de tickets
-    public List<QuoteItemDto> Items { get; set; } = new();
+    // ⭐ NUEVO: Agregar esta propiedad
+    public int? InvoiceId { get; set; }
 
-    // ⭐ OPCIONAL: Para saber si ya tiene factura
-    // public int? InvoiceId { get; set; }
-    // public bool HasInvoice { get; set; }
-    // public string? InvoiceNumber { get; set; }
+    public List<QuoteItemDto> Items { get; set; } = new();
 }
