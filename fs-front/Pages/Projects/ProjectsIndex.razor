@@ -95,26 +95,26 @@ else
                         </td>
 
                         <td class="text-center">
-                            @if (_canEdit)
+                            @* @if (_canEdit)
                             {
                                 <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ShowEditModal(project.Id)"
                                         title="Editar">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
-                            }
+                            } *@
 
                             <button class="btn btn-sm btn-outline-info me-1" @onclick="() => ViewProjectDetails(project.Id)"
                                     title="Ver detalles">
                                 <i class="bi bi-eye-fill"></i>
                             </button>
 
-                            @if (_canDelete)
+                            @* @if (_canDelete)
                             {
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(project)"
                                         title="Eliminar">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
-                            }
+                            } *@
                         </td>
                     </tr>
                 </RowTemplate>

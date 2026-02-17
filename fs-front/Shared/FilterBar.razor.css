@@ -23,7 +23,7 @@
 /* ── Grid Layout ── */
 .filter-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1.4fr) minmax(320px, 1.2fr) auto;
+  grid-template-columns: minmax(260px, 1fr) auto auto; 
   gap: 14px;
   align-items: center;
 }
@@ -93,9 +93,10 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .filter-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  display: flex;
+  align-items: center;
   gap: 12px;
+  flex-wrap: nowrap; /* ✅ no brinca */
 }
 
 .filter-filters .form-select {
@@ -201,6 +202,7 @@
 
   .filter-filters {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    flex-wrap: wrap;
   }
 }
 

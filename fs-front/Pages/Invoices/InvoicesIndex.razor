@@ -9,8 +9,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-            background:white;z-index:9999;
-            display:flex;align-items:center;justify-content:center;">
+        background:white;z-index:9999;
+        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -181,26 +181,26 @@ else
                                     <i class="bi bi-eye-fill"></i>
                                 </button>
 
-                                @if (_canEdit)
+                                @* @if (_canEdit)
                                 {
                                     <button class="btn btn-sm btn-outline-info me-1" @onclick="() => OpenEditDialog(invoice.Id)"
                                             title="Editar">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
-                                }
+                                } *@
 
                                 <button class="btn btn-sm btn-outline-success me-1" @onclick="() => DownloadPdf(invoice.Id)"
                                         title="Descargar PDF">
                                     <i class="bi bi-file-earmark-pdf-fill"></i>
                                 </button>
 
-                                @if (_canDelete)
+                                @* @if (_canDelete)
                                 {
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(invoice.Id)"
                                             title="Eliminar">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
-                                }
+                                } *@
                             </td>
                         </tr>
                     </RowTemplate>

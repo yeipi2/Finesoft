@@ -27,6 +27,7 @@ else if (!_hasAccess)
 else
 {
     <container class="container p-4">
+
         <section class="container-fluid px-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
@@ -44,21 +45,19 @@ else
                 }
             </div>
 
-            <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
-                <div class="flex-grow-1">
-                <SearchBar Placeholder="Buscar empleados..."
-                           Value="@_searchTerm"
-                           ValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })" />
-                </div>
-                <div class="mb-3">
-                    <select class="form-select w-auto"
-                            @onchange="OnStatusFilterChanged">
-                        <option value="Todos">Todos</option>
+            <FilterBar Class="mb-4" SearchPlaceholder="Buscar empleados..." SearchValue="@_searchTerm"
+                       SearchValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })" OnClear="ClearFilters">
+
+                <Filters>
+                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange" @bind:after="FilterEmployees">
+                        <option value="Todos">Estados</option>
                         <option value="Activos">Activos</option>
                         <option value="Inactivos">Inactivos</option>
                     </select>
-                </div>
-            </div>
+                </Filters>
+
+            </FilterBar>
+
         </section>
 
 
@@ -301,12 +300,6 @@ else
             }
         }
     }
-    private void OnStatusFilterChanged(ChangeEventArgs e)
-    {
-        _statusFilter = e.Value?.ToString() ?? "Todos";
-        FilterEmployees();
-    }
-
     private async Task ToggleEmployeeStatus(EmployeeDto employee)
     {
         try
@@ -339,4 +332,12 @@ else
             Detail = message,
             Duration = 4000
         });
+
+    private void ClearFilters()
+    {
+        _searchTerm = string.Empty;
+        _statusFilter = "Todos";
+        FilterEmployees();
+    }
+
 }

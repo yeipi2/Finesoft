@@ -44,49 +44,23 @@ else
                     </button>
                 }
             </div>
-            
-        </section> <section class="container-fluid px-xl-5 mb-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="row g-3 align-items-center">
 
-                        <!-- 🔍 Buscar -->
-                        <div class="col-md-5">
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">
-                                    <i class="bi bi-search"></i>
-                                </span>
-                                <input type="text"
-                                       class="form-control"
-                                       placeholder="Buscar clientes..."
-                                       @bind="_searchText"
-                                       @bind:event="oninput" />
-                            </div>
-                        </div>
-
-                        <!-- 📊 Estado -->
-                        <div class="col-md-3">
-                            <select class="form-select"
-                                    @bind="_statusFilter">
-                                <option value="Todos">Todos los estados</option>
-                                <option value="Activos">Activos</option>
-                                <option value="Inactivos">Inactivos</option>
-                            </select>
-                        </div>
-
-                        <!-- 🧹 Limpiar -->
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-secondary w-100"
-                                    @onclick="ClearFilters">
-                                <i class="bi bi-x-circle me-1"></i>
-                                Limpiar Filtros
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
         </section>
+        <section class="container-fluid px-xl-5 mb-4">
+            <FilterBar Class="mb-0" SearchPlaceholder="Buscar clientes..." SearchValue="@_searchText"
+                       SearchValueChanged="@(v => { _searchText = v; })" OnClear="ClearFilters">
+
+                <Filters>
+                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
+                        <option value="Todos">Estados</option>
+                        <option value="Activos">Activos</option>
+                        <option value="Inactivos">Inactivos</option>
+                    </select>
+                </Filters>
+
+            </FilterBar>
+        </section>
+
 
         <section class="container-fluid p-xl-5">
             <FsDataTable TItem="ClientDto" Title="Clientes"

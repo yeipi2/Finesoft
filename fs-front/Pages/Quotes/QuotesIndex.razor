@@ -163,13 +163,13 @@ else
                                 <i class="bi bi-eye-fill"></i>
                             </button>
 
-                            @if (_canEdit)
+                            @* @if (_canEdit)
                             {
                                 <button class="btn btn-sm btn-outline-info me-1" @onclick="() => ShowEditModal(quote.Id)"
                                         title="Editar">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
-                            }
+                            } *@
 
                             <button class="btn btn-sm btn-outline-success me-1" @onclick="() => DownloadPdf(quote.Id)"
                                     title="Descargar PDF">
@@ -183,13 +183,13 @@ else
                                 </span>
                             }
 
-                            @if (_canDelete)
+                            @* @if (_canDelete)
                             {
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(quote)"
                                         title="Eliminar">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
-                            }
+                            } *@
                         </td>
                     </tr>
                 </RowTemplate>
