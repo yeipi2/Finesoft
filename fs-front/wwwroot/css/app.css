@@ -183,7 +183,7 @@ code {
 
 .fs-content{
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 220px 1fr;
   min-height: calc(100vh - 56px);
 }
 
