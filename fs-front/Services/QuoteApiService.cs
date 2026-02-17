@@ -133,4 +133,23 @@ public class QuoteApiService : IQuoteApiService
             return null;
         }
     }
+    // ⭐ NUEVO: Enviar cotización por email
+    public async Task<(bool Success, string? ErrorMessage)> SendQuoteEmailAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/quotes/{id}/send-email", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, $"Error al enviar cotización: {errorContent}");
+        }
+        catch (Exception e)
+        {
+            return (false, $"Error: {e.Message}");
+        }
+    }
 }

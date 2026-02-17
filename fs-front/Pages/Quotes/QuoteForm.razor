@@ -66,14 +66,27 @@
                 <InputDate id="ValidUntil" class="form-control" @bind-Value="_quoteDto.ValidUntil" />
             </div>
 
+            @* ⭐ RESTRICCIÓN DE ESTADO: Solo "Borrador" en creación *@
             <div class="col-md-3">
                 <label for="Status" class="form-label fw-bold small">Estado *</label>
-                <select id="Status" class="form-select" @bind="_quoteDto.Status">
-                    <option value="Borrador">Borrador</option>
-                    <option value="Enviada">Enviada</option>
-                    <option value="Aceptada">Aceptada</option>
-                    <option value="Rechazada">Rechazada</option>
-                </select>
+                @if (_isEditMode)
+                {
+                    @* En modo edición: permite todos los estados *@
+                    <select id="Status" class="form-select" @bind="_quoteDto.Status">
+                        <option value="Borrador">Borrador</option>
+                        <option value="Enviada">Enviada</option>
+                        <option value="Aceptada">Aceptada</option>
+                        <option value="Rechazada">Rechazada</option>
+                    </select>
+                }
+                else
+                {
+                    @* ⭐ En creación: SOLO Borrador *@
+                    <input type="text" class="form-control bg-light" value="Borrador" disabled />
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-info-circle"></i> Las cotizaciones nuevas se crean como "Borrador"
+                    </small>
+                }
             </div>
         </div>
 
@@ -372,7 +385,6 @@
     private List<TicketDetailDto>? _closedTickets;
     private bool _isLoadingTickets = false;
 
-    // ⭐ Variables para el autocompletado de tickets
     private Dictionary<int, string> _ticketSearchTexts = new();
     private Dictionary<int, List<TicketDetailDto>> _filteredTicketsCache = new();
     private HashSet<int> _ticketSuggestionsVisible = new();
@@ -400,7 +412,7 @@
         {
             _quoteDto = new QuoteDto
             {
-                Status = "Borrador",
+                Status = "Borrador", // ⭐ SIEMPRE Borrador en creación
                 ValidUntil = DateTime.Now.AddDays(30)
             };
         }
@@ -489,7 +501,6 @@
                     }
                 }
 
-                // ⭐ Inicializar textos de búsqueda para tickets existentes
                 for (int i = 0; i < _quoteDto.Items.Count; i++)
                 {
                     var item = _quoteDto.Items[i];
@@ -517,7 +528,6 @@
         }
     }
 
-    // ⭐ MÉTODOS DE AUTOCOMPLETADO DE TICKETS
     private string GetTicketSearchText(QuoteItemDto item)
     {
         var itemIndex = _quoteDto.Items.IndexOf(item);
@@ -618,7 +628,6 @@
         StateHasChanged();
     }
 
-    // ⭐ MÉTODOS DE CLIENTES
     private void OnClientFocus()
     {
         if (!string.IsNullOrWhiteSpace(_clientSearchText))

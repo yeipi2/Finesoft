@@ -53,35 +53,71 @@
                             }
                         </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        @if (_quote.Status == "Aceptada" && !HasInvoice())
+
+                    @* 🎨 BOTONES MEJORADOS - Más compactos y organizados *@
+                    <div class="d-flex gap-2 align-items-center">
+                        @* Botón Enviar por Email (solo Borrador) *@
+                        @if (_quote.Status == "Borrador")
                         {
-                            <button class="btn btn-warning" @onclick="ConvertToInvoice">
-                                <i class="bi bi-file-earmark-arrow-up-fill"></i> Convertir a Factura
+                            <button class="btn btn-primary btn-sm"
+                                    @onclick="SendQuoteByEmail"
+                                    disabled="@_isSendingEmail"
+                                    title="Enviar por Email">
+                                @if (_isSendingEmail)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-envelope-fill"></i>
+                                    <span class="ms-1">Enviar Email</span>
+                                }
                             </button>
                         }
-                        @if (_quote.Status == "Borrador" || _quote.Status == "Enviada")
+
+                        @* Botones Aceptar/Rechazar (solo Enviada) - MÁS PEQUEÑOS Y ELEGANTES *@
+                        @if (_quote.Status == "Enviada")
                         {
-                            <div class="dropdown">
-                                <button class="btn btn-outline-primary dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown">
-                                    <i class="bi bi-arrow-repeat"></i> Cambiar Estado
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><button class="dropdown-item" @onclick='() => ChangeStatus("Enviada")'>Marcar como Enviada</button></li>
-                                    <li><button class="dropdown-item" @onclick='() => ChangeStatus("Aceptada")'>Marcar como Aceptada</button></li>
-                                    <li><button class="dropdown-item" @onclick='() => ChangeStatus("Rechazada")'>Marcar como Rechazada</button></li>
-                                </ul>
-                            </div>
+                            <button class="btn btn-success btn-sm px-3"
+                                    @onclick='() => ChangeStatus("Aceptada")'
+                                    title="Aceptar Cotización">
+                                <i class="bi bi-check-circle me-1"></i> Aceptar
+                            </button>
+                            <button class="btn btn-danger btn-sm px-3"
+                                    @onclick='() => ChangeStatus("Rechazada")'
+                                    title="Rechazar Cotización">
+                                <i class="bi bi-x-circle me-1"></i> Rechazar
+                            </button>
                         }
-                        <button class="btn btn-success" @onclick="DownloadPdf">
-                            <i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF
+
+                        @* Convertir a Factura (solo Aceptada sin factura) *@
+                        @if (_quote.Status == "Aceptada" && !HasInvoice())
+                        {
+                            <button class="btn btn-warning btn-sm"
+                                    @onclick="ConvertToInvoice"
+                                    title="Convertir a Factura">
+                                <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Convertir a Factura
+                            </button>
+                        }
+
+                        @* SEPARADOR VISUAL *@
+                        <div class="vr" style="height: 32px;"></div>
+
+                        @* ICONOS SIN TEXTO - Más compactos *@
+                        <button class="btn btn-outline-success btn-sm"
+                                @onclick="DownloadPdf"
+                                title="Descargar PDF">
+                            <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
                         </button>
-                        <button class="btn btn-primary" @onclick="EditQuote">
-                            <i class="bi bi-pencil-fill"></i> Editar
+                        <button class="btn btn-outline-primary btn-sm"
+                                @onclick="EditQuote"
+                                title="Editar">
+                            <i class="bi bi-pencil-fill fs-5"></i>
                         </button>
-                        <button class="btn btn-danger" @onclick="ConfirmDelete">
-                            <i class="bi bi-trash-fill"></i> Eliminar
+                        <button class="btn btn-outline-danger btn-sm"
+                                @onclick="ConfirmDelete"
+                                title="Eliminar">
+                            <i class="bi bi-trash-fill fs-5"></i>
                         </button>
                     </div>
                 </div>
@@ -108,7 +144,7 @@
                     </div>
                 </div>
 
-                @* ⭐ NUEVA SECCIÓN: Tickets asociados *@
+                @* Tickets asociados *@
                 @{
                     var ticketsWithDetails = _quote.Items
                     .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
@@ -156,17 +192,12 @@
                                                         <strong>Horas:</strong> @item.TicketActualHours?.ToString("0.0") h
                                                     </div>
                                                 </div>
-                                                @if (item.TicketHourlyRate.HasValue && item.TicketActualHours.HasValue)
-                                                {
-                                                    <div class="mt-2">
-@*                                                         <span class="badge bg-success">
-                                                            Costo del Ticket: $@((item.TicketActualHours.Value * item.TicketHourlyRate.Value).ToString("N2"))
-                                                        </span> *@
-                                                    </div>
-                                                }
                                             </div>
-                                            <a href="/tickets/@item.TicketId" class="btn btn-sm btn-outline-info" target="_blank">
-                                                <i class="bi bi-box-arrow-up-right"></i> Ver Ticket
+                                            <a href="/tickets/@item.TicketId"
+                                               class="btn btn-sm btn-outline-info"
+                                               target="_blank"
+                                               title="Ver Ticket">
+                                                <i class="bi bi-box-arrow-up-right"></i>
                                             </a>
                                         </div>
                                     </div>
@@ -203,7 +234,6 @@
                                                         <i class="bi bi-gear"></i> @item.ServiceName
                                                     </small>
                                                 }
-                                                @* ⭐ NUEVO: Mostrar ticket asociado al artículo *@
                                                 @if (item.TicketId.HasValue && item.TicketId.Value > 0)
                                                 {
                                                     <br />
@@ -309,7 +339,6 @@
                             <small class="text-muted">Número de Artículos</small>
                             <div class="fw-bold">@_quote.Items.Count</div>
                         </div>
-                        @* ⭐ NUEVO: Mostrar tickets en el resumen *@
                         @if (ticketsWithDetails.Any())
                         {
                             <div class="mb-2">
@@ -391,6 +420,7 @@
 
     private QuoteDetailDto? _quote;
     private bool _isLoading = false;
+    private bool _isSendingEmail = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -413,6 +443,7 @@
             _isLoading = false;
         }
     }
+
     private bool HasInvoice()
     {
         if (_quote == null) return false;
@@ -440,6 +471,50 @@
         if (result == true)
         {
             await LoadQuote();
+        }
+    }
+
+    private async Task SendQuoteByEmail()
+    {
+        var confirmed = await DialogService.Confirm(
+            $"¿Está seguro que desea enviar la cotización '{_quote?.QuoteNumber}' por correo electrónico a {_quote?.ClientEmail}?",
+            "Confirmar Envío",
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, enviar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed != true) return;
+
+        _isSendingEmail = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await QuoteApiService.SendQuoteEmailAsync(QuoteId);
+            if (result.Success)
+            {
+                ShowNotification("Éxito",
+                    "Cotización enviada exitosamente por correo electrónico. El estado ha sido actualizado a 'Enviada'.",
+                    NotificationSeverity.Success);
+                await LoadQuote();
+            }
+            else
+            {
+                ShowNotification("Error",
+                    result.ErrorMessage ?? "No se pudo enviar la cotización.",
+                    NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isSendingEmail = false;
+            StateHasChanged();
         }
     }
 

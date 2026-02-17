@@ -60,7 +60,7 @@
                 @if (_canViewQuotes)
                 {
                     <NavLink class="fs-navlink" href="cotizaciones" Match="NavLinkMatch.Prefix" title="Cotizaciones">
-                        <i class="bi bi-receipt"></i><span>Cotizaciones</span>
+                        <i class="bi bi-file-earmark-text"></i><span>Cotizaciones</span>
                     </NavLink>
                 }
 
@@ -89,13 +89,13 @@
                     <div class="fs-sidebar__title">Admin</div>
 
                     <NavLink class="fs-navlink" href="permisos" Match="NavLinkMatch.Prefix" title="Permisos">
-                        <i class="bi bi-shield-lock"></i><span>Permisos</span>
+                        <i class="bi bi-key-fill fs-3" "></i><span>Permisos</span>
                     </NavLink>
 
                     @if (_canViewUsers)
                     {
                         <NavLink class="fs-navlink" href="usuarios" Match="NavLinkMatch.Prefix" title="Usuarios">
-                            <i class="bi bi-person-gear"></i><span>Usuarios</span>
+                            <i class="bi bi-shield-lock"></i><span>Usuarios</span>
                         </NavLink>
                     }
                 </div>

@@ -1,7 +1,5 @@
 ﻿using fs_front.DTO;
 
-namespace fs_front.Services;
-
 public interface IQuoteApiService
 {
     Task<List<QuoteDetailDto>?> GetQuotesAsync(string? status = null, int? clientId = null);
@@ -11,4 +9,7 @@ public interface IQuoteApiService
     Task<(bool Success, string? ErrorMessage)> DeleteQuoteAsync(int id);
     Task<(bool Success, string? ErrorMessage)> ChangeQuoteStatusAsync(int id, string newStatus);
     Task<byte[]?> GenerateQuotePdfAsync(int id);
+
+    // ⭐ NUEVO
+    Task<(bool Success, string? ErrorMessage)> SendQuoteEmailAsync(int id);
 }
