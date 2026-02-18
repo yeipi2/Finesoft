@@ -263,6 +263,13 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("La factura debe tener al menos un elemento");
         }
 
+        if (invoice.Status is "Cancelada" or "Pagada")
+        {
+            return ServiceResult<InvoiceDetailDto>.Failure(
+                $"No se puede editar una factura {invoice.Status.ToLower()}");
+        }
+
+
         invoice.ClientId = invoiceDto.ClientId;
         invoice.InvoiceDate = invoiceDto.InvoiceDate ?? invoice.InvoiceDate;
         invoice.DueDate = invoiceDto.DueDate;
@@ -334,30 +341,36 @@ public class InvoiceService : IInvoiceService
         return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<ServiceResult<bool>> ChangeInvoiceStatusAsync(int id, string newStatus)
+    public async Task<ServiceResult<bool>> ChangeInvoiceStatusAsync(int id, string newStatus, string? reason)
     {
         var invoice = await _context.Invoices.FindAsync(id);
         if (invoice == null)
-        {
             return ServiceResult<bool>.Failure("Factura no encontrada");
-        }
 
-        var validStatuses = new[] { "Pendiente", "Pagada", "Vencida", "Cancelada" };
+        if (invoice.Status is "Cancelada" or "Pagada")
+            return ServiceResult<bool>.Failure("La factura no puede modificarse en este estado");
+
+        var validStatuses = new[] { "Pendiente", "Pagada", "Cancelada" };
         if (!validStatuses.Contains(newStatus))
-        {
             return ServiceResult<bool>.Failure("Estado no válido");
-        }
 
-        invoice.Status = newStatus;
+        if (newStatus == "Cancelada")
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                return ServiceResult<bool>.Failure("Debes especificar el motivo de cancelación");
+
+            invoice.CancellationReason = reason.Trim();
+            invoice.CancelledDate = DateTime.UtcNow;
+        }
 
         if (newStatus == "Pagada")
         {
             invoice.PaidDate = DateTime.UtcNow;
         }
 
-        _context.Invoices.Update(invoice);
-        await _context.SaveChangesAsync();
+        invoice.Status = newStatus;
 
+        await _context.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
 
@@ -960,37 +973,58 @@ public class InvoiceService : IInvoiceService
     private async Task<InvoiceDetailDto> MapToDetailDto(Invoice invoice)
     {
         var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
-        var totalPaid = invoice.Payments?.Sum(p => p.Amount) ?? 0;
-        var balance = invoice.Status == "Pagada"
-            ? 0m
-            : invoice.Status == "Cancelada"
-                ? 0m
-                : invoice.Total - totalPaid;
+
+        var totalPaid = invoice.Payments?.Sum(p => p.Amount) ?? 0m;
+
+        // Reglas de negocio:
+        // - Pagada: saldo 0
+        // - Cancelada: saldo 0 (irrelevante cobrar)
+        // - Pendiente: total - pagado
+        var balance = invoice.Status switch
+        {
+            "Pagada" => 0m,
+            "Cancelada" => 0m,
+            _ => invoice.Total - totalPaid
+        };
 
         var dto = new InvoiceDetailDto
         {
             Id = invoice.Id,
             InvoiceNumber = invoice.InvoiceNumber,
+
             ClientId = invoice.ClientId,
             ClientName = invoice.Client?.CompanyName ?? string.Empty,
             ClientEmail = invoice.Client?.Email ?? string.Empty,
             ClientRFC = invoice.Client?.RFC ?? string.Empty,
+
             QuoteId = invoice.QuoteId,
             QuoteNumber = invoice.Quote?.QuoteNumber,
+
             InvoiceDate = invoice.InvoiceDate,
             DueDate = invoice.DueDate,
+
             InvoiceType = invoice.InvoiceType,
             Status = invoice.Status,
             PaymentMethod = invoice.PaymentMethod,
+
             CreatedByUserId = invoice.CreatedByUserId,
             CreatedByUserName = user?.UserName ?? string.Empty,
+
             Subtotal = invoice.Subtotal,
             Tax = invoice.Tax,
             Total = invoice.Total,
+
+            // Si está pagada, muestra el total como pagado; si no, lo acumulado.
             PaidAmount = invoice.Status == "Pagada" ? invoice.Total : totalPaid,
+
             Balance = balance,
             PaidDate = invoice.PaidDate,
-            Notes = invoice.Notes
+
+            Notes = invoice.Notes,
+
+            // NUEVO: cancelación
+            CancellationReason = invoice.CancellationReason,
+            CancelledDate = invoice.CancelledDate
         };
 
         if (invoice.Items != null && invoice.Items.Any())
@@ -1004,7 +1038,7 @@ public class InvoiceService : IInvoiceService
                 Subtotal = i.Subtotal,
                 ServiceId = null,
                 ServiceName = null,
-                // ⭐ CRÍTICO: Incluir información completa del ticket
+
                 TicketId = i.TicketId,
                 TicketTitle = i.Ticket?.Title,
                 TicketDescription = i.Ticket?.Description,
@@ -1020,6 +1054,7 @@ public class InvoiceService : IInvoiceService
             foreach (var payment in invoice.Payments)
             {
                 var paymentUser = await _userManager.FindByIdAsync(payment.RecordedByUserId);
+
                 dto.Payments.Add(new InvoicePaymentDto
                 {
                     Id = payment.Id,

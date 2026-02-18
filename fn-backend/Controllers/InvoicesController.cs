@@ -154,14 +154,14 @@ public class InvoicesController : ControllerBase
     [RequirePermission("invoices.edit")]
     public async Task<IActionResult> ChangeInvoiceStatus(int id, [FromBody] ChangeStatusRequest request)
     {
-        var result = await _invoiceService.ChangeInvoiceStatusAsync(id, request.Status);
+        var result = await _invoiceService.ChangeInvoiceStatusAsync(id, request.Status, request.Reason);
+
         if (!result.Succeeded)
-        {
             return BadRequest(result.Errors);
-        }
 
         return Ok(new { message = "Estado actualizado exitosamente" });
     }
+
 
     /// <summary>
     /// POST: api/invoices/{id}/payments

@@ -125,15 +125,16 @@ public class InvoiceApiService : IInvoiceApiService
         }
     }
 
-    public async Task<(bool Success, string? ErrorMessage)> ChangeInvoiceStatusAsync(int id, string newStatus)
+    public async Task<(bool Success, string? ErrorMessage)> ChangeInvoiceStatusAsync(int id, string newStatus, string? reason = null)
     {
         try
         {
-            var response = await _httpClient.PatchAsJsonAsync($"api/invoices/{id}/status", new { Status = newStatus });
+            var response = await _httpClient.PatchAsJsonAsync(
+                $"api/invoices/{id}/status",
+                new { Status = newStatus, Reason = reason });
+
             if (response.IsSuccessStatusCode)
-            {
                 return (true, null);
-            }
 
             var errorContent = await response.Content.ReadAsStringAsync();
             return (false, $"Error al cambiar estado: {errorContent}");
@@ -143,6 +144,7 @@ public class InvoiceApiService : IInvoiceApiService
             return (false, $"Error: {e.Message}");
         }
     }
+
 
     public async Task<(bool Success, InvoicePaymentDto? AddedPayment, string? ErrorMessage)> AddPaymentAsync(
         int invoiceId, InvoicePaymentDto payment)

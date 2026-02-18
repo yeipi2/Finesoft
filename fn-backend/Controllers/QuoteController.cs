@@ -798,4 +798,6 @@ public class QuotesController : ControllerBase
 public class ChangeStatusRequest
 {
     public string Status { get; set; } = string.Empty;
+
+    public string? Reason { get; set; }
 }

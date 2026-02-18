@@ -31,4 +31,8 @@ public class Invoice
 
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
     public ICollection<InvoicePayment> Payments { get; set; } = new List<InvoicePayment>();
+
+    public string? CancellationReason { get; set; }
+    public DateTime? CancelledDate { get; set; }
+
 }
