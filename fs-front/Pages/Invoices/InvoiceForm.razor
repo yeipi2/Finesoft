@@ -18,24 +18,16 @@
                 else
                 {
                     <div class="position-relative">
-                        <input type="text"
-                               class="form-control"
-                               id="ClientSearch"
-                               placeholder="Buscar cliente por nombre..."
-                               value="@_clientSearchText"
-                               @oninput="OnClientSearchInput"
-                               @onkeydown="OnKeyDown"
-                               @onfocus="OnClientFocus"
-                               @onblur="OnClientBlur"
-                               autocomplete="off" />
+                        <input type="text" class="form-control" id="ClientSearch" placeholder="Buscar cliente por nombre..."
+                               value="@_clientSearchText" @oninput="OnClientSearchInput" @onkeydown="OnKeyDown"
+                               @onfocus="OnClientFocus" @onblur="OnClientBlur" autocomplete="off" />
 
                         @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
                         {
                             <div class="autocomplete-dropdown">
                                 @foreach (var client in _filteredClients.Take(10))
                                 {
-                                    <div class="autocomplete-item"
-                                         @onmousedown="@(() => SelectClient(client))"
+                                    <div class="autocomplete-item" @onmousedown="@(() => SelectClient(client))"
                                          @onmousedown:preventDefault>
                                         @client.CompanyName
                                     </div>
@@ -83,23 +75,36 @@
 
             <div class="col-md-4">
                 <label for="Status" class="form-label fw-bold small">Estado *</label>
-                <select id="Status" class="form-select" @bind="_invoiceDto.Status">
+                <select id="Status" class="form-select" @bind="_invoiceDto.Status" disabled="@(!_isEditMode)">
+                    <option value="Borrador">Borrador</option>
                     <option value="Pendiente">Pendiente</option>
                     <option value="Pagada">Pagada</option>
                     <option value="Vencida">Vencida</option>
                     <option value="Cancelada">Cancelada</option>
                 </select>
+
+                @if (!_isEditMode)
+                {
+                    <small class="text-muted">Al crear, la factura inicia como <strong>Borrador</strong>.</small>
+                }
             </div>
+
         </div>
 
         <div class="row mb-3">
             <div class="col-md-12">
                 <label for="PaymentMethod" class="form-label fw-bold small">Método de Pago</label>
-                <InputText id="PaymentMethod" class="form-control"
-                           placeholder="Transferencia, Efectivo, Tarjeta..."
-                           @bind-Value="_invoiceDto.PaymentMethod" />
+                <select id="PaymentMethod" class="form-select" @bind="_invoiceDto.PaymentMethod">
+                    <option value="">-- Selecciona un método --</option>
+                    @foreach (var pm in _paymentMethods)
+                    {
+                        <option value="@pm">@pm</option>
+                    }
+                </select>
+                <small class="text-muted">Si no aplica todavía, puedes dejarlo vacío.</small>
             </div>
         </div>
+
 
         <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -129,8 +134,7 @@
                                         Artículo #@(index + 1)
                                     </h6>
                                     <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
-                                            @onclick="() => RemoveItem(index)"
-                                            title="Eliminar artículo">
+                                            @onclick="() => RemoveItem(index)" title="Eliminar artículo">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
@@ -138,30 +142,26 @@
                                 <div class="row g-2">
                                     <div class="col-md-12">
                                         <label class="form-label small mb-1">Descripción *</label>
-                                        <InputText class="form-control form-control-sm"
-                                                   @bind-Value="item.Description"
+                                        <InputText class="form-control form-control-sm" @bind-Value="item.Description"
                                                    placeholder="Descripción del servicio o producto" />
                                     </div>
 
                                     <div class="col-md-4">
                                         <label class="form-label small mb-1">Cantidad *</label>
-                                        <InputNumber class="form-control form-control-sm"
-                                                     @bind-Value="item.Quantity"
+                                        <InputNumber class="form-control form-control-sm" @bind-Value="item.Quantity"
                                                      @bind-Value:after="RecalculateTotals" />
                                     </div>
 
                                     <div class="col-md-4">
                                         <label class="form-label small mb-1">Precio Unitario *</label>
-                                        <InputNumber class="form-control form-control-sm"
-                                                     @bind-Value="item.UnitPrice"
+                                        <InputNumber class="form-control form-control-sm" @bind-Value="item.UnitPrice"
                                                      @bind-Value:after="RecalculateTotals" />
                                     </div>
 
                                     <div class="col-md-4">
                                         <label class="form-label small mb-1">Subtotal</label>
                                         <input type="text" class="form-control form-control-sm bg-white"
-                                               value="@FormatCurrency(item.Quantity * item.UnitPrice)"
-                                               readonly />
+                                               value="@FormatCurrency(item.Quantity * item.UnitPrice)" readonly />
                                     </div>
 
                                     @* ⭐ BUSCADOR DE TICKETS CON AUTOCOMPLETADO *@
@@ -182,8 +182,7 @@
                                         else if (_availableTickets == null || !_availableTickets.Any())
                                         {
                                             <input type="text" class="form-control form-control-sm"
-                                                   value="-- No hay tickets disponibles --"
-                                                   disabled />
+                                                   value="-- No hay tickets disponibles --" disabled />
                                             <small class="text-muted">
                                                 <i class="bi bi-exclamation-circle"></i>
                                                 Solo se pueden asociar tickets cerrados sin cotización
@@ -192,15 +191,12 @@
                                         else
                                         {
                                             <div class="position-relative">
-                                                <input type="text"
-                                                       class="form-control form-control-sm"
+                                                <input type="text" class="form-control form-control-sm"
                                                        placeholder="Buscar ticket por #ID, título o cliente..."
                                                        value="@GetTicketSearchText(item)"
                                                        @oninput="@(e => OnTicketSearchInput(e, item, index))"
-                                                       @onfocus="@(() => OnTicketFocus(index))"
-                                                       @onblur="@(() => OnTicketBlur(index))"
-                                                       @onkeydown="OnKeyDown"
-                                                       autocomplete="off" />
+                                                       @onfocus="@(() => OnTicketFocus(index))" @onblur="@(() => OnTicketBlur(index))"
+                                                       @onkeydown="OnKeyDown" autocomplete="off" />
 
                                                 @if (IsTicketSuggestionsVisible(index) && GetFilteredTickets(item, index).Any())
                                                 {
@@ -239,12 +235,11 @@
                                                                 <strong>#@selectedTicket.Id - @selectedTicket.Title</strong><br />
                                                                 Cliente: @selectedTicket.ClientName |
                                                                 Horas: @selectedTicket.ActualHours.ToString("0.0")h |
-                                                                Costo: $@((selectedTicket.ActualHours * selectedTicket.HourlyRate).ToString("N2"))
+                                                                Costo: $@((selectedTicket.ActualHours *
+                                                                                                                                                                                                                                            selectedTicket.HourlyRate).ToString("N2"))
                                                             </small>
-                                                            <button type="button"
-                                                                    class="btn btn-sm btn-link text-danger p-0"
-                                                                    @onclick="() => ClearTicket(item, index)"
-                                                                    title="Quitar ticket">
+                                                            <button type="button" class="btn btn-sm btn-link text-danger p-0"
+                                                                    @onclick="() => ClearTicket(item, index)" title="Quitar ticket">
                                                                 <i class="bi bi-x-lg"></i>
                                                             </button>
                                                         </div>
@@ -271,8 +266,7 @@
         <div class="mb-3">
             <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
             <InputTextArea id="Notes" class="form-control" rows="2"
-                           placeholder="Términos de pago, condiciones adicionales..."
-                           @bind-Value="_invoiceDto.Notes" />
+                           placeholder="Términos de pago, condiciones adicionales..." @bind-Value="_invoiceDto.Notes" />
         </div>
 
         <div class="card bg-light border-primary mb-3">
@@ -347,13 +341,13 @@
         transition: background-color 0.15s ease;
     }
 
-        .autocomplete-item:hover {
-            background-color: #e7f3ff;
-        }
+    .autocomplete-item:hover {
+        background-color: #e7f3ff;
+    }
 
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
 
     .bg-light::-webkit-scrollbar {
         width: 8px;
@@ -369,9 +363,9 @@
         border-radius: 4px;
     }
 
-        .bg-light::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
+    .bg-light::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
 </style>
 
 @inject IInvoiceApiService InvoiceApiService
@@ -462,11 +456,11 @@
             var allQuotes = await quotesTask;
 
             var ticketsInQuotes = allQuotes?
-                .SelectMany(q => q.Items)
-                .Where(item => item.TicketId.HasValue)
-                .Select(item => item.TicketId!.Value)
-                .Distinct()
-                .ToHashSet() ?? new HashSet<int>();
+            .SelectMany(q => q.Items)
+            .Where(item => item.TicketId.HasValue)
+            .Select(item => item.TicketId!.Value)
+            .Distinct()
+            .ToHashSet() ?? new HashSet<int>();
 
             var ticketsInCurrentInvoice = new HashSet<int>();
             if (_isEditMode && InvoiceId.HasValue)
@@ -475,18 +469,18 @@
                 if (currentInvoice != null)
                 {
                     ticketsInCurrentInvoice = currentInvoice.Items
-                        .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
-                        .Select(i => i.TicketId!.Value)
-                        .ToHashSet();
+                    .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
+                    .Select(i => i.TicketId!.Value)
+                    .ToHashSet();
                 }
             }
 
             _availableTickets = _allTickets?
-                .Where(t =>
-                    t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true &&
-                    (!ticketsInQuotes.Contains(t.Id) || ticketsInCurrentInvoice.Contains(t.Id)))
-                .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
-                .ToList() ?? new List<TicketDetailDto>();
+            .Where(t =>
+            t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true &&
+            (!ticketsInQuotes.Contains(t.Id) || ticketsInCurrentInvoice.Contains(t.Id)))
+            .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
+            .ToList() ?? new List<TicketDetailDto>();
 
             Console.WriteLine($"✅ Tickets disponibles para factura: {_availableTickets.Count} de {_allTickets?.Count ?? 0} totales");
         }
@@ -609,12 +603,12 @@
         else
         {
             var filtered = _availableTickets?
-                .Where(t =>
-                    t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(t => t.Id)
-                .ToList() ?? new List<TicketDetailDto>();
+            .Where(t =>
+            t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Id)
+            .ToList() ?? new List<TicketDetailDto>();
 
             _filteredTicketsCache[index] = filtered;
             _ticketSuggestionsVisible.Add(index);
@@ -703,13 +697,13 @@
         else
         {
             _filteredClients = _allClients
-                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(c => c.CompanyName)
-                .ToList();
+            .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.CompanyName)
+            .ToList();
             _showSuggestions = true;
 
             var exactMatch = _allClients.FirstOrDefault(c =>
-                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
+            c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
 
             if (exactMatch == null && _selectedClient != null)
             {
@@ -872,4 +866,14 @@
             Duration = 4000
         });
     }
+
+    private readonly List<string> _paymentMethods = new()
+{
+    "Transferencia",
+    "Efectivo",
+    "Tarjeta",
+    "Cheque",
+    "Depósito"
+};
+
 }
