@@ -12,4 +12,7 @@ public interface IQuoteService
     Task<ServiceResult<bool>> DeleteQuoteAsync(int id);
     Task<ServiceResult<bool>> ChangeQuoteStatusAsync(int id, string newStatus);
     Task<byte[]> GenerateQuotePdfAsync(int id);
+    Task<QuoteDetailDto?> GetQuoteByPublicTokenAsync(string token);
+    Task<ServiceResult<bool>> RespondToQuoteAsync(string token, string status, string? comments);
+    Task<ServiceResult<bool>> SendQuoteEmailAsync(int quoteId);
 }

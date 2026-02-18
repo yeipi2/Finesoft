@@ -10,21 +10,18 @@
 
 <PageTitle>Finesoft - Reportes</PageTitle>
 
-@* ── ESTADO: verificando acceso ── *@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-        background:white;z-index:9999;
-        display:flex;align-items:center;justify-content:center;">
+                background:white;z-index:9999;
+                display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
-@* ── ESTADO: sin acceso (seguridad extra mientras redirige) ── *@
 else if (!_hasAccess)
 {
     <div></div>
 }
-@* ── ESTADO: contenido real ── *@
 else
 {
     <container class="container px-xl-5 py-4">
@@ -63,24 +60,17 @@ else
             }
             else
             {
-                @* resumen general *@
                 <StatGrid class="mb-5">
                     <StatCard Title="Ingresos Totales" Value="@RevenueText" Accent="StatCard.StatAccent.Info"
                               IconClass="bi bi-cash-stack" />
-
                     <StatCard Title="Proyectos Activos" Value="@ActiveProjectsText" Accent="StatCard.StatAccent.Primary"
                               IconClass="bi bi-kanban" />
-
                     <StatCard Title="Tickets Abiertos" Value="@OpenTicketsText" Accent="StatCard.StatAccent.Primary"
                               IconClass="bi bi-ticket-perforated" />
-
                     <StatCard Title="Clientes Totales" Value="@TotalClientsText" Accent="StatCard.StatAccent.Primary"
                               IconClass="bi bi-people" />
                 </StatGrid>
 
-
-
-                @*tabs navegación*@
                 <ul class="nav nav-tabs mb-4">
                     <li class="nav-item">
                         <button class="@GetTabClass("charts")" @onclick="@(() => activeTab = "charts")">
@@ -88,12 +78,10 @@ else
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="@GetTabClass("financial")"
-                                @onclick="@(() => activeTab = "financial")">Financiero</button>
+                        <button class="@GetTabClass("financial")" @onclick="@(() => activeTab = "financial")">Financiero</button>
                     </li>
                     <li class="nav-item">
-                        <button class="@GetTabClass("performance")"
-                                @onclick="@(() => activeTab = "performance")">Rendimiento</button>
+                        <button class="@GetTabClass("performance")" @onclick="@(() => activeTab = "performance")">Rendimiento</button>
                     </li>
                     <li class="nav-item">
                         <button class="@GetTabClass("clients")" @onclick="@(() => activeTab = "clients")">Clientes</button>
@@ -102,32 +90,36 @@ else
                         <button class="@GetTabClass("projects")" @onclick="@(() => activeTab = "projects")">Proyectos</button>
                     </li>
                     <li class="nav-item">
-                        <button class="@GetTabClass("users")" @onclick="@(() => activeTab = "users")">Usuarios</button>
+                        <button class="@GetTabClass("users")" @onclick="@(() => activeTab = "users")">Empleados</button>
                     </li>
                 </ul>
 
                 <div class="tab-content">
 
-                    @* ========== PESTAÑA DE GRÁFICAS ========== *@
+                    @* ========== GRÁFICAS ========== *@
                     @if (activeTab == "charts")
                     {
                         <div class="row">
-                            @* Gráfica 1: Tendencia de Ingresos (Línea) *@
+
+                            @* Gráfica 1: Tendencia de Ingresos — usa ShortTrends (meses cortos "Mar 25") *@
                             <div class="col-md-8">
                                 <div class="card shadow-sm border-0 mb-4">
                                     <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
                                         <i class="bi bi-graph-up text-primary me-2"></i>
                                         Tendencia de Ingresos - Últimos 12 Meses
                                     </div>
-                                    <div class="card-body" style="height: 350px;">
-                                        @if (revenueTrends != null && revenueTrends.Any())
+                                    <div class="card-body" style="height: 320px;">
+                                        @if (shortTrends != null && shortTrends.Any())
                                         {
-                                            <RadzenChart>
-                                                <RadzenLineSeries Data="@revenueTrends" CategoryProperty="Month" ValueProperty="Revenue"
-                                                                  Title="Ingresos" Stroke="#6366f1" StrokeWidth="3" Smooth="true">
+                                            <RadzenChart Style="height:290px">
+                                                <RadzenLineSeries Data="@shortTrends"
+                                                                  CategoryProperty="ShortMonth"
+                                                                  ValueProperty="Revenue"
+                                                                  Title="Ingresos"
+                                                                  Stroke="#6366f1" StrokeWidth="3" Smooth="true">
                                                     <RadzenMarkers MarkerType="MarkerType.Circle" />
                                                 </RadzenLineSeries>
-                                                <RadzenCategoryAxis Padding="20" />
+                                                <RadzenCategoryAxis Padding="10" />
                                                 <RadzenValueAxis Formatter="@FormatAsCurrency">
                                                     <RadzenGridLines Visible="true" />
                                                     <RadzenAxisTitle Text="Ingresos ($)" />
@@ -137,37 +129,36 @@ else
                                         }
                                         else
                                         {
-                                            <div class="text-center py-5">
-                                                <p class="text-muted">No hay datos disponibles</p>
-                                            </div>
+                                            <div class="text-center py-5"><p class="text-muted">No hay datos disponibles</p></div>
                                         }
                                     </div>
                                 </div>
                             </div>
 
-                            @* Gráfica 2: Estados de Tickets (Donut) *@
+                            @* Gráfica 2: Distribución de Tickets — leyenda a la derecha para no pisar el donut *@
                             <div class="col-md-4">
                                 <div class="card shadow-sm border-0 mb-4">
                                     <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
                                         <i class="bi bi-pie-chart text-success me-2"></i>
                                         Distribución de Tickets
                                     </div>
-                                    <div class="card-body" style="height: 350px;">
+                                    <div class="card-body p-1" style="height: 320px;">
                                         @if (ticketStatusChart != null && ticketStatusChart.Any())
                                         {
-                                            <RadzenChart>
-                                                <RadzenDonutSeries Data="@ticketStatusChart" CategoryProperty="Status"
-                                                                   ValueProperty="Count" Fills="@GetTicketColors()" InnerRadius="0.5">
-                                                    <RadzenSeriesDataLabels Visible="true" />
+                                            <RadzenChart Style="height:300px">
+                                                <RadzenDonutSeries Data="@ticketStatusChart"
+                                                                   CategoryProperty="Status"
+                                                                   ValueProperty="Count"
+                                                                   Fills="@GetTicketColors()"
+                                                                   InnerRadius="0.4">
+                                                    <RadzenSeriesDataLabels Visible="false" />
                                                 </RadzenDonutSeries>
-                                                <RadzenLegend Position="LegendPosition.Bottom" />
+                                                <RadzenLegend Position="LegendPosition.Right" />
                                             </RadzenChart>
                                         }
                                         else
                                         {
-                                            <div class="text-center py-5">
-                                                <p class="text-muted">No hay datos disponibles</p>
-                                            </div>
+                                            <div class="text-center py-5"><p class="text-muted">No hay datos disponibles</p></div>
                                         }
                                     </div>
                                 </div>
@@ -180,12 +171,13 @@ else
                                         <i class="bi bi-bar-chart-fill text-warning me-2"></i>
                                         Top 5 Clientes por Facturación
                                     </div>
-                                    <div class="card-body" style="height: 350px;">
+                                    <div class="card-body" style="height: 320px;">
                                         @if (topClients != null && topClients.Any())
                                         {
-                                            <RadzenChart>
+                                            <RadzenChart Style="height:290px">
                                                 <RadzenColumnSeries Data="@topClients" CategoryProperty="ClientName"
-                                                                    ValueProperty="TotalRevenue" Title="Ingresos" Fill="#f59e0b">
+                                                                    ValueProperty="TotalRevenue" Title="Ingresos"
+                                                                    Fill="#f59e0b">
                                                     <RadzenSeriesDataLabels Visible="true" />
                                                 </RadzenColumnSeries>
                                                 <RadzenCategoryAxis Padding="20" />
@@ -198,34 +190,35 @@ else
                                         }
                                         else
                                         {
-                                            <div class="text-center py-5">
-                                                <p class="text-muted">No hay datos disponibles</p>
-                                            </div>
+                                            <div class="text-center py-5"><p class="text-muted">No hay datos disponibles</p></div>
                                         }
                                     </div>
                                 </div>
                             </div>
 
-                            @* Gráfica 4: Comparación Financiera (Área) *@
+                            @* Gráfica 4: Estado de Cobranza por Cliente *@
                             <div class="col-md-12">
                                 <div class="card shadow-sm border-0 mb-4">
                                     <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
-                                        <i class="bi bi-graph-up-arrow text-info me-2"></i>
-                                        Comparación: Facturado vs Pagado vs Pendiente
+                                        <i class="bi bi-currency-dollar text-success me-2"></i>
+                                        Estado de Cobranza por Cliente
                                     </div>
-                                    <div class="card-body" style="height: 350px;">
-                                        @if (revenueTrends != null && revenueTrends.Any())
+                                    <div class="card-body" style="height: 320px;">
+                                        @if (clientReports != null && clientReports.Any(c => c.TotalBilled > 0))
                                         {
-                                            <RadzenChart>
-                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()" CategoryProperty="Month"
-                                                                  ValueProperty="Invoiced" Title="Facturado" Stroke="#3b82f6" Fill="#3b82f640">
-                                                </RadzenAreaSeries>
-                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()" CategoryProperty="Month"
-                                                                  ValueProperty="Paid" Title="Pagado" Stroke="#10b981" Fill="#10b98140">
-                                                </RadzenAreaSeries>
-                                                <RadzenAreaSeries Data="@GetFinancialComparisonData()" CategoryProperty="Month"
-                                                                  ValueProperty="Pending" Title="Pendiente" Stroke="#f59e0b" Fill="#f59e0b40">
-                                                </RadzenAreaSeries>
+                                            <RadzenChart Style="height:290px">
+                                                <RadzenColumnSeries Data="@clientReports.Where(c => c.TotalBilled > 0).ToList()"
+                                                                    CategoryProperty="ClientName"
+                                                                    ValueProperty="TotalPaid"
+                                                                    Title="Pagado"
+                                                                    Fill="#10b981">
+                                                </RadzenColumnSeries>
+                                                <RadzenColumnSeries Data="@clientReports.Where(c => c.TotalBilled > 0).ToList()"
+                                                                    CategoryProperty="ClientName"
+                                                                    ValueProperty="PendingAmount"
+                                                                    Title="Pendiente"
+                                                                    Fill="#f59e0b">
+                                                </RadzenColumnSeries>
                                                 <RadzenCategoryAxis Padding="20" />
                                                 <RadzenValueAxis Formatter="@FormatAsCurrency">
                                                     <RadzenGridLines Visible="true" />
@@ -237,15 +230,18 @@ else
                                         else
                                         {
                                             <div class="text-center py-5">
-                                                <p class="text-muted">No hay datos disponibles</p>
+                                                <i class="bi bi-bar-chart text-muted" style="font-size: 3rem;"></i>
+                                                <p class="text-muted mt-2">No hay datos de facturación en el período seleccionado</p>
                                             </div>
                                         }
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     }
 
+                    @* ========== FINANCIERO ========== *@
                     @if (activeTab == "financial")
                     {
                         <div class="row">
@@ -260,18 +256,15 @@ else
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between py-3">
                                                 <span>Total Pagado</span>
-                                                <span
-                                                class="fw-bold text-success">$@financialReport?.TotalPaid.ToString("N2")</span>
+                                                <span class="fw-bold text-success">$@financialReport?.TotalPaid.ToString("N2")</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between py-3">
                                                 <span>Total Pendiente</span>
-                                                <span
-                                                class="fw-bold text-warning">$@financialReport?.TotalPending.ToString("N2")</span>
+                                                <span class="fw-bold text-warning">$@financialReport?.TotalPending.ToString("N2")</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between py-3">
                                                 <span>Total Vencido</span>
-                                                <span
-                                                class="fw-bold text-danger">$@financialReport?.TotalOverdue.ToString("N2")</span>
+                                                <span class="fw-bold text-danger">$@financialReport?.TotalOverdue.ToString("N2")</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -285,18 +278,22 @@ else
                                             <thead>
                                                 <tr>
                                                     <th class="text-secondary small text-uppercase">Mes</th>
-                                                    <th class="text-secondary small text-uppercase text-end">Ingresos</th>
+                                                    <th class="text-secondary small text-uppercase text-end">Pagado</th>
+                                                    <th class="text-secondary small text-uppercase text-end">Pendiente</th>
                                                     <th class="text-secondary small text-uppercase text-center">Facturas</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @if (revenueTrends != null)
                                                 {
-                                                    @foreach (var item in revenueTrends)
+                                                    @foreach (var item in revenueTrends.Where(t => t.InvoicesCount > 0))
                                                     {
                                                         <tr>
                                                             <td class="fw-bold">@item.Month</td>
-                                                            <td class="text-end">$@item.Revenue.ToString("N2")</td>
+                                                            <td class="text-end text-success">$@item.TotalPaid.ToString("N2")</td>
+                                                            <td class="text-end @(item.TotalPending > 0 ? "text-warning fw-bold" : "text-muted")">
+                                                                $@item.TotalPending.ToString("N2")
+                                                            </td>
                                                             <td class="text-center">@item.InvoicesCount</td>
                                                         </tr>
                                                     }
@@ -309,6 +306,7 @@ else
                         </div>
                     }
 
+                    @* ========== RENDIMIENTO ========== *@
                     @if (activeTab == "performance")
                     {
                         <div class="row">
@@ -323,17 +321,18 @@ else
                                             </div>
                                             <div class="progress" style="height: 10px;">
                                                 <div class="progress-bar" role="progressbar"
-                                                     style="width: @(performanceMetrics?.TicketResolutionRate ?? 0)%"></div>
+                                                     style="width: @(Math.Min(performanceMetrics?.TicketResolutionRate ?? 0, 100))%">
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="mb-4">
                                             <div class="d-flex justify-content-between mb-1">
                                                 <label class="fw-bold">Satisfacción del Cliente</label>
-                                                <span>@(performanceMetrics?.ClientSatisfactionScore.ToString("F1")) / 5.0</span>
+                                                <span>@(((performanceMetrics?.ClientSatisfactionScore ?? 0) / 20m).ToString("F1")) / 5.0</span>
                                             </div>
                                             <div class="progress" style="height: 10px;">
                                                 <div class="progress-bar bg-success" role="progressbar"
-                                                     style="width: @((performanceMetrics?.ClientSatisfactionScore ?? 0) * 20)%">
+                                                     style="width: @(Math.Min(performanceMetrics?.ClientSatisfactionScore ?? 0, 100))%">
                                                 </div>
                                             </div>
                                         </div>
@@ -341,15 +340,31 @@ else
                                             <div class="col-6">
                                                 <div class="p-3 bg-light rounded text-center">
                                                     <div class="small text-muted mb-1">Eficiencia Facturación</div>
-                                                    <div class="h5 mb-0">@(performanceMetrics?.BillingEfficiency.ToString("P"))
+                                                    <div class="h5 mb-0 @(GetEfficiencyColor(performanceMetrics?.BillingEfficiency ?? 0))">
+                                                        @((performanceMetrics?.BillingEfficiency ?? 0).ToString("P0"))
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="p-3 bg-light rounded text-center">
                                                     <div class="small text-muted mb-1">Utilización Recursos</div>
-                                                    <div class="h5 mb-0">@(performanceMetrics?.ResourceUtilization.ToString("P"))
+                                                    <div class="h5 mb-0">
+                                                        @((performanceMetrics?.ResourceUtilization ?? 0).ToString("P0"))
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-3">
+                                            <div class="col-6">
+                                                <div class="p-3 bg-light rounded text-center">
+                                                    <div class="small text-muted mb-1">Tickets Resueltos</div>
+                                                    <div class="h5 mb-0 text-success">@performanceMetrics?.TotalTicketsResolved</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 bg-light rounded text-center">
+                                                    <div class="small text-muted mb-1">Tickets Totales</div>
+                                                    <div class="h5 mb-0">@performanceMetrics?.TotalTicketsCreated</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -365,8 +380,7 @@ else
                                             {
                                                 @foreach (var status in ticketStatusChart)
                                                 {
-                                                    <li
-                                                        class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                                         @status.Status
                                                         <span class="badge rounded-pill"
                                                               style="background-color: @status.Color; font-size: 0.9rem;">@status.Count</span>
@@ -380,6 +394,7 @@ else
                         </div>
                     }
 
+                    @* ========== CLIENTES ========== *@
                     @if (activeTab == "clients")
                     {
                         <div class="card shadow-sm border-0">
@@ -390,8 +405,10 @@ else
                                             <tr>
                                                 <th class="ps-4">Cliente</th>
                                                 <th class="text-center">Proyectos</th>
-                                                <th class="text-center">Tickets (Abiertos)</th>
+                                                <th class="text-center">Tickets</th>
+                                                <th class="text-center">Abiertos</th>
                                                 <th class="text-end">Facturado</th>
+                                                <th class="text-end">Pagado</th>
                                                 <th class="text-end pe-4">Pendiente</th>
                                             </tr>
                                         </thead>
@@ -403,12 +420,20 @@ else
                                                     <tr>
                                                         <td class="fw-bold ps-4">@client.ClientName</td>
                                                         <td class="text-center">@client.TotalProjects</td>
+                                                        <td class="text-center">@client.TotalTickets</td>
                                                         <td class="text-center">
-                                                            <span class="badge bg-light text-dark border">@client.TotalTickets</span>
-                                                            <span class="badge bg-warning text-dark ms-1">@client.OpenTickets</span>
+                                                            @if (client.OpenTickets > 0)
+                                                            {
+                                                                <span class="badge bg-warning text-dark">@client.OpenTickets</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-success">✓</span>
+                                                            }
                                                         </td>
                                                         <td class="text-end">$@client.TotalBilled.ToString("N2")</td>
-                                                        <td class="text-end pe-4 @(client.PendingAmount > 0 ? "text-danger fw-bold" : "")">
+                                                        <td class="text-end text-success">$@client.TotalPaid.ToString("N2")</td>
+                                                        <td class="text-end pe-4 @(client.PendingAmount > 0 ? "text-danger fw-bold" : "text-success")">
                                                             $@client.PendingAmount.ToString("N2")
                                                         </td>
                                                     </tr>
@@ -417,7 +442,7 @@ else
                                             else
                                             {
                                                 <tr>
-                                                    <td colspan="5" class="text-center py-4">No hay datos disponibles.</td>
+                                                    <td colspan="7" class="text-center py-4">No hay datos disponibles.</td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -427,6 +452,7 @@ else
                         </div>
                     }
 
+                    @* ========== PROYECTOS ========== *@
                     @if (activeTab == "projects")
                     {
                         <div class="card shadow-sm border-0">
@@ -437,8 +463,10 @@ else
                                             <tr>
                                                 <th class="ps-4">Proyecto</th>
                                                 <th>Cliente</th>
-                                                <th class="text-center">Horas (Est/Real)</th>
-                                                <th class="text-center">Tickets (Tot/Cerr)</th>
+                                                <th class="text-center">Horas Est.</th>
+                                                <th class="text-center">Horas Real</th>
+                                                <th class="text-center">Tickets</th>
+                                                <th class="text-center">Cerrados</th>
                                                 <th class="text-end pe-4">Ingresos</th>
                                             </tr>
                                         </thead>
@@ -450,11 +478,12 @@ else
                                                     <tr>
                                                         <td class="fw-bold ps-4">@project.ProjectName</td>
                                                         <td class="text-muted">@project.ClientName</td>
-                                                        <td class="text-center">
-                                                            <span class="badge bg-light text-dark border">@project.EstimatedHours</span> /
-                                                            <span class="badge bg-info text-white">@project.TotalHours</span>
+                                                        <td class="text-center">@project.EstimatedHours.ToString("N0")</td>
+                                                        <td class="text-center @(project.TotalHours > project.EstimatedHours ? "text-danger fw-bold" : "")">
+                                                            @project.TotalHours.ToString("N0")
                                                         </td>
-                                                        <td class="text-center">@project.TotalTickets / @project.ClosedTickets</td>
+                                                        <td class="text-center">@project.TotalTickets</td>
+                                                        <td class="text-center text-success">@project.ClosedTickets</td>
                                                         <td class="text-end pe-4 text-success fw-bold">$@project.Revenue.ToString("N2")</td>
                                                     </tr>
                                                 }
@@ -462,7 +491,7 @@ else
                                             else
                                             {
                                                 <tr>
-                                                    <td colspan="5" class="text-center py-4">No hay datos disponibles.</td>
+                                                    <td colspan="7" class="text-center py-4">No hay datos disponibles.</td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -472,6 +501,7 @@ else
                         </div>
                     }
 
+                    @* ========== EMPLEADOS ========== *@
                     @if (activeTab == "users")
                     {
                         <div class="card shadow-sm border-0">
@@ -483,8 +513,8 @@ else
                                                 <th class="ps-4">Usuario</th>
                                                 <th class="text-center">Tickets Creados</th>
                                                 <th class="text-center">Tickets Cerrados</th>
+                                                <th class="text-center">% Resolución</th>
                                                 <th class="text-center">Horas Registradas</th>
-                                                <th class="text-end pe-4">Ingresos Generados</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -492,12 +522,22 @@ else
                                             {
                                                 @foreach (var user in userReports)
                                                 {
+                                                    var resRate = user.TicketsCreated > 0
+                                                    ? (decimal)user.TicketsClosed / user.TicketsCreated * 100
+                                                    : 0;
                                                     <tr>
                                                         <td class="fw-bold ps-4">@user.UserName</td>
                                                         <td class="text-center">@user.TicketsCreated</td>
-                                                        <td class="text-center">@user.TicketsClosed</td>
-                                                        <td class="text-center">@user.TotalHoursWorked</td>
-                                                        <td class="text-end pe-4 text-success">$@user.Revenue.ToString("N2")</td>
+                                                        <td class="text-center text-success">@user.TicketsClosed</td>
+                                                        <td class="text-center">
+                                                            <div class="d-flex align-items-center gap-2 justify-content-center">
+                                                                <div class="progress flex-grow-1" style="height: 8px; max-width: 80px;">
+                                                                    <div class="progress-bar bg-success" style="width: @resRate%"></div>
+                                                                </div>
+                                                                <small>@resRate.ToString("F0")%</small>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">@user.TotalHoursWorked.ToString("N0") h</td>
                                                     </tr>
                                                 }
                                             }
@@ -524,8 +564,6 @@ else
     private DateTime? EndDate;
     private string activeTab = "charts";
     private bool isLoading = true;
-
-    // ⭐ Control de acceso integrado en la página
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
 
@@ -539,21 +577,25 @@ else
     private List<TicketStatusChartDto>? ticketStatusChart;
     private List<TopClientDto>? topClients;
 
+    // ✅ Versión con meses cortos "Mar 25" para que no se encimen en el eje X
+    private List<ShortTrendItem>? shortTrends;
+
+    public class ShortTrendItem
+    {
+        public string ShortMonth { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        // ── 1. Verificar permiso ANTES de cargar cualquier dato ──
         var canView = await PermissionService.HasPermissionAsync("reports.view");
-
         if (!canView)
         {
-            Console.WriteLine("⛔ Sin permiso reports.view → redirigiendo");
             _checkingAccess = false;
             _hasAccess = false;
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
             return;
         }
-
-        // ── 2. Tiene acceso: cargar datos ──
         _hasAccess = true;
         _checkingAccess = false;
 
@@ -564,10 +606,7 @@ else
         await LoadData();
     }
 
-    private async Task LoadFilteredData()
-    {
-        await LoadData();
-    }
+    private async Task LoadFilteredData() => await LoadData();
 
     private async Task LoadData()
     {
@@ -596,6 +635,13 @@ else
             projectReports = await t7;
             userReports = await t8;
             topClients = await t9;
+
+            // ✅ Convertir "Mar 2025" → "Mar 25" para el eje X de la gráfica de línea
+            shortTrends = revenueTrends?.Select(t => new ShortTrendItem
+            {
+                ShortMonth = ShortenMonth(t.Month),
+                Revenue = t.Revenue
+            }).ToList();
         }
         catch (Exception ex)
         {
@@ -608,10 +654,21 @@ else
         }
     }
 
-    private string GetTabClass(string tabName)
+    // "Mar 2025" → "Mar 25"
+    private static string ShortenMonth(string month)
     {
-        return $"nav-link btn {(activeTab == tabName ? "active fw-bold" : "text-secondary")}";
+        if (string.IsNullOrEmpty(month)) return month;
+        var parts = month.Split(' ');
+        if (parts.Length == 2 && parts[1].Length == 4)
+            return $"{parts[0]} {parts[1][2..]}";
+        return month;
     }
+
+    private string GetTabClass(string tabName) =>
+        $"nav-link btn {(activeTab == tabName ? "active fw-bold" : "text-secondary")}";
+
+    private string GetEfficiencyColor(decimal value) =>
+        value >= 0.9m ? "text-success" : value >= 0.7m ? "text-warning" : "text-danger";
 
     private void ShowNotification(string title, string message, NotificationSeverity severity)
     {
@@ -626,10 +683,7 @@ else
 
     private string FormatAsCurrency(object value)
     {
-        if (value is decimal decimalValue)
-        {
-            return $"${decimalValue:N0}";
-        }
+        if (value is decimal d) return $"${d:N0}";
         return value?.ToString() ?? "";
     }
 
@@ -639,38 +693,8 @@ else
         return ticketStatusChart.Select(t => t.Color).ToArray();
     }
 
-    private List<FinancialComparisonData> GetFinancialComparisonData()
-    {
-        if (revenueTrends == null || !revenueTrends.Any())
-            return new List<FinancialComparisonData>();
-
-        return revenueTrends.Select(trend => new FinancialComparisonData
-        {
-            Month = trend.Month,
-            Invoiced = trend.Revenue,
-            Paid = trend.Revenue * 0.7m,
-            Pending = trend.Revenue * 0.3m
-        }).ToList();
-    }
-
-    public class FinancialComparisonData
-    {
-        public string Month { get; set; } = string.Empty;
-        public decimal Invoiced { get; set; }
-        public decimal Paid { get; set; }
-        public decimal Pending { get; set; }
-    }
-
-    private string RevenueText =>
-    dashboardStats is null ? "-" : $"${dashboardStats.TotalRevenue:N2}";
-
-    private string ActiveProjectsText =>
-    dashboardStats?.ActiveProjects.ToString() ?? "-";
-
-    private string OpenTicketsText =>
-    dashboardStats?.OpenTickets.ToString() ?? "-";
-
-    private string TotalClientsText =>
-    dashboardStats?.TotalClients.ToString() ?? "-";
-
+    private string RevenueText => dashboardStats is null ? "-" : $"${dashboardStats.TotalRevenue:N2}";
+    private string ActiveProjectsText => dashboardStats?.ActiveProjects.ToString() ?? "-";
+    private string OpenTicketsText => dashboardStats?.OpenTickets.ToString() ?? "-";
+    private string TotalClientsText => dashboardStats?.TotalClients.ToString() ?? "-";
 }

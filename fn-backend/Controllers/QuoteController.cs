@@ -1,4 +1,5 @@
-﻿using fs_backend.Attributes;
+﻿using fn_backend.DTO;
+using fs_backend.Attributes;
 using fs_backend.DTO;
 using fs_backend.Identity;
 using fs_backend.Repositories;
@@ -180,13 +181,22 @@ public class QuotesController : ControllerBase
                 return BadRequest(new { message = "No se pudo generar el PDF" });
             }
 
+            // Generar token si no existe
+            if (string.IsNullOrEmpty(quote.PublicToken))
+            {
+                quote.PublicToken = Guid.NewGuid().ToString("N");
+                _context.Quotes.Update(quote);
+                await _context.SaveChangesAsync();
+            }
+
             // Enviar email
             var emailService = HttpContext.RequestServices.GetRequiredService<IEmailService>();
             var emailSent = await emailService.SendQuoteEmailAsync(
                 quote.Client.Email,
                 quote.Client.CompanyName,
                 quote.QuoteNumber,
-                pdfBytes
+                pdfBytes,
+                quote.PublicToken // ⭐ AGREGAR ESTE PARÁMETRO
             );
 
             if (!emailSent)
@@ -295,6 +305,57 @@ public class QuotesController : ControllerBase
         {
             _logger.LogError(ex, "❌ Error al aceptar cotización {QuoteNumber}", quoteNumber);
             return Content(GetErrorHtml(), "text/html");
+        }
+    }
+
+    /// <summary>
+    /// GET: api/quotes/public/{token}
+    /// ⭐ PÚBLICO - No requiere autenticación
+    /// </summary>
+    [HttpGet("public/{token}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetQuoteByPublicToken(string token)
+    {
+        try
+        {
+            var quote = await _quoteService.GetQuoteByPublicTokenAsync(token);
+            if (quote == null)
+            {
+                return NotFound(new { message = "Cotización no encontrada o enlace inválido" });
+            }
+
+            return Ok(quote);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener cotización por token público");
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST: api/quotes/public/{token}/respond
+    /// ⭐ PÚBLICO - Cambiar estado (Aceptada/Rechazada)
+    /// </summary>
+    [HttpPost("public/{token}/respond")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RespondToQuote(string token, [FromBody] RespondQuoteDto dto)
+    {
+        try
+        {
+            var result = await _quoteService.RespondToQuoteAsync(token, dto.Status, dto.Comments);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { message = result.Errors.FirstOrDefault() ?? "Error al responder" });
+            }
+
+            return Ok(new { message = "Respuesta registrada correctamente" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al responder cotización");
+            return BadRequest(new { message = ex.Message });
         }
     }
 

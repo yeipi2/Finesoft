@@ -66,6 +66,7 @@ public class ClientService : IClientService
             RFC = dto.RFC,
             Address = dto.Address,
             ServiceMode = dto.ServiceMode,
+            BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event", // ⭐ AGREGAR
             MonthlyRate = dto.MonthlyRate,
             IsActive = dto.IsActive,
             CreatedAt = DateTime.UtcNow
@@ -120,6 +121,7 @@ public class ClientService : IClientService
         client.RFC = dto.RFC;
         client.Address = dto.Address;
         client.ServiceMode = dto.ServiceMode;
+        client.BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event"; 
         client.MonthlyRate = dto.MonthlyRate;
         client.IsActive = dto.IsActive;
         client.UpdatedAt = DateTime.UtcNow;

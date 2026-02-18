@@ -90,7 +90,7 @@ else
                     <option value="Monthly">Mensual</option>
                 </select>
 
-                <select class="form-select" @bind="_selectedClientId" @bind:event="onchange" @bind:after="FilterInvoices">
+@*                 <select class="form-select" @bind="_selectedClientId" @bind:event="onchange" @bind:after="FilterInvoices">
                     <option value="0">Todos los clientes</option>
                     @if (_clients != null)
                     {
@@ -99,7 +99,7 @@ else
                             <option value="@client.Id">@client.CompanyName</option>
                         }
                     }
-                </select>
+                </select> *@
             </Filters>
 
         </FilterBar>
@@ -166,12 +166,12 @@ else
                             </td>
 
                             <td class="text-end">
-                                <strong class="text-success">@invoice.Total.ToString("C")</strong>
+                                <strong class="fw-bold text-success">$@invoice.Total.ToString("N2")</strong>
                             </td>
 
                             <td class="text-end">
                                 <strong class="@(invoice.Balance > 0 ? "text-danger" : "text-success")">
-                                    @invoice.Balance.ToString("C")
+                                    $@invoice.Balance.ToString("N2")
                                 </strong>
                             </td>
 

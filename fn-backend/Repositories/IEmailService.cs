@@ -2,5 +2,5 @@
 
 public interface IEmailService
 {
-    Task<bool> SendQuoteEmailAsync(string toEmail, string clientName, string quoteNumber, byte[] pdfBytes);
+    Task<bool> SendQuoteEmailAsync(string toEmail, string clientName, string quoteNumber, byte[] pdfBytes, string publicToken);
 }

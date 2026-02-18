@@ -416,11 +416,13 @@ public class InvoiceService : IInvoiceService
 
         // Buscar clientes con facturación mensual activa
         var clientsWithMonthly = await _context.Clients
-            .Where(c => c.BillingFrequency == "Monthly"
-                        && c.MonthlyRate.HasValue
-                        && c.MonthlyRate.Value > 0
+            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual")
                         && c.IsActive)
             .ToListAsync();
+
+        Console.WriteLine($"🔍 Clientes mensuales encontrados: {clientsWithMonthly.Count}");
+        foreach (var c in clientsWithMonthly)
+            Console.WriteLine($"   - {c.CompanyName} | BillingFrequency: '{c.BillingFrequency}' | MonthlyRate: {c.MonthlyRate} | IsActive: {c.IsActive}");
 
         if (!clientsWithMonthly.Any())
         {
@@ -457,7 +459,9 @@ public class InvoiceService : IInvoiceService
                 Notes = $"Factura mensual - {currentMonth:MMMM yyyy}"
             };
 
-            var subtotal = (decimal)client.MonthlyRate!.Value;
+            var subtotal = (client.MonthlyRate.HasValue && client.MonthlyRate.Value > 0)
+            ? (decimal)client.MonthlyRate.Value
+            : 0m;
             invoice.Subtotal = subtotal;
             invoice.Tax = subtotal * 0.16m;
             invoice.Total = invoice.Subtotal + invoice.Tax;
@@ -957,6 +961,11 @@ public class InvoiceService : IInvoiceService
     {
         var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
         var totalPaid = invoice.Payments?.Sum(p => p.Amount) ?? 0;
+        var balance = invoice.Status == "Pagada"
+            ? 0m
+            : invoice.Status == "Cancelada"
+                ? 0m
+                : invoice.Total - totalPaid;
 
         var dto = new InvoiceDetailDto
         {
@@ -978,8 +987,8 @@ public class InvoiceService : IInvoiceService
             Subtotal = invoice.Subtotal,
             Tax = invoice.Tax,
             Total = invoice.Total,
-            PaidAmount = totalPaid,
-            Balance = invoice.Total - totalPaid,
+            PaidAmount = invoice.Status == "Pagada" ? invoice.Total : totalPaid,
+            Balance = balance,
             PaidDate = invoice.PaidDate,
             Notes = invoice.Notes
         };

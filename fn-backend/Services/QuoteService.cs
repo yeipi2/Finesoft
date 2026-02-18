@@ -16,13 +16,21 @@ public class QuoteService : IQuoteService
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IWebHostEnvironment _environment;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<QuoteService> _logger;
 
-    public QuoteService(ApplicationDbContext context, UserManager<IdentityUser> userManager,
-        IWebHostEnvironment environment)
+    public QuoteService(
+        ApplicationDbContext context,
+        UserManager<IdentityUser> userManager,
+        IWebHostEnvironment environment,
+        IEmailService emailService,
+        ILogger<QuoteService> logger)
     {
         _context = context;
         _userManager = userManager;
         _environment = environment;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<QuoteDetailDto>> GetQuotesAsync(string? status = null, int? clientId = null)
@@ -30,7 +38,6 @@ public class QuoteService : IQuoteService
         var query = _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            // ⭐ NUEVO: Incluir datos del ticket y sus relaciones
             .ThenInclude(i => i.Ticket)
                 .ThenInclude(t => t.Project)
                     .ThenInclude(p => p.Client)
@@ -62,7 +69,6 @@ public class QuoteService : IQuoteService
         var quote = await _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
-            // ⭐ NUEVO: Incluir datos del ticket y sus relaciones
             .ThenInclude(i => i.Ticket)
                 .ThenInclude(t => t.Project)
                     .ThenInclude(p => p.Client)
@@ -109,7 +115,6 @@ public class QuoteService : IQuoteService
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
-                // ⭐ NUEVO: Guardar TicketId
                 TicketId = itemDto.TicketId
             };
 
@@ -126,7 +131,6 @@ public class QuoteService : IQuoteService
         await _context.Entry(quote).Reference(q => q.Client).LoadAsync();
         await _context.Entry(quote).Collection(q => q.Items).LoadAsync();
 
-        // ⭐ NUEVO: Cargar relaciones de tickets
         foreach (var item in quote.Items)
         {
             if (item.TicketId.HasValue)
@@ -169,6 +173,7 @@ public class QuoteService : IQuoteService
         quote.ValidUntil = quoteDto.ValidUntil;
         quote.Status = quoteDto.Status;
         quote.Notes = quoteDto.Notes;
+        quote.UpdatedAt = DateTime.UtcNow;
 
         _context.Set<QuoteItem>().RemoveRange(quote.Items);
 
@@ -187,7 +192,6 @@ public class QuoteService : IQuoteService
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
-                // ⭐ NUEVO: Guardar TicketId
                 TicketId = itemDto.TicketId
             };
 
@@ -204,7 +208,6 @@ public class QuoteService : IQuoteService
         await _context.Entry(quote).Reference(q => q.Client).LoadAsync();
         await _context.Entry(quote).Collection(q => q.Items).LoadAsync();
 
-        // ⭐ NUEVO: Cargar relaciones de tickets
         foreach (var item in quote.Items)
         {
             if (item.TicketId.HasValue)
@@ -250,6 +253,7 @@ public class QuoteService : IQuoteService
         }
 
         quote.Status = newStatus;
+        quote.UpdatedAt = DateTime.UtcNow;
         _context.Quotes.Update(quote);
         await _context.SaveChangesAsync();
 
@@ -267,7 +271,7 @@ public class QuoteService : IQuoteService
                         .ThenInclude(t => t!.Project)
                             .ThenInclude(p => p!.Client)
                 .AsNoTracking()
-                .AsSplitQuery() // ⭐ NUEVO: Evita problemas de cartesian explosion
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(q => q.Id == id);
 
             if (quote == null)
@@ -276,8 +280,6 @@ public class QuoteService : IQuoteService
             }
 
             var user = await _userManager.FindByIdAsync(quote.CreatedByUserId);
-
-            Console.WriteLine("✅ Iniciando generación del PDF...");
 
             var document = Document.Create(container =>
             {
@@ -294,17 +296,107 @@ public class QuoteService : IQuoteService
                 });
             });
 
-            Console.WriteLine("✅ Documento creado, generando PDF bytes...");
             var pdfBytes = document.GeneratePdf();
-            Console.WriteLine($"✅ PDF generado exitosamente: {pdfBytes.Length} bytes");
-
             return pdfBytes;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ ERROR en GenerateQuotePdfAsync: {ex.Message}");
-            Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "Error generando PDF para cotización {QuoteId}", id);
             throw;
+        }
+    }
+
+    public async Task<QuoteDetailDto?> GetQuoteByPublicTokenAsync(string token)
+    {
+        var quote = await _context.Quotes
+            .Include(q => q.Client)
+            .Include(q => q.Items)
+            .FirstOrDefaultAsync(q => q.PublicToken == token);
+
+        if (quote == null) return null;
+
+        return await MapToDetailDto(quote);
+    }
+
+    public async Task<ServiceResult<bool>> RespondToQuoteAsync(string token, string status, string? comments)
+    {
+        var quote = await _context.Quotes
+            .FirstOrDefaultAsync(q => q.PublicToken == token);
+
+        if (quote == null)
+        {
+            return ServiceResult<bool>.Failure("Cotización no encontrada");
+        }
+
+        if (quote.Status == "Aceptada" || quote.Status == "Rechazada")
+        {
+            return ServiceResult<bool>.Failure("Esta cotización ya fue respondida");
+        }
+
+        quote.Status = status;
+        quote.Notes = string.IsNullOrEmpty(comments)
+            ? quote.Notes
+            : $"{quote.Notes}\n\n[Respuesta del cliente]: {comments}";
+        quote.UpdatedAt = DateTime.UtcNow;
+
+        _context.Quotes.Update(quote);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("✅ Cotización {QuoteId} respondida como '{Status}' por el cliente",
+            quote.Id, status);
+
+        return ServiceResult<bool>.Success(true);
+    }
+
+    public async Task<ServiceResult<bool>> SendQuoteEmailAsync(int quoteId)
+    {
+        try
+        {
+            var quote = await _context.Quotes
+                .Include(q => q.Client)
+                .Include(q => q.Items)
+                .FirstOrDefaultAsync(q => q.Id == quoteId);
+
+            if (quote == null)
+            {
+                return ServiceResult<bool>.Failure("Cotización no encontrada");
+            }
+
+            // Generar token único si no existe
+            if (string.IsNullOrEmpty(quote.PublicToken))
+            {
+                quote.PublicToken = Guid.NewGuid().ToString("N");
+                _context.Quotes.Update(quote);
+                await _context.SaveChangesAsync();
+            }
+
+            var pdfBytes = await GenerateQuotePdfAsync(quoteId);
+
+            var emailSent = await _emailService.SendQuoteEmailAsync(
+                quote.Client.Email,
+                quote.Client.CompanyName,
+                quote.QuoteNumber,
+                pdfBytes,
+                quote.PublicToken
+            );
+
+            if (emailSent)
+            {
+                quote.Status = "Enviada";
+                quote.UpdatedAt = DateTime.UtcNow;
+                _context.Quotes.Update(quote);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("✅ Cotización {QuoteId} enviada por email", quoteId);
+                return ServiceResult<bool>.Success(true);
+            }
+
+            return ServiceResult<bool>.Failure("Error al enviar el email");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al enviar cotización {QuoteId}", quoteId);
+            return ServiceResult<bool>.Failure($"Error: {ex.Message}");
         }
     }
 
@@ -390,7 +482,6 @@ public class QuoteService : IQuoteService
 
         container.PaddingVertical(20).Column(column =>
         {
-            // ⭐ SECCIÓN: Tickets Asociados
             var ticketItems = quote.Items?
                 .Where(i => i.TicketId.HasValue && i.Ticket != null)
                 .ToList() ?? new List<QuoteItem>();
@@ -409,25 +500,21 @@ public class QuoteService : IQuoteService
                         var projectName = ticket.Project?.Name ?? "N/A";
                         var hours = ticket.ActualHours;
                         var hourlyRate = ticket.Project?.HourlyRate ?? 0;
-                        var description = ticket.Description ?? string.Empty;
-                        var ticketTitle = ticket.Title ?? "Sin título";
 
                         column.Item().PaddingVertical(10).Border(1).BorderColor(Colors.Grey.Lighten2)
                             .Background(Colors.Blue.Lighten5).Padding(15).Column(ticketCol =>
                             {
-                                // Título del ticket
                                 ticketCol.Item().Row(row =>
                                 {
-                                    row.ConstantItem(80).Text($"Ticket #{ticket.Id}").FontSize(12).Bold().FontColor(infoColor);
-                                    row.RelativeItem().Text(ticketTitle).FontSize(12).Bold();
+                                    row.ConstantItem(80).Text($"Ticket #{ticket.Id}").FontSize(12).Bold()
+                                        .FontColor(infoColor);
+                                    row.RelativeItem().Text(ticket.Title ?? "Sin título").FontSize(12).Bold();
                                 });
 
                                 ticketCol.Item().PaddingVertical(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
-                                // Información en 2 columnas
                                 ticketCol.Item().Row(row =>
                                 {
-                                    // Columna izquierda
                                     row.RelativeItem().Column(leftCol =>
                                     {
                                         leftCol.Item().PaddingBottom(8).Row(infoRow =>
@@ -445,7 +532,6 @@ public class QuoteService : IQuoteService
 
                                     row.ConstantItem(20);
 
-                                    // Columna derecha
                                     row.RelativeItem().Column(rightCol =>
                                     {
                                         rightCol.Item().PaddingBottom(8).Row(infoRow =>
@@ -459,38 +545,26 @@ public class QuoteService : IQuoteService
                                             var ticketCost = hours * hourlyRate;
                                             rightCol.Item().PaddingBottom(8).Row(infoRow =>
                                             {
-                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10).Bold();
-                                                infoRow.RelativeItem().AlignLeft().Text($"${ticketCost:N2}").FontSize(10)
+                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10)
+                                                    .Bold();
+                                                infoRow.RelativeItem().AlignLeft().Text($"${ticketCost:N2}")
+                                                    .FontSize(10)
                                                     .FontColor(Colors.Green.Medium);
                                             });
                                         }
                                     });
                                 });
-
-                                // Descripción
-                                if (!string.IsNullOrWhiteSpace(description))
-                                {
-                                    ticketCol.Item().PaddingTop(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                                    ticketCol.Item().PaddingTop(8).Column(descCol =>
-                                    {
-                                        descCol.Item().Text("Descripción:").FontSize(10).Bold();
-                                        descCol.Item().PaddingTop(4).Text(description).FontSize(9)
-                                            .FontColor(Colors.Grey.Darken1);
-                                    });
-                                }
                             });
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error renderizando ticket {item.TicketId}: {ex.Message}");
-                        // Continuar con el siguiente ticket
+                        _logger.LogError(ex, "Error renderizando ticket {TicketId}", item.TicketId);
                     }
                 }
 
                 column.Item().PaddingTop(20);
             }
 
-            // ⭐ TABLA DE ARTÍCULOS
             column.Item().Text("ARTÍCULOS").FontSize(14).Bold().FontColor(purpleColor);
             column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(purpleColor);
 
@@ -507,22 +581,26 @@ public class QuoteService : IQuoteService
 
                 table.Header(header =>
                 {
-                    header.Cell().Background(purpleColor).Padding(8).Text("Descripción").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Ticket").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Cantidad").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Precio Unit.").FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Subtotal").FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).Text("Descripción").FontColor(Colors.White)
+                        .Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Ticket")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Cantidad")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Precio Unit.")
+                        .FontColor(Colors.White).Bold();
+                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Subtotal")
+                        .FontColor(Colors.White).Bold();
                 });
 
                 var isAlternate = false;
                 foreach (var item in quote.Items ?? new List<QuoteItem>())
                 {
                     var bgColor = isAlternate ? Colors.Grey.Lighten4 : Colors.White;
-                    var description = item.Description ?? "Sin descripción";
                     var ticketText = item.TicketId.HasValue ? $"#{item.TicketId}" : "-";
 
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).Text(description);
+                        .Padding(8).Text(item.Description ?? "Sin descripción");
 
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignCenter().Text(ticketText).FontSize(9).FontColor(infoColor);
@@ -540,7 +618,6 @@ public class QuoteService : IQuoteService
                 }
             });
 
-            // ⭐ TOTALES
             column.Item().PaddingTop(20).AlignRight().Column(totalsColumn =>
             {
                 totalsColumn.Item().Border(2).BorderColor(purpleColor).Padding(15).Column(col =>
@@ -566,7 +643,6 @@ public class QuoteService : IQuoteService
                 });
             });
 
-            // ⭐ NOTAS
             if (!string.IsNullOrWhiteSpace(quote.Notes))
             {
                 column.Item().PaddingTop(20).Border(1).BorderColor(orangeColor).Background("#FFF7ED")
@@ -638,8 +714,6 @@ public class QuoteService : IQuoteService
     private async Task<QuoteDetailDto> MapToDetailDto(Quote quote)
     {
         var user = await _userManager.FindByIdAsync(quote.CreatedByUserId);
-
-        // ⭐ NUEVO: Buscar si existe factura asociada a esta cotización
         var invoice = await _context.Invoices
             .FirstOrDefaultAsync(i => i.QuoteId == quote.Id);
 
@@ -651,6 +725,7 @@ public class QuoteService : IQuoteService
             ClientName = quote.Client?.CompanyName ?? string.Empty,
             ClientEmail = quote.Client?.Email ?? string.Empty,
             CreatedAt = quote.CreatedAt,
+            UpdatedAt = quote.UpdatedAt,
             ValidUntil = quote.ValidUntil,
             Status = quote.Status,
             CreatedByUserId = quote.CreatedByUserId,
@@ -659,10 +734,7 @@ public class QuoteService : IQuoteService
             Tax = quote.Tax,
             Total = quote.Total,
             Notes = quote.Notes,
-
-            // ⭐ NUEVO: Incluir InvoiceId si existe
             InvoiceId = invoice?.Id,
-
             Items = quote.Items?.Select(i => new QuoteItemDetailDto
             {
                 Id = i.Id,
