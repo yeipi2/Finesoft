@@ -1,5 +1,6 @@
-﻿using System.Net.Http.Json;
-using fs_front.DTO;
+﻿using fs_front.DTO;
+using System.Net.Http.Json;
+using static System.Net.WebRequestMethods;
 
 namespace fs_front.Services;
 
@@ -131,6 +132,18 @@ public class ReportApiService : IReportApiService
         {
             Console.WriteLine($"Error al obtener top clientes: {e.Message}");
             throw;
+        }
+    }
+
+    public async Task<PublicStatsDto?> GetPublicStatsAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<PublicStatsDto>("api/reports/public-stats");
+        }
+        catch
+        {
+            return null;
         }
     }
 

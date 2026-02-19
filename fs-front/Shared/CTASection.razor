@@ -1,0 +1,51 @@
+﻿@inject NavigationManager NavigationManager
+
+<section class="cta">
+    <div class="container">
+        <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(1)">
+            <div class="cta-content">
+                <div class="cta-text">
+                    <h2>¿Listo para comenzar?</h2>
+                    <p>Únete a Finesoft y transforma la gestión de tu negocio hoy mismo.</p>
+                </div>
+
+                <div class="cta-actions">
+                    <button class="btn-cta-primary" @onclick="NavigateToRegister">
+                        <i class="bi bi-rocket-takeoff"></i>
+                        Crear cuenta gratis
+                    </button>
+                    <button class="btn-cta-secondary" @onclick="NavigateToLogin">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ya tengo cuenta
+                    </button>
+                </div>
+
+                <div class="trust-badges">
+                    <div class="trust-item">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Sin tarjeta de crédito</span>
+                    </div>
+                    <div class="trust-item">
+                        <i class="bi bi-star-fill"></i>
+                        <span>Soporte 24/7</span>
+                    </div>
+                    <div class="trust-item">
+                        <i class="bi bi-lightning-charge"></i>
+                        <span>Configuración rápida</span>
+                    </div>
+                </div>
+            </div>
+        </Animate>
+    </div>
+
+    <div class="cta-decoration">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+</section>
+
+@code {
+    private void NavigateToLogin() => NavigationManager.NavigateTo("/iniciar-sesion");
+    private void NavigateToRegister() => NavigationManager.NavigateTo("/registrarme");
+}

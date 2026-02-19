@@ -1,6 +1,10 @@
 ﻿@page "/cotizaciones/{QuoteId:int}"
 @using fs_front.DTO
 @using fs_front.Pages.Invoices
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Configuration   @* ⭐ NUEVO *@
+
+@implements IAsyncDisposable
 
 <PageTitle>Cotización @_quote?.QuoteNumber</PageTitle>
 
@@ -18,9 +22,7 @@
             <div class="col">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="/cotizaciones">Cotizaciones</a>
-                        </li>
+                        <li class="breadcrumb-item"><a href="/cotizaciones">Cotizaciones</a></li>
                         <li class="breadcrumb-item active">@_quote.QuoteNumber</li>
                     </ol>
                 </nav>
@@ -32,12 +34,12 @@
                             @{
                                 var statusClass = _quote.Status switch
                                 {
-                                                "Borrador" => "bg-secondary",
-                                                "Enviada" => "bg-primary",
-                                                "Aceptada" => "bg-success",
-                                                "Rechazada" => "bg-danger",
-                                                "Expirada" => "bg-warning",
-                                    _ => "bg-secondary"
+                                    "Borrador"  => "bg-secondary",
+                                    "Enviada"   => "bg-primary",
+                                    "Aceptada"  => "bg-success",
+                                    "Rechazada" => "bg-danger",
+                                    "Expirada"  => "bg-warning",
+                                    _           => "bg-secondary"
                                 };
                             }
                             <span class="badge @statusClass fs-6">@_quote.Status</span>
@@ -54,15 +56,10 @@
                         </div>
                     </div>
 
-                    @* 🎨 BOTONES MEJORADOS - Más compactos y organizados *@
                     <div class="d-flex gap-2 align-items-center">
-                        @* Botón Enviar por Email (solo Borrador) *@
                         @if (_quote.Status == "Borrador")
                         {
-                            <button class="btn btn-primary btn-sm"
-                                    @onclick="SendQuoteByEmail"
-                                    disabled="@_isSendingEmail"
-                                    title="Enviar por Email">
+                            <button class="btn btn-primary btn-sm" @onclick="SendQuoteByEmail" disabled="@_isSendingEmail" title="Enviar por Email">
                                 @if (_isSendingEmail)
                                 {
                                     <span class="spinner-border spinner-border-sm"></span>
@@ -75,48 +72,32 @@
                             </button>
                         }
 
-                        @* Botones Aceptar/Rechazar (solo Enviada) - MÁS PEQUEÑOS Y ELEGANTES *@
                         @if (_quote.Status == "Enviada")
                         {
-                            <button class="btn btn-success btn-sm px-3"
-                                    @onclick='() => ChangeStatus("Aceptada")'
-                                    title="Aceptar Cotización">
+                            <button class="btn btn-success btn-sm px-3" @onclick='() => ChangeStatus("Aceptada")' title="Aceptar Cotización">
                                 <i class="bi bi-check-circle me-1"></i> Aceptar
                             </button>
-                            <button class="btn btn-danger btn-sm px-3"
-                                    @onclick='() => ChangeStatus("Rechazada")'
-                                    title="Rechazar Cotización">
+                            <button class="btn btn-danger btn-sm px-3" @onclick='() => ChangeStatus("Rechazada")' title="Rechazar Cotización">
                                 <i class="bi bi-x-circle me-1"></i> Rechazar
                             </button>
                         }
 
-                        @* Convertir a Factura (solo Aceptada sin factura) *@
                         @if (_quote.Status == "Aceptada" && !HasInvoice())
                         {
-                            <button class="btn btn-warning btn-sm"
-                                    @onclick="ConvertToInvoice"
-                                    title="Convertir a Factura">
+                            <button class="btn btn-warning btn-sm" @onclick="ConvertToInvoice" title="Convertir a Factura">
                                 <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Convertir a Factura
                             </button>
                         }
 
-                        @* SEPARADOR VISUAL *@
                         <div class="vr" style="height: 32px;"></div>
 
-                        @* ICONOS SIN TEXTO - Más compactos *@
-                        <button class="btn btn-outline-success btn-sm"
-                                @onclick="DownloadPdf"
-                                title="Descargar PDF">
+                        <button class="btn btn-outline-success btn-sm" @onclick="DownloadPdf" title="Descargar PDF">
                             <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
                         </button>
-                        <button class="btn btn-outline-primary btn-sm"
-                                @onclick="EditQuote"
-                                title="Editar">
+                        <button class="btn btn-outline-primary btn-sm" @onclick="EditQuote" title="Editar">
                             <i class="bi bi-pencil-fill fs-5"></i>
                         </button>
-                        <button class="btn btn-outline-danger btn-sm"
-                                @onclick="ConfirmDelete"
-                                title="Eliminar">
+                        <button class="btn btn-outline-danger btn-sm" @onclick="ConfirmDelete" title="Eliminar">
                             <i class="bi bi-trash-fill fs-5"></i>
                         </button>
                     </div>
@@ -144,11 +125,10 @@
                     </div>
                 </div>
 
-                @* Tickets asociados *@
                 @{
                     var ticketsWithDetails = _quote.Items
-                    .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
-                    .ToList();
+                        .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
+                        .ToList();
                 }
                 @if (ticketsWithDetails.Any())
                 {
@@ -173,30 +153,16 @@
                                                 @if (!string.IsNullOrEmpty(item.TicketDescription))
                                                 {
                                                     <p class="text-muted small mb-2">
-                                                        @(item.TicketDescription.Length > 150
-                                                                                                ? item.TicketDescription.Substring(0, 150) + "..." 
-                                                                                                                                        : item.TicketDescription)
+                                                        @(item.TicketDescription.Length > 150 ? item.TicketDescription.Substring(0, 150) + "..." : item.TicketDescription)
                                                     </p>
                                                 }
                                                 <div class="row small">
-                                                    <div class="col-md-4">
-                                                        <i class="bi bi-building text-muted"></i>
-                                                        <strong>Cliente:</strong> @item.TicketClientName
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <i class="bi bi-folder text-muted"></i>
-                                                        <strong>Proyecto:</strong> @item.TicketProjectName
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <i class="bi bi-clock text-muted"></i>
-                                                        <strong>Horas:</strong> @item.TicketActualHours?.ToString("0.0") h
-                                                    </div>
+                                                    <div class="col-md-4"><i class="bi bi-building text-muted"></i> <strong>Cliente:</strong> @item.TicketClientName</div>
+                                                    <div class="col-md-4"><i class="bi bi-folder text-muted"></i> <strong>Proyecto:</strong> @item.TicketProjectName</div>
+                                                    <div class="col-md-4"><i class="bi bi-clock text-muted"></i> <strong>Horas:</strong> @item.TicketActualHours?.ToString("0.0") h</div>
                                                 </div>
                                             </div>
-                                            <a href="/tickets/@item.TicketId"
-                                               class="btn btn-sm btn-outline-info"
-                                               target="_blank"
-                                               title="Ver Ticket">
+                                            <a href="/tickets/@item.TicketId" class="btn btn-sm btn-outline-info" target="_blank" title="Ver Ticket">
                                                 <i class="bi bi-box-arrow-up-right"></i>
                                             </a>
                                         </div>
@@ -230,17 +196,12 @@
                                                 <div>@item.Description</div>
                                                 @if (!string.IsNullOrEmpty(item.ServiceName))
                                                 {
-                                                    <small class="text-muted">
-                                                        <i class="bi bi-gear"></i> @item.ServiceName
-                                                    </small>
+                                                    <small class="text-muted"><i class="bi bi-gear"></i> @item.ServiceName</small>
                                                 }
                                                 @if (item.TicketId.HasValue && item.TicketId.Value > 0)
                                                 {
                                                     <br />
-                                                    <small class="text-info">
-                                                        <i class="bi bi-ticket-perforated"></i>
-                                                        Ticket #@item.TicketId: @item.TicketTitle
-                                                    </small>
+                                                    <small class="text-info"><i class="bi bi-ticket-perforated"></i> Ticket #@item.TicketId: @item.TicketTitle</small>
                                                 }
                                             </td>
                                             <td class="text-center">@item.Quantity</td>
@@ -258,12 +219,10 @@
                                 <div class="card bg-light">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between mb-2">
-                                            <span>Subtotal:</span>
-                                            <strong>$@_quote.Subtotal.ToString("N2")</strong>
+                                            <span>Subtotal:</span><strong>$@_quote.Subtotal.ToString("N2")</strong>
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
-                                            <span>IVA (16%):</span>
-                                            <strong>$@_quote.Tax.ToString("N2")</strong>
+                                            <span>IVA (16%):</span><strong>$@_quote.Tax.ToString("N2")</strong>
                                         </div>
                                         <hr />
                                         <div class="d-flex justify-content-between">
@@ -311,17 +270,13 @@
                                 <div>@_quote.ValidUntil.Value.ToString("dd/MM/yyyy")</div>
                                 @if (_quote.ValidUntil.Value < DateTime.Now)
                                 {
-                                    <small class="text-danger">
-                                        <i class="bi bi-exclamation-triangle"></i> Expirada
-                                    </small>
+                                    <small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Expirada</small>
                                 }
                             </div>
                         }
                         <div class="mb-3">
                             <small class="text-muted">Estado</small>
-                            <div>
-                                <span class="badge @statusClass">@_quote.Status</span>
-                            </div>
+                            <div><span class="badge @statusClass">@_quote.Status</span></div>
                         </div>
                         <div>
                             <small class="text-muted">Creado Por</small>
@@ -403,8 +358,7 @@
     else
     {
         <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle"></i>
-            Cotización no encontrada.
+            <i class="bi bi-exclamation-triangle"></i> Cotización no encontrada.
         </div>
     }
 </div>
@@ -414,18 +368,91 @@
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration   
 
 @code {
     [Parameter] public int QuoteId { get; set; }
 
     private QuoteDetailDto? _quote;
-    private bool _isLoading = false;
+    private bool _isLoading      = false;
     private bool _isSendingEmail = false;
+
+    // ⭐ SignalR
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadQuote();
+        await ConnectSignalR();
     }
+
+    private async Task ConnectSignalR()
+    {
+        try
+        {
+            // ⭐ CORREGIDO: misma URL base que el HttpClient del frontend
+            var apiBase = Configuration["WebApiAddress"]!.TrimEnd('/');
+            var hubUrl  = $"{apiBase}/hubs/quotes";
+
+            Console.WriteLine($"🔌 Details → conectando SignalR: {hubUrl}");
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect(new[]
+                {
+                    TimeSpan.Zero,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(10)
+                })
+                .Build();
+
+            _hubConnection.On<QuoteStatusChangedEvent>("QuoteStatusChanged", async (data) =>
+            {
+                // Solo nos interesa si es ESTA cotización
+                if (data.QuoteId != QuoteId) return;
+
+                Console.WriteLine($"📡 Details → {data.QuoteNumber} : {data.NewStatus}");
+
+                await InvokeAsync(LoadQuote);
+
+                var emoji = data.NewStatus == "Aceptada" ? "✅" : "❌";
+                ShowNotification(
+                    $"{emoji} Cotización {data.NewStatus}",
+                    $"El cliente {data.ClientName} respondió esta cotización.",
+                    data.NewStatus == "Aceptada" ? NotificationSeverity.Success : NotificationSeverity.Warning
+                );
+
+                await InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.Reconnected += async (_) =>
+            {
+                Console.WriteLine("🔄 Details → SignalR reconectado");
+                await _hubConnection.InvokeAsync("JoinInternalGroup");
+            };
+
+            await _hubConnection.StartAsync();
+            await _hubConnection.InvokeAsync("JoinInternalGroup");
+
+            Console.WriteLine($"✅ Details → SignalR listo: {_hubConnection.State}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ SignalR error: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            try { await _hubConnection.InvokeAsync("LeaveInternalGroup"); } catch { }
+            await _hubConnection.DisposeAsync();
+        }
+    }
+
+    private record QuoteStatusChangedEvent(int QuoteId, string QuoteNumber, string ClientName, string NewStatus);
 
     private async Task LoadQuote()
     {
@@ -452,26 +479,10 @@
 
     private async Task EditQuote()
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "QuoteId", QuoteId }
-        };
-
-        var result = await DialogService.OpenAsync<QuoteForm>("Editar Cotización",
-            parameters,
-            new DialogOptions()
-            {
-                Width = "1000px",
-                Height = "auto",
-                Resizable = true,
-                Draggable = false,
-                CloseDialogOnOverlayClick = false
-            });
-
-        if (result == true)
-        {
-            await LoadQuote();
-        }
+        var parameters = new Dictionary<string, object> { { "QuoteId", QuoteId } };
+        var result = await DialogService.OpenAsync<QuoteForm>("Editar Cotización", parameters,
+            new DialogOptions() { Width = "1000px", Height = "auto", Resizable = true, Draggable = false, CloseDialogOnOverlayClick = false });
+        if (result == true) await LoadQuote();
     }
 
     private async Task SendQuoteByEmail()
@@ -479,11 +490,7 @@
         var confirmed = await DialogService.Confirm(
             $"¿Está seguro que desea enviar la cotización '{_quote?.QuoteNumber}' por correo electrónico a {_quote?.ClientEmail}?",
             "Confirmar Envío",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, enviar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions() { OkButtonText = "Sí, enviar", CancelButtonText = "Cancelar" });
 
         if (confirmed != true) return;
 
@@ -495,16 +502,12 @@
             var result = await QuoteApiService.SendQuoteEmailAsync(QuoteId);
             if (result.Success)
             {
-                ShowNotification("Éxito",
-                    "Cotización enviada exitosamente por correo electrónico. El estado ha sido actualizado a 'Enviada'.",
-                    NotificationSeverity.Success);
+                ShowNotification("Éxito", "Cotización enviada. Estado actualizado a 'Enviada'.", NotificationSeverity.Success);
                 await LoadQuote();
             }
             else
             {
-                ShowNotification("Error",
-                    result.ErrorMessage ?? "No se pudo enviar la cotización.",
-                    NotificationSeverity.Error);
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo enviar la cotización.", NotificationSeverity.Error);
             }
         }
         catch (Exception ex)
@@ -520,28 +523,12 @@
 
     private async Task ConvertToInvoice()
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "QuoteId", QuoteId }
-        };
-
-        var result = await DialogService.OpenAsync<InvoiceFromQuoteForm>(
-            "Crear Factura desde Cotización",
-            parameters,
-            new DialogOptions()
-            {
-                Width = "900px",
-                Height = "auto",
-                Resizable = true,
-                Draggable = false,
-                CloseDialogOnOverlayClick = false
-            });
-
+        var parameters = new Dictionary<string, object> { { "QuoteId", QuoteId } };
+        var result = await DialogService.OpenAsync<InvoiceFromQuoteForm>("Crear Factura desde Cotización", parameters,
+            new DialogOptions() { Width = "900px", Height = "auto", Resizable = true, Draggable = false, CloseDialogOnOverlayClick = false });
         if (result == true)
         {
-            ShowNotification("Éxito",
-                "Factura creada correctamente desde cotización.",
-                NotificationSeverity.Success);
+            ShowNotification("Éxito", "Factura creada correctamente desde cotización.", NotificationSeverity.Success);
             await LoadQuote();
         }
     }
@@ -553,7 +540,7 @@
             var result = await QuoteApiService.ChangeQuoteStatusAsync(QuoteId, newStatus);
             if (result.Success)
             {
-                ShowNotification("Éxito", $"Estado cambiado a '{newStatus}' correctamente.", NotificationSeverity.Success);
+                ShowNotification("Éxito", $"Estado cambiado a '{newStatus}'.", NotificationSeverity.Success);
                 await LoadQuote();
             }
             else
@@ -574,11 +561,9 @@
             var pdfBytes = await QuoteApiService.GenerateQuotePdfAsync(QuoteId);
             if (pdfBytes != null && pdfBytes.Length > 0)
             {
-                var base64 = Convert.ToBase64String(pdfBytes);
+                var base64   = Convert.ToBase64String(pdfBytes);
                 var fileName = $"Cotizacion-{_quote?.QuoteNumber}.pdf";
-
                 await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64);
-
                 ShowNotification("Éxito", "PDF descargado correctamente.", NotificationSeverity.Success);
             }
             else
@@ -597,16 +582,8 @@
         var confirmed = await DialogService.Confirm(
             $"¿Está seguro que desea eliminar la cotización '{_quote?.QuoteNumber}'?",
             "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
-
-        if (confirmed == true)
-        {
-            await DeleteQuote();
-        }
+            new ConfirmOptions() { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
+        if (confirmed == true) await DeleteQuote();
     }
 
     private async Task DeleteQuote()
@@ -621,7 +598,7 @@
             }
             else
             {
-                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar la cotización.", NotificationSeverity.Error);
+                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar.", NotificationSeverity.Error);
             }
         }
         catch (Exception ex)
@@ -630,19 +607,16 @@
         }
     }
 
-    private void GoBack()
-    {
-        NavigationManager.NavigateTo("/cotizaciones");
-    }
+    private void GoBack() => NavigationManager.NavigateTo("/cotizaciones");
 
     private void ShowNotification(string title, string message, NotificationSeverity severity)
     {
         NotificationService.Notify(new NotificationMessage
         {
             Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
+            Summary  = title,
+            Detail   = message,
+            Duration = 5000
         });
     }
 }

@@ -1,0 +1,107 @@
+﻿@using fs_front.DTO
+@using fs_front.Repositories
+@inject IReportApiService ReportService
+@inject NavigationManager NavigationManager
+
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-text">
+            <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(1)">
+                <img src="images/LogoFinesoftt.png" alt="Finesoft" class="hero-logo" />
+
+                <h1 class="hero-title">
+                    Sistema de <br />
+                    <span class="gradient-text">Gestión</span>
+                </h1>
+
+                <p class="hero-subtitle">
+                    Gestiona proyectos, tickets, facturación y cotizaciones en una sola plataforma.
+                    Potente, moderno y fácil de usar.
+                </p>
+
+                <div class="hero-actions">
+                    <button class="btn-primary" @onclick="NavigateToLogin">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Iniciar Sesión
+                    </button>
+                    <button class="btn-secondary" @onclick="NavigateToRegister">
+                        <i class="bi bi-person-plus"></i>
+                        Crear Cuenta
+                    </button>
+                </div>
+
+                <div class="hero-features">
+                    <div class="feature-badge">
+                        <i class="bi bi-shield-check"></i>
+                        <span>100% Seguro</span>
+                    </div>
+                    <div class="feature-badge">
+                        <i class="bi bi-cloud-check"></i>
+                        <span>En la nube</span>
+                    </div>
+                    <div class="feature-badge">
+                        <i class="bi bi-phone"></i>
+                        <span>Efeciencia</span>
+                    </div>
+                </div>
+            </Animate>
+        </div>
+
+        <div class="hero-visual">
+            <Animate Animation="Animations.FadeRight" Duration="TimeSpan.FromSeconds(1)" Delay="TimeSpan.FromSeconds(0.2)">
+                <div class="dashboard-mockup">
+                    <div class="mockup-window">
+                        <div class="window-bar">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <div class="window-content">
+                            <div class="stat-card">
+                                <i class="bi bi-ticket-perforated"></i>
+                                <div class="stat-info">
+                                    <span class="stat-value">@(_stats?.OpenTickets.ToString() ?? "...")</span>
+                                    <span class="stat-label">Tickets</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <i class="bi bi-folder"></i>
+                                <div class="stat-info">
+                                    <span class="stat-value">@(_stats?.ActiveProjects.ToString() ?? "...")</span>
+                                    <span class="stat-label">Proyectos</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <i class="bi bi-receipt"></i>
+                                <div class="stat-info">
+                                    <span class="stat-value">@(_stats?.TotalClients.ToString() ?? "...")</span>
+                                    <span class="stat-label">Clientes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Animate>
+        </div>
+    </div>
+
+    <div class="scroll-indicator">
+        <i class="bi bi-chevron-down"></i>
+    </div>
+</section>
+
+@code {
+    private PublicStatsDto? _stats;
+
+    private void NavigateToLogin() => NavigationManager.NavigateTo("/iniciar-sesion");
+    private void NavigateToRegister() => NavigationManager.NavigateTo("/registrarme");
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _stats = await ReportService.GetPublicStatsAsync();
+        }
+        catch { }
+    }
+}

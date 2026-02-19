@@ -318,6 +318,16 @@ public class ReportService : IReportService
             .ToList();
     }
 
+    public async Task<PublicStatsDto> GetPublicStatsAsync()
+    {
+        return new PublicStatsDto
+        {
+            OpenTickets = await _context.Tickets.CountAsync(t => t.Status != "Cerrado"),
+            ActiveProjects = await _context.Projects.CountAsync(p => p.IsActive),
+            TotalClients = await _context.Clients.CountAsync(c => c.IsActive)
+        };
+    }
+
     public async Task<List<TopClientDto>> GetTopClientsAsync(int top)
     {
         var clients = await _context.Clients.Where(c => c.IsActive).ToListAsync();

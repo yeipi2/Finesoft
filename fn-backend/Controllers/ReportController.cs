@@ -134,6 +134,17 @@ public class ReportsController : ControllerBase
         var data = await _reportService.GetTicketsByStatusAsync();
         return Ok(data);
     }
+    /// <summary>
+    /// GET: api/reports/public-stats
+    /// Endpoint público para la landing page
+    /// </summary>
+    [HttpGet("public-stats")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicStats()
+    {
+        var stats = await _reportService.GetPublicStatsAsync();
+        return Ok(stats);
+    }
 
     /// <summary>
     /// GET: api/reports/top-clients

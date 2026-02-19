@@ -1,0 +1,49 @@
+.theme-toggle {
+	position: relative;
+	top: auto;
+	right: auto;
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	border: 1px solid var(--border-color);
+	background: var(--theme-toggle-bg);
+	color: var(--theme-toggle-color);
+	font-size: 1rem;
+	cursor: pointer;
+	box-shadow: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+	flex-shrink: 0;
+}
+
+	.theme-toggle:hover {
+		transform: scale(1.1);
+	}
+
+
+	.theme-toggle:active {
+		transform: scale(0.95);
+	}
+
+	.theme-toggle i {
+		transition: transform 0.3s ease;
+	}
+
+	.theme-toggle:hover i {
+		transform: rotate(-15deg);
+	}
+
+
+/* Solo en la landing, lo hacemos flotante */
+.layout-principal .theme-toggle {
+	position: fixed;
+	top: 1.5rem;
+	right: 1.5rem;
+	z-index: 1000;
+	width: 3rem;
+	height: 3rem;
+	font-size: 1.25rem;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

@@ -1,382 +1,55 @@
 ﻿@page "/"
 @layout LayoutPrincipal
 @using fs_front.Components.Auth
+
 <RedirectIfAuthenticated RedirectTo="/dashboard" />
-
-
-<PageTitle>Finesoft - Sistema de Gestión de Soporte Técnico</PageTitle>
+<PageTitle>Finesoft - Sistema de Gestión</PageTitle>
 
 <div class="landing-page">
-    <div class="hero-section">
-        <RadzenRow JustifyContent="JustifyContent.Center" AlignItems="AlignItems.Center" Gap="2rem"
-                   class="rz-p-4 rz-p-md-8">
-            <RadzenColumn Size="12" SizeMD="6" class="rz-text-align-center rz-text-align-md-start order-2 order-md-1">
-                <Animate Animation="Animations.FadeLeft" Duration="TimeSpan.FromSeconds(1)">
-                    <RadzenStack Gap="1.5rem">
-                        <!-- Logo -->
-                        <RadzenImage Path="images/LogoFinesoft.png" AlternateText="Finesoft Logo"
-                                     Style="width: 200px; height: auto;" />
+    <ThemeToggle />
+    <HeroSection />
+    <FeaturesGrid />
+    <CTASection />
 
-                        <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">
-                            Sistema de Gestión de Soporte Técnico
-                        </RadzenText>
+    <footer class="landing-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="images/LogoFinesoftt.png" alt="Finesoft" class="footer-logo" />
+                <p>Soluciones empresariales inteligentes</p>
+            </div>
 
-                        <RadzenText TextStyle="TextStyle.DisplayH3" TagName="TagName.H1">
-                            <span style="color: #5b4d8b;">Bienvenido a </span><br />
-                            <span style="color: #d6356c; font-weight: bold;">Finesoft</span>
-                        </RadzenText>
+            <div class="footer-links">
+                <div class="link-group">
+                    <h4>Producto</h4>
+                    <a href="#features">Características</a>
+                    <a href="#pricing">Precios</a>
+                    <a href="#demo">Demo</a>
+                </div>
 
-                        <RadzenText TextStyle="TextStyle.H6" class="rz-color-secondary" Style="line-height: 1.6;">
-                            La plataforma integral para gestionar proyectos, tickets de soporte,
-                            facturación y cotizaciones de manera eficiente y profesional.
-                        </RadzenText>
+                <div class="link-group">
+                    <h4>Empresa</h4>
+                    <a href="#about">Nosotros</a>
+                    <a href="#contact">Contacto</a>
+                    <a href="#careers">Carreras</a>
+                </div>
 
-                        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem"
-                                     JustifyContent="JustifyContent.Center"
-                                     class="rz-justify-content-md-start flex-wrap rz-mt-3">
-                            <RadzenButton Text="Iniciar Sesión" Icon="login" ButtonStyle="ButtonStyle.Primary"
-                                          Size="ButtonSize.Large" Click="@NavigateToLogin" class="rz-shadow-4"
-                                          Style="padding: 12px 32px;" />
-                            <RadzenButton Text="Crear Cuenta" Icon="person_add" ButtonStyle="ButtonStyle.Secondary"
-                                          Size="ButtonSize.Large" Click="@NavigateToRegister" Variant="Variant.Outlined"
-                                          Style="padding: 12px 32px;" />
-                        </RadzenStack>
-                    </RadzenStack>
-                </Animate>
-            </RadzenColumn>
+                <div class="link-group">
+                    <h4>Soporte</h4>
+                    <a href="#docs">Documentación</a>
+                    <a href="#help">Centro de Ayuda</a>
+                    <a href="#status">Estado del Sistema</a>
+                </div>
+            </div>
+        </div>
 
-            <RadzenColumn Size="12" SizeMD="6" class="order-1 order-md-2">
-                <Animate Animation="Animations.FadeRight" Duration="TimeSpan.FromSeconds(1)">
-                    <div class="image-container">
-                        <RadzenImage
-                        Path="https://img.freepik.com/free-vector/project-management-concept-illustration_114360-621.jpg"
-                        class="rz-border-radius-4 rz-shadow-6" AlternateText="Gestión de proyectos"
-                        Style="width: 100%; height: auto; max-width: 500px;" />
-                    </div>
-                </Animate>
-            </RadzenColumn>
-        </RadzenRow>
-    </div>
-
-    <!-- Features Section -->
-    <div class="features-section">
-        <RadzenStack Gap="2rem" class="rz-p-4 rz-p-md-8">
-            <RadzenStack Gap="0.5rem" class="rz-text-align-center rz-mb-3">
-                <RadzenText TextStyle="TextStyle.DisplayH4" TagName="TagName.H2">
-                    ¿Qué ofrece Finesoft?
-                </RadzenText>
-                <RadzenText TextStyle="TextStyle.H6" class="rz-color-secondary" Style="color: #d6356c !important;">
-                    Todas las herramientas que necesitas en un solo lugar
-                </RadzenText>
-            </RadzenStack>
-
-            <RadzenRow Gap="1.5rem" class="rz-justify-content-center">
-                <!-- Feature 1 -->
-                <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.1)">
-                        <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
-                            <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
-                                <div class="icon-wrapper" style="background: rgba(91, 77, 139, 0.1); color: #5b4d8b;">
-                                    <RadzenIcon Icon="people" Style="font-size: 2.5rem;" />
-                                </div>
-                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">
-                                    Gestión de Clientes
-                                </RadzenText>
-                                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
-                                    Administra tu cartera de clientes y mantén toda la información organizada.
-                                </RadzenText>
-                            </RadzenStack>
-                        </RadzenCard>
-                    </Animate>
-                </RadzenColumn>
-
-                <!-- Feature 2 -->
-                <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.2)">
-                        <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
-                            <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
-                                <div class="icon-wrapper" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
-                                    <RadzenIcon Icon="view_kanban" Style="font-size: 2.5rem;" />
-                                </div>
-                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">
-                                    Proyectos
-                                </RadzenText>
-                                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
-                                    Controla el avance, asigna tareas y gestiona entregables con facilidad.
-                                </RadzenText>
-                            </RadzenStack>
-                        </RadzenCard>
-                    </Animate>
-                </RadzenColumn>
-
-                <!-- Feature 3 -->
-                <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.3)">
-                        <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
-                            <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
-                                <div class="icon-wrapper" style="background: rgba(251, 146, 60, 0.1); color: #fb923c;">
-                                    <RadzenIcon Icon="confirmation_number" Style="font-size: 2.5rem;" />
-                                </div>
-                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">
-                                    Soporte Técnico
-                                </RadzenText>
-                                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
-                                    Sistema completo de tickets para atender incidencias y consultas.
-                                </RadzenText>
-                            </RadzenStack>
-                        </RadzenCard>
-                    </Animate>
-                </RadzenColumn>
-
-                <!-- Feature 4 -->
-                <RadzenColumn Size="12" SizeSM="6" SizeLG="3">
-                    <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.4)">
-                        <RadzenCard class="rz-shadow-3 feature-card" Style="height: 100%;">
-                            <RadzenStack Gap="1rem" class="rz-text-align-center rz-p-3">
-                                <div class="icon-wrapper" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                                    <RadzenIcon Icon="receipt" Style="font-size: 2.5rem;" />
-                                </div>
-                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">
-                                    Facturación
-                                </RadzenText>
-                                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
-                                    Crea facturas, cotizaciones y lleva el control financiero completo.
-                                </RadzenText>
-                            </RadzenStack>
-                        </RadzenCard>
-                    </Animate>
-                </RadzenColumn>
-            </RadzenRow>
-        </RadzenStack>
-    </div>
-
-    <!-- Stats Section -->
-    <div class="stats-section">
-        <RadzenStack Gap="2rem" class="rz-p-4 rz-p-md-8">
-            <RadzenRow Gap="2rem" class="rz-text-align-center rz-justify-content-center">
-                <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)">
-                        <RadzenStack Gap="0.5rem">
-                            <RadzenText TextStyle="TextStyle.DisplayH3" Style="color: #5b4d8b; font-weight: bold;">
-                                100%
-                            </RadzenText>
-                            <RadzenText TextStyle="TextStyle.Body1" Style="color: #d6356c;">
-                                Web-Based
-                            </RadzenText>
-                        </RadzenStack>
-                    </Animate>
-                </RadzenColumn>
-
-                <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.1)">
-                        <RadzenStack Gap="0.5rem">
-                            <RadzenText TextStyle="TextStyle.DisplayH3" Style="color: #22c55e; font-weight: bold;">
-                                24/7
-                            </RadzenText>
-                            <RadzenText TextStyle="TextStyle.Body1" Style="color: #d6356c;">
-                                Disponibilidad
-                            </RadzenText>
-                        </RadzenStack>
-                    </Animate>
-                </RadzenColumn>
-
-                <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.2)">
-                        <RadzenStack Gap="0.5rem">
-                            <RadzenText TextStyle="TextStyle.DisplayH3" Style="color: #fb923c; font-weight: bold;">
-                                ∞
-                            </RadzenText>
-                            <RadzenText TextStyle="TextStyle.Body1" Style="color: #d6356c;">
-                                Escalabilidad
-                            </RadzenText>
-                        </RadzenStack>
-                    </Animate>
-                </RadzenColumn>
-
-                <RadzenColumn Size="6" SizeMD="3">
-                    <Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(0.8)"
-                             Delay="TimeSpan.FromSeconds(0.3)">
-                        <RadzenStack Gap="0.5rem">
-                            <RadzenIcon Icon="verified_user" Style="font-size: 3.5rem; color: #3b82f6;" />
-                            <RadzenText TextStyle="TextStyle.Body1" Style="color: #d6356c;">
-                                Seguro
-                            </RadzenText>
-                        </RadzenStack>
-                    </Animate>
-                </RadzenColumn>
-            </RadzenRow>
-        </RadzenStack>
-    </div>
-
-    <!-- CTA Section -->
-    <div class="cta-section">
-        <RadzenStack Gap="2rem" class="rz-p-4 rz-p-md-8 rz-text-align-center">
-            <Animate Animation="Animations.FadeUp" Duration="TimeSpan.FromSeconds(1)">
-                <RadzenStack Gap="1.5rem">
-                    <RadzenText TextStyle="TextStyle.DisplayH4" TagName="TagName.H2"
-                                Style="color: white; font-weight: bold;">
-                        ¿Listo para comenzar?
-                    </RadzenText>
-                    <RadzenText TextStyle="TextStyle.H6" Style="color: white;">
-                        Únete a Finesoft y lleva tu negocio al siguiente nivel
-                    </RadzenText>
-                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.Center"
-                                 class="flex-wrap rz-mt-2">
-                        <RadzenButton Text="CREAR CUENTA GRATIS" Icon="person_add" ButtonStyle="ButtonStyle.Light"
-                                      Size="ButtonSize.Large" Click="@NavigateToRegister" class="rz-shadow-5"
-                                      Style="padding: 12px 32px; font-weight: bold;" />
-                        <RadzenButton Text="YA TENGO CUENTA" Icon="login" ButtonStyle="ButtonStyle.Light"
-                                      Size="ButtonSize.Large" Click="@NavigateToLogin" Variant="Variant.Outlined"
-                                      Style="padding: 12px 32px; color: white; border-color: white; font-weight: bold;" />
-                    </RadzenStack>
-                </RadzenStack>
-            </Animate>
-        </RadzenStack>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer-section">
-        <RadzenStack Gap="0.5rem" class="rz-p-4 rz-text-align-center">
-            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
-                &copy; @DateTime.Now.Year Finesoft. Todos los derechos reservados.
-            </RadzenText>
-            <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
-                Sistema de Gestión de Soporte Técnico y Proyectos
-            </RadzenText>
-        </RadzenStack>
-    </div>
+        <div class="footer-bottom">
+            <p>&copy; @DateTime.Now.Year Finesoft. Todos los derechos reservados.</p>
+            <div class="footer-social">
+                <a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+                <a href="#" aria-label="Twitter"><i class="bi bi-twitter"></i></a>
+                <a href="#" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+            </div>
+        </div>
+    </footer>
 </div>
-
-<style>
-    .landing-page {
-        min-height: 100vh;
-        width: 100%;
-        overflow-x: hidden;
-    }
-
-    .hero-section {
-        min-height: 90vh;
-        display: flex;
-        align-items: center;
-        background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
-        padding: 2rem 0;
-    }
-
-    .features-section {
-        background: #f8fafc;
-        padding: 3rem 0;
-    }
-
-    .stats-section {
-        background: white;
-        padding: 3rem 0;
-    }
-
-    .cta-section {
-        background: linear-gradient(135deg, #5b4d8b 0%, #7c3aed 100%);
-        padding: 4rem 0;
-    }
-
-    .footer-section {
-        background: #1e293b;
-        padding: 2rem 0;
-    }
-
-    .footer-section .rz-color-secondary {
-        color: #94a3b8 !important;
-    }
-
-    .feature-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        cursor: default;
-        border: 1px solid #e2e8f0;
-    }
-
-    .feature-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-    }
-
-    .icon-wrapper {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        transition: transform 0.3s ease;
-    }
-
-    .feature-card:hover .icon-wrapper {
-        transform: scale(1.1);
-    }
-
-    .image-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .flex-wrap {
-        flex-wrap: wrap;
-    }
-
-    .rz-button {
-        transition: all 0.3s ease;
-    }
-
-    .rz-button:hover {
-        transform: translateY(-2px);
-    }
-
-    /* Responsive */
-    @@media (max-width: 768px) {
-        .hero-section {
-            min-height: auto;
-            padding: 3rem 0;
-        }
-
-        .rz-p-md-8 {
-            padding: 2rem 1rem !important;
-        }
-
-        .order-1 {
-            order: 1;
-        }
-
-        .order-2 {
-            order: 2;
-        }
-    }
-
-    @@media (min-width: 769px) {
-        .order-md-1 {
-            order: 1 !important;
-        }
-
-        .order-md-2 {
-            order: 2 !important;
-        }
-    }
-</style>
-
-@inject NavigationManager NavigationManager
-
-@code {
-    private void NavigateToLogin()
-    {
-        NavigationManager.NavigateTo("/iniciar-sesion");
-    }
-
-    private void NavigateToRegister()
-    {
-        NavigationManager.NavigateTo("/registrarme");
-    }
-}

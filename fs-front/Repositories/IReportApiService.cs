@@ -13,4 +13,5 @@ public interface IReportApiService
     Task<List<ProjectReportDto>?> GetReportsByProjectAsync(DateTime? startDate, DateTime? endDate);
     Task<List<UserReportDto>?> GetReportsByUserAsync(DateTime? startDate, DateTime? endDate);
     Task<List<TopClientDto>?> GetTopClientsAsync(int top = 10);
+    Task<PublicStatsDto?> GetPublicStatsAsync();
 }

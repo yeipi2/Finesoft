@@ -1,16 +1,13 @@
 ﻿@inherits LayoutComponentBase
-
 <HeadContent>
     <RadzenTheme Theme="material" />
 </HeadContent>
-
 <div class="layout-principal">
+    <ThemeToggle />
     @Body
 </div>
-
 <RadzenComponents />
 <RadzenNotification />
-
 <style>
     .layout-principal {
         width: 100%;
@@ -19,7 +16,6 @@
         padding: 0;
     }
 
-    /* Resetear cualquier padding o margin del body */
     body {
         margin: 0;
         padding: 0;

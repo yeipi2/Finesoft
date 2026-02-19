@@ -2,29 +2,27 @@
 @using fs_front.DTO
 @using fs_front.Pages.Invoices
 @using fs_front.Pages.Tickets
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Configuration
 
 @attribute [Authorize]
+@implements IAsyncDisposable
 
 <PageTitle>Finesoft - Cotizaciones</PageTitle>
 
-@* ── ESTADO: verificando acceso ── *@
 @if (_checkingAccess)
 {
-    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-        background:white;z-index:9999;
-        display:flex;align-items:center;justify-content:center;">
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:9999;display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
-@* ── ESTADO: sin acceso (seguridad extra mientras redirige) ── *@
 else if (!_hasAccess)
 {
     <div></div>
 }
-@* ── ESTADO: contenido real ── *@
 else
 {
-    <container class="p-4">
+    <div class="container">
         <section class="container-fluid px-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div class="d-flex align-items-center">
@@ -37,15 +35,13 @@ else
                 @if (_canCreate)
                 {
                     <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
-                        <i class="bi bi-plus-lg"></i>
-                        Nueva Cotización
+                        <i class="bi bi-plus-lg"></i> Nueva Cotización
                     </button>
                 }
             </div>
 
             <FilterBar SearchPlaceholder="Buscar cotizaciones..." SearchValue="@_searchText"
                        SearchValueChanged="@(v => _searchText = v)" OnClear="ClearFilters">
-
                 <Filters>
                     <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
                         <option value="">Todos los estados</option>
@@ -55,7 +51,6 @@ else
                         <option value="Rechazada">Rechazada</option>
                         <option value="Expirada">Expirada</option>
                     </select>
-
                     <select class="form-select" @bind="_clientFilter" @bind:event="onchange">
                         <option value="0">Todos los clientes</option>
                         @if (_clients != null)
@@ -67,45 +62,32 @@ else
                         }
                     </select>
                 </Filters>
-
             </FilterBar>
         </section>
 
         <section class="container-fluid p-xl-5">
             <FsDataTable TItem="QuoteDetailDto" Title="Cotizaciones" Subtitle="Gestión de cotizaciones y presupuestos"
-                         Items="_sortedQuotes" IsLoading="_isLoading" ColSpan="9" EmptyTitle="No se encontraron cotizaciones"
-                         EmptySubtitle="Prueba ajustando filtros o búsqueda.">
-
+                         Items="_sortedQuotes" IsLoading="_isLoading" ColSpan="9"
+                         EmptyTitle="No se encontraron cotizaciones" EmptySubtitle="Prueba ajustando filtros o búsqueda.">
                 <Header>
-                    <FsSortHeader Text="Número" Field="number" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Cliente" Field="client" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Fecha" Field="createdAt" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Válida Hasta" Field="validUntil" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Total" Field="total" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <th>Tickets</th>
-                    <FsSortHeader Text="Creado Por" Field="createdBy" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <th class="text-center">Acciones</th>
+                    <FsSortHeader Text="Número" Field="number" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Cliente" Field="client" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Fecha" Field="createdAt" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Válida Hasta" Field="validUntil" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Total" Field="total" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                <th>Tickets</th>
+                <FsSortHeader Text="Creado Por" Field="createdBy" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                <th class="text-center">Acciones</th>
                 </Header>
-
                 <RowTemplate Context="quote">
                     <tr>
                         <td class="fw-bold">@quote.QuoteNumber</td>
-
                         <td>
                             <div class="fw-bold">@quote.ClientName</div>
                             <small class="text-muted">@quote.ClientEmail</small>
                         </td>
-
                         <td>@quote.CreatedAt.ToString("dd/MM/yyyy")</td>
-
                         <td>
                             @if (quote.ValidUntil.HasValue)
                             {
@@ -120,84 +102,59 @@ else
                                 <span class="text-muted">Sin límite</span>
                             }
                         </td>
-
                         <td>
                             @{
-                                var statusClass = quote.Status switch
+                                var sc = quote.Status switch
                                 {
-                                    "Borrador" => "bg-secondary",
-                                    "Enviada" => "bg-primary",
-                                    "Aceptada" => "bg-success",
-                                    "Rechazada" => "bg-danger",
-                                    "Expirada" => "bg-warning",
+                                                "Borrador" => "bg-secondary",
+                                                "Enviada" => "bg-primary",
+                                                "Aceptada" => "bg-success",
+                                                "Rechazada" => "bg-danger",
+                                                "Expirada" => "bg-warning",
                                     _ => "bg-secondary"
                                 };
                             }
-                            <span class="badge @statusClass">@quote.Status</span>
+                            <span class="badge @sc">@quote.Status</span>
                         </td>
-
                         <td class="fw-bold text-success">$@quote.Total.ToString("N2")</td>
-
                         <td>
                             @{
-                                var ticketCount = GetQuoteTicketCount(quote);
+                                var tc = GetQuoteTicketCount(quote);
                             }
-                            @if (ticketCount > 0)
+                            @if (tc > 0)
                             {
                                 <span class="badge bg-info" title="@GetQuoteTicketNames(quote)">
-                                    <i class="bi bi-ticket-perforated-fill"></i>
-                                    @ticketCount ticket@(ticketCount > 1 ? "s" : "")
+                                    <i class="bi bi-ticket-perforated-fill"></i> @tc ticket@(tc > 1 ? "s" : "")
                                 </span>
                             }
                             else
                             {
+
                                 <span class="text-muted small">Sin tickets</span>
                             }
                         </td>
-
                         <td>@quote.CreatedByUserName</td>
-
                         <td class="text-center">
-                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ViewQuoteDetails(quote.Id)"
-                                    title="Ver detalles">
+                            <button class="btn btn-sm btn-outline-primary me-1"
+                                    @onclick="() => ViewQuoteDetails(quote.Id)" title="Ver detalles">
                                 <i class="bi bi-eye-fill"></i>
                             </button>
-
-                            @* @if (_canEdit)
-                            {
-                                <button class="btn btn-sm btn-outline-info me-1" @onclick="() => ShowEditModal(quote.Id)"
-                                        title="Editar">
-                                    <i class="bi bi-pencil-fill"></i>
-                                </button>
-                            } *@
-
-                            <button class="btn btn-sm btn-outline-success me-1" @onclick="() => DownloadPdf(quote.Id)"
-                                    title="Descargar PDF">
+                            <button class="btn btn-sm btn-outline-success me-1"
+                                    @onclick="() => DownloadPdf(quote.Id)" title="Descargar PDF">
                                 <i class="bi bi-file-earmark-pdf-fill"></i>
                             </button>
-
                             @if (quote.Status == "Aceptada" && HasInvoice(quote))
                             {
-                                <span class="badge bg-info text-white" title="Ya tiene factura generada">
+                                <span class="badge bg-info text-white">
                                     <i class="bi bi-check-circle-fill"></i> Facturada
                                 </span>
                             }
-
-                            @* @if (_canDelete)
-                            {
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(quote)"
-                                        title="Eliminar">
-                                    <i class="bi bi-trash-fill"></i>
-                                </button>
-                            } *@
                         </td>
                     </tr>
                 </RowTemplate>
-
             </FsDataTable>
-
         </section>
-    </container>
+    </div class="container">
 }
 
 @inject IQuoteApiService QuoteApiService
@@ -207,6 +164,7 @@ else
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject PermissionService PermissionService
+@inject IConfiguration Configuration
 
 @code {
     private List<QuoteDetailDto>? _quotes;
@@ -215,16 +173,14 @@ else
     private string _statusFilter = string.Empty;
     private int _clientFilter = 0;
     private bool _isLoading = false;
-
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
-
-    private bool _canCreate;
-    private bool _canEdit;
-    private bool _canDelete;
-
+    private bool _canCreate, _canEdit, _canDelete;
     private string _sortField = "createdAt";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+    // ⭐ SignalR
+    private HubConnection? _hubConnection;
 
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
     {
@@ -232,26 +188,25 @@ else
         _sortDir = s.dir;
     }
 
-
     private IEnumerable<QuoteDetailDto> _filteredQuotes
-    => _quotes?
-        .Where(q =>
-            (string.IsNullOrWhiteSpace(_searchText) ||
-             q.QuoteNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-             q.ClientName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
-            && (string.IsNullOrEmpty(_statusFilter) || q.Status == _statusFilter)
-            && (_clientFilter == 0 || q.ClientId == _clientFilter)
-        )
-        ?? Enumerable.Empty<QuoteDetailDto>();
+        => _quotes?
+            .Where(q =>
+                (string.IsNullOrWhiteSpace(_searchText) ||
+                 q.QuoteNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                 q.ClientName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                && (string.IsNullOrEmpty(_statusFilter) || q.Status == _statusFilter)
+                && (_clientFilter == 0 || q.ClientId == _clientFilter))
+            ?? Enumerable.Empty<QuoteDetailDto>();
 
+    private IEnumerable<QuoteDetailDto> _sortedQuotes => ApplySort(_filteredQuotes);
+
+    // ─── Ciclo de vida ─────────────────────────────────────────────────────────
 
     protected override async Task OnInitializedAsync()
     {
         var canView = await PermissionService.HasPermissionAsync("quotes.view");
-
         if (!canView)
         {
-            Console.WriteLine("⛔ Sin permiso quotes.view → redirigiendo");
             _checkingAccess = false;
             _hasAccess = false;
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
@@ -266,252 +221,185 @@ else
         _canDelete = await PermissionService.HasPermissionAsync("quotes.delete");
 
         await LoadData();
+        await ConnectSignalR();
     }
 
-    // ⭐ NUEVO: Método para obtener el conteo de tickets de una cotización
-    private int GetQuoteTicketCount(QuoteDetailDto quote)
+    // ⭐ URL del hub = misma base que WebApiAddress (definida en appsettings del frontend)
+    private async Task ConnectSignalR()
     {
-        if (quote.Items == null || !quote.Items.Any())
-            return 0;
+        try
+        {
+            var apiBase = Configuration["WebApiAddress"]!.TrimEnd('/');
+            var hubUrl = $"{apiBase}/hubs/quotes";
 
-        return quote.Items.Count(i => i.TicketId.HasValue && i.TicketId.Value > 0);
+            Console.WriteLine($"🔌 Conectando SignalR → {hubUrl}");
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect(new[]
+                {
+                    TimeSpan.Zero,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(10)
+                })
+                .Build();
+
+            _hubConnection.On<QuoteStatusChangedEvent>("QuoteStatusChanged", async (data) =>
+            {
+                Console.WriteLine($"📡 SignalR → {data.QuoteNumber} : {data.NewStatus}");
+
+                var quote = _quotes?.FirstOrDefault(q => q.Id == data.QuoteId);
+                if (quote != null)
+                    quote.Status = data.NewStatus;   // actualiza en memoria
+                else
+                    await InvokeAsync(LoadData);     // no estaba en vista, recargar
+
+                var emoji = data.NewStatus == "Aceptada" ? "✅" : "❌";
+                ShowNotification(
+                    $"{emoji} Cotización {data.NewStatus}",
+                    $"{data.QuoteNumber} — {data.ClientName}",
+                    data.NewStatus == "Aceptada"
+                        ? NotificationSeverity.Success
+                        : NotificationSeverity.Warning
+                );
+
+                await InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.Reconnected += async (_) =>
+            {
+                Console.WriteLine("🔄 SignalR reconectado → reingresando grupo");
+                await _hubConnection.InvokeAsync("JoinInternalGroup");
+            };
+
+            await _hubConnection.StartAsync();
+            await _hubConnection.InvokeAsync("JoinInternalGroup");
+
+            Console.WriteLine($"✅ SignalR listo — {_hubConnection.State}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ SignalR error: {ex.Message}");
+        }
     }
 
-    // ⭐ NUEVO: Método para obtener los nombres de los tickets
-    private string GetQuoteTicketNames(QuoteDetailDto quote)
+    public async ValueTask DisposeAsync()
     {
-        if (quote.Items == null || !quote.Items.Any())
-            return "Sin tickets asociados";
-
-        var ticketItems = quote.Items
-            .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0 && !string.IsNullOrEmpty(i.TicketTitle))
-            .Select(i => $"#{i.TicketId}: {i.TicketTitle}")
-            .ToList();
-
-        return ticketItems.Any()
-            ? string.Join("\n", ticketItems)
-            : "Sin tickets asociados";
+        if (_hubConnection is not null)
+        {
+            try { await _hubConnection.InvokeAsync("LeaveInternalGroup"); } catch { }
+            await _hubConnection.DisposeAsync();
+        }
     }
 
-    private bool HasInvoice(QuoteDetailDto quote)
-    {
-        // ⚠️ TEMPORAL: Ajusta según tu DTO real
-        // return quote.InvoiceId.HasValue && quote.InvoiceId.Value > 0;
-        // return quote.HasInvoice;
-        // return !string.IsNullOrEmpty(quote.InvoiceNumber);
-        return false;
-    }
+    private record QuoteStatusChangedEvent(int QuoteId, string QuoteNumber, string ClientName, string NewStatus);
+
+    // ─── Datos ─────────────────────────────────────────────────────────────────
 
     private async Task LoadData()
     {
         _isLoading = true;
         try
         {
-            var quotesTask = QuoteApiService.GetQuotesAsync();
-            var clientsTask = ClientApiService.GetClientsAsync();
-
-            await Task.WhenAll(quotesTask, clientsTask);
-
-            _quotes = await quotesTask;
-            _clients = await clientsTask;
+            var qt = QuoteApiService.GetQuotesAsync();
+            var ct = ClientApiService.GetClientsAsync();
+            await Task.WhenAll(qt, ct);
+            _quotes = await qt;
+            _clients = await ct;
         }
-        catch (Exception ex)
-        {
-            ShowNotification("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
+        catch (Exception ex) { ShowNotification("Error", $"Error al cargar: {ex.Message}", NotificationSeverity.Error); }
+        finally { _isLoading = false; }
     }
+
+    // ─── Tabla helpers ─────────────────────────────────────────────────────────
+
+    private int GetQuoteTicketCount(QuoteDetailDto q)
+        => q.Items?.Count(i => i.TicketId.HasValue && i.TicketId.Value > 0) ?? 0;
+
+    private string GetQuoteTicketNames(QuoteDetailDto q)
+    {
+        var items = q.Items?
+            .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0 && !string.IsNullOrEmpty(i.TicketTitle))
+            .Select(i => $"#{i.TicketId}: {i.TicketTitle}").ToList();
+        return items?.Any() == true ? string.Join("\n", items) : "Sin tickets asociados";
+    }
+
+    private bool HasInvoice(QuoteDetailDto q) => false;
+
+    // ─── Acciones ──────────────────────────────────────────────────────────────
 
     private async Task ShowCreateModal()
     {
-        var result = await DialogService.OpenAsync<QuoteForm>("Nueva Cotización",
-            options: new DialogOptions()
-            {
-                Width = "1000px",
-                Height = "auto",
-                Resizable = true,
-                Draggable = false,
-                CloseDialogOnOverlayClick = false
-            });
-
-        if (result == true)
-        {
-            await LoadData();
-        }
+        var r = await DialogService.OpenAsync<QuoteForm>("Nueva Cotización",
+            options: new DialogOptions { Width = "1000px", Height = "auto", Resizable = true, Draggable = false, CloseDialogOnOverlayClick = false });
+        if (r == true) await LoadData();
     }
 
-    private async Task ShowEditModal(int quoteId)
+    private async Task ShowEditModal(int id)
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "QuoteId", quoteId }
-        };
-
-        var result = await DialogService.OpenAsync<QuoteForm>("Editar Cotización",
-            parameters,
-            new DialogOptions()
-            {
-                Width = "1000px",
-                Height = "auto",
-                Resizable = true,
-                Draggable = false,
-                CloseDialogOnOverlayClick = false
-            });
-
-        if (result == true)
-        {
-            await LoadData();
-        }
+        var r = await DialogService.OpenAsync<QuoteForm>("Editar Cotización",
+            new Dictionary<string, object> { { "QuoteId", id } },
+            new DialogOptions { Width = "1000px", Height = "auto", Resizable = true, Draggable = false, CloseDialogOnOverlayClick = false });
+        if (r == true) await LoadData();
     }
 
-    private void ViewQuoteDetails(int quoteId)
-    {
-        NavigationManager.NavigateTo($"/cotizaciones/{quoteId}");
-    }
+    private void ViewQuoteDetails(int id) => NavigationManager.NavigateTo($"/cotizaciones/{id}");
 
-    private async Task ConvertToInvoice(int quoteId)
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            { "QuoteId", quoteId }
-        };
-
-        var result = await DialogService.OpenAsync<InvoiceFromQuoteForm>(
-            "Crear Factura desde Cotización",
-            parameters,
-            new DialogOptions()
-            {
-                Width = "900px",
-                Height = "auto",
-                Resizable = true,
-                Draggable = false,
-                CloseDialogOnOverlayClick = false
-            });
-
-        if (result == true)
-        {
-            ShowNotification("Éxito",
-                "Factura creada correctamente desde cotización.",
-                NotificationSeverity.Success);
-
-            await LoadData();
-        }
-    }
-
-    private async Task DownloadPdf(int quoteId)
+    private async Task DownloadPdf(int id)
     {
         try
         {
-            var pdfBytes = await QuoteApiService.GenerateQuotePdfAsync(quoteId);
-            if (pdfBytes != null && pdfBytes.Length > 0)
+            var pdf = await QuoteApiService.GenerateQuotePdfAsync(id);
+            if (pdf?.Length > 0)
             {
-                var base64 = Convert.ToBase64String(pdfBytes);
-                var fileName = $"Cotizacion-{quoteId}.pdf";
-
-                await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64);
-
-                ShowNotification("Éxito", "PDF descargado correctamente.", NotificationSeverity.Success);
+                await JSRuntime.InvokeVoidAsync("downloadFile", $"Cotizacion-{id}.pdf", Convert.ToBase64String(pdf));
+                ShowNotification("Éxito", "PDF descargado.", NotificationSeverity.Success);
             }
-            else
-            {
-                ShowNotification("Error", "No se pudo generar el PDF.", NotificationSeverity.Error);
-            }
+            else ShowNotification("Error", "No se pudo generar el PDF.", NotificationSeverity.Error);
         }
-        catch (Exception ex)
-        {
-            ShowNotification("Error", $"Error al generar PDF: {ex.Message}", NotificationSeverity.Error);
-        }
+        catch (Exception ex) { ShowNotification("Error", ex.Message, NotificationSeverity.Error); }
     }
 
-    private async Task ConfirmDelete(QuoteDetailDto quote)
+    private async Task ConfirmDelete(QuoteDetailDto q)
     {
-        var confirmed = await DialogService.Confirm(
-            $"¿Está seguro que desea eliminar la cotización '{quote.QuoteNumber}'?",
-            "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
-
-        if (confirmed == true)
+        var ok = await DialogService.Confirm($"¿Eliminar '{q.QuoteNumber}'?", "Confirmar",
+            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
+        if (ok == true)
         {
-            await DeleteQuote(quote.Id);
-        }
-    }
-
-    private async Task DeleteQuote(int quoteId)
-    {
-        try
-        {
-            var result = await QuoteApiService.DeleteQuoteAsync(quoteId);
-            if (result.Success)
-            {
-                ShowNotification("Éxito", "Cotización eliminada correctamente.", NotificationSeverity.Success);
-                await LoadData();
-            }
-            else
-            {
-                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar la cotización.", NotificationSeverity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
+            var r = await QuoteApiService.DeleteQuoteAsync(q.Id);
+            if (r.Success) { ShowNotification("Éxito", "Eliminada.", NotificationSeverity.Success); await LoadData(); }
+            else ShowNotification("Error", r.ErrorMessage ?? "No se pudo eliminar.", NotificationSeverity.Error);
         }
     }
 
     private async Task ClearFilters()
     {
-        _searchText = string.Empty;
-        _statusFilter = string.Empty;
+        _searchText = _statusFilter = string.Empty;
         _clientFilter = 0;
         await LoadData();
     }
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
-        NotificationService.Notify(new NotificationMessage
-        {
-            Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
-        });
-    }
-
-    private IEnumerable<QuoteDetailDto> _sortedQuotes => ApplySort(_filteredQuotes);
+    private void ShowNotification(string t, string m, NotificationSeverity s)
+        => NotificationService.Notify(new NotificationMessage { Severity = s, Summary = t, Detail = m, Duration = 5000 });
 
     private IEnumerable<QuoteDetailDto> ApplySort(IEnumerable<QuoteDetailDto> q)
-    {
-        return (_sortField, _sortDir) switch
+        => (_sortField, _sortDir) switch
         {
             ("number", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.QuoteNumber),
             ("number", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.QuoteNumber),
-
             ("client", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ClientName),
             ("client", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ClientName),
-
             ("createdAt", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CreatedAt),
             ("createdAt", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedAt),
-
             ("validUntil", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ValidUntil ?? DateTime.MaxValue),
             ("validUntil", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ValidUntil ?? DateTime.MinValue),
-
             ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Status),
             ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
-
             ("total", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Total),
             ("total", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Total),
-
             ("createdBy", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CreatedByUserName),
             ("createdBy", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedByUserName),
-
             _ => q.OrderByDescending(x => x.CreatedAt),
         };
-    }
-
 }

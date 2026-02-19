@@ -1,16 +1,15 @@
 ﻿@inherits LayoutComponentBase
-
 <HeadContent>
     <RadzenTheme Theme="material" />
 </HeadContent>
-
 <main class="auth-bg">
+    <div style="position:fixed; top:16px; left:16px; z-index:999;">
+        <ThemeToggle />
+    </div>
     @Body
 </main>
-
 <RadzenComponents />
 <RadzenNotification />
-
 <style>
     .auth-bg {
         min-height: 100vh;

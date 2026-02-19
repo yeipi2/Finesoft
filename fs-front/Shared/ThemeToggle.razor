@@ -1,0 +1,32 @@
+﻿@using MyThemeService = fs_front.Services.ThemeService
+
+@inject MyThemeService ThemeService
+
+<button class="theme-toggle" @onclick="ToggleTheme" title="Cambiar tema">
+    @if (ThemeService.IsDarkMode)
+    {
+        <i class="bi bi-sun-fill"></i>
+    }
+    else
+    {
+        <i class="bi bi-moon-stars-fill"></i>
+    }
+</button>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ThemeService.InitializeAsync();
+        ThemeService.OnThemeChanged += StateHasChanged;
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleThemeAsync();
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= StateHasChanged;
+    }
+}

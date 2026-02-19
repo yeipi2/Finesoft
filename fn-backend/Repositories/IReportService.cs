@@ -13,4 +13,5 @@ public interface IReportService
     Task<List<RevenueTrendDto>> GetRevenueTrendAsync(int months);
     Task<List<TicketStatusChartDto>> GetTicketsByStatusAsync();
     Task<List<TopClientDto>> GetTopClientsAsync(int top);
+    Task<PublicStatsDto> GetPublicStatsAsync();
 }

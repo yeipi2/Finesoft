@@ -11,31 +11,27 @@
 </HeadContent>
 
 <div class="fs-appshell">
-    <!-- TOPBAR -->
     <header class="fs-topbar bg-white">
         <div class="fs-topbar__inner px-3">
             <div class="fs-topbar__left">
-                <button type="button" class="btn btn-light border fs-topbar__toggle" @onclick="ToggleSidebar"
-                        title="Menú">
+                <button type="button" class="btn btn-light border fs-topbar__toggle"
+                        @onclick="ToggleSidebar" title="Menú">
                     <i class="bi bi-list"></i>
                 </button>
-
                 <a class="d-flex align-items-center gap-2 text-decoration-none">
-                    <img src="images/LogoFinesoft.png" alt="Logo de Finesoft" style="height:50px;" />
+                    <img src="images/LogoFinesoftt.png" alt="Logo de Finesoft" style="height:50px;" />
                 </a>
             </div>
 
-            <div class="fs-topbar__right">
+            <div class="fs-topbar__right d-flex align-items-center gap-2">
+                <ThemeToggle />
                 <NavBar />
             </div>
         </div>
-
     </header>
 
-    <!-- BODY: SIDEBAR + CONTENT -->
     <div class="fs-content @(_sidebarCollapsed ? "is-collapsed" : "")">
         <SideBar Collapsed="@_sidebarCollapsed" />
-
         <main class="fs-main">
             @Body
         </main>
