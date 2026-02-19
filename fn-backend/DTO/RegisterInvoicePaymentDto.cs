@@ -1,11 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace fs_backend.DTO;
 
-public class InvoicePaymentDto
+public class RegisterInvoicePaymentDto
 {
-    public int? Id { get; set; }
-
     [Required(ErrorMessage = "El monto es obligatorio")]
     [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a 0")]
     public decimal Amount { get; set; }
@@ -19,13 +18,6 @@ public class InvoicePaymentDto
     public string Reference { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
 
-    public string? RecordedByUserId { get; set; }
-    public string? RecordedByUserName { get; set; }
-
-    public string? ReceiptPath { get; set; }
-    public string? ReceiptFileName { get; set; }
-    public string? ReceiptContentType { get; set; }
-    public long? ReceiptSize { get; set; }
-    public DateTime? ReceiptUploadedAt { get; set; }
-
+    // ✅ Archivo (pdf/jpg/png)
+    public IFormFile? Receipt { get; set; }
 }

@@ -1,4 +1,5 @@
 ﻿using fs_front.DTO;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace fs_front.Services;
 
@@ -15,5 +16,15 @@ public interface IInvoiceApiService
     Task<(bool Success, string? ErrorMessage)> GenerateMonthlyInvoicesAsync();
     Task<InvoiceStatsDto?> GetInvoiceStatsAsync();
     Task<byte[]?> GenerateInvoicePdfAsync(int id);
+<<<<<<< HEAD
     Task<List<int>?> GetTicketsInUseAsync();
+=======
+    Task<(bool Success, InvoicePaymentDto? AddedPayment, string? ErrorMessage)> AddPaymentWithReceiptAsync(
+        int invoiceId,
+        InvoicePaymentDto payment,
+        IBrowserFile receiptFile
+    );
+
+
+>>>>>>> 9d28ed7 (feat(invoices): implement payments module with receipt upload, persistence and download link)
 }

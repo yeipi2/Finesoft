@@ -138,6 +138,8 @@ app.MapHub<QuotesHub>("/hubs/quotes");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseStaticFiles();
+
 app.MapControllers();
 app.MapIdentityApi<IdentityUser>();
 

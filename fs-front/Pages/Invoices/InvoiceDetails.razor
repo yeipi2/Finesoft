@@ -249,6 +249,7 @@
                                             <th>Referencia</th>
                                             <th class="text-end">Monto</th>
                                             <th>Registrado por</th>
+                                            <th>Comprobante</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -261,6 +262,22 @@
                                                 <td class="text-end"><strong
                                                     class="text-success">@payment.Amount.ToString("C")</strong></td>
                                                     <td>@payment.RecordedByUserName</td>
+                                                <td>
+                                                @if (!string.IsNullOrWhiteSpace(payment.ReceiptPath))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-primary"
+                                                    href="@($"{ApiBaseUrl}{payment.ReceiptPath}")"
+                                                    target="_blank"
+                                                    download>
+                                                        <i class="bi bi-download"></i> Descargar
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+</td>
+
                                                 </tr>
                                             }
                                         </tbody>
@@ -446,12 +463,15 @@
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject HttpClient Http
 
 @code {
     [Parameter] public int InvoiceId { get; set; }
 
     private InvoiceDetailDto? _invoice;
     private bool _isLoading = true;
+    private string ApiBaseUrl => Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -477,8 +497,25 @@
 
     private async Task OpenAddPaymentDialog()
     {
-        ShowNotification("Info", "Funcionalidad de pago en desarrollo", NotificationSeverity.Info);
+        if (_invoice == null) return;
+
+        var result = await DialogService.OpenAsync<fs_front.Components.Invoices.InvoicePaymentDialog>(
+            "Registrar Pago",
+            new Dictionary<string, object> { { "InvoiceId", _invoice.Id } },
+            new DialogOptions
+            {
+                Width = "640px",
+                CloseDialogOnOverlayClick = false,
+                Draggable = false
+            });
+
+        if (result == true)
+        {
+            await LoadInvoiceDetails();
+            StateHasChanged();
+        }
     }
+
 
     private async Task OpenEditDialog(int invoiceId)
     {
