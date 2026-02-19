@@ -1,0 +1,77 @@
+﻿@* fs-front/Components/Clients/Form/AccessDataSection.razor *@
+@using fs_front.DTO
+
+<AccordionSection Title="Datos de Acceso al Sistema"
+                  IconClass="bi-lock"
+                  IsComplete="@IsComplete"
+                  IsExpanded="@IsExpanded"
+                  OnToggle="@OnToggle">
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label for="Email" class="form-label small fw-bold">
+                Email / Usuario <span class="text-danger">*</span>
+            </label>
+            <InputText id="Email"
+                       type="email"
+                       class="form-control form-control-sm"
+                       placeholder="correo@empresa.com"
+                       @bind-Value="Model.Email"
+                       @bind-Value:after="OnValidate" />
+            <small class="text-muted">Este será el usuario de acceso al sistema</small>
+            @if (ValidationErrors.ContainsKey("Email"))
+            {
+                <div class="text-danger small mt-1">
+                    <i class="bi bi-exclamation-circle me-1"></i>@ValidationErrors["Email"]
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            <label for="Password" class="form-label small fw-bold">
+                Contraseña <span class="text-danger">*</span>
+            </label>
+            <div class="input-group input-group-sm">
+                <InputText id="Password"
+                           type="@(ShowPassword ? "text" : "password")"
+                           class="form-control"
+                           placeholder="Mínimo 8 caracteres"
+                           @bind-Value="Model.Password"
+                           @oninput="OnPasswordInput" />
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        @onclick="TogglePasswordVisibility"
+                        tabindex="-1">
+                    <i class="bi @(ShowPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                </button>
+            </div>
+            <small class="text-muted d-block mt-1">
+                Debe contener: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial
+            </small>
+            @if (ValidationErrors.ContainsKey("Password"))
+            {
+                <div class="text-danger small mt-1">
+                    <i class="bi bi-exclamation-circle me-1"></i>@ValidationErrors["Password"]
+                </div>
+            }
+        </div>
+    </div>
+
+</AccordionSection>
+
+@code {
+    [Parameter] public ClientDto Model { get; set; } = new();
+    [Parameter] public Dictionary<string, string> ValidationErrors { get; set; } = new();
+    [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public bool IsExpanded { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+    [Parameter] public Action? OnValidate { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnPasswordInput { get; set; }
+
+    private bool ShowPassword { get; set; }
+
+    private void TogglePasswordVisibility()
+    {
+        ShowPassword = !ShowPassword;
+    }
+}

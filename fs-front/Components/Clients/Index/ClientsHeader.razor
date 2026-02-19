@@ -1,0 +1,22 @@
+﻿@* fs-front/Components/Clients/Index/ClientsHeader.razor *@
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-people fs-1 text-primary me-3"></i>
+        <div>
+            <p class="display-6 fw-bolder mb-2">Clientes Registrados</p>
+            <p class="text-muted mb-0">Lista de todos los clientes con sus modalidades de servicio</p>
+        </div>
+    </div>
+    @if (CanCreate)
+    {
+        <button @onclick="OnCreateClick" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+            <i class="bi bi-plus-lg"></i> Nuevo Cliente
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public bool CanCreate { get; set; }
+    [Parameter] public EventCallback OnCreateClick { get; set; }
+}

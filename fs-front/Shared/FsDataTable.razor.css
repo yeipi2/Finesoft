@@ -63,8 +63,8 @@ table.fs-table tbody td{
   border-top: 1px solid rgba(15,23,42,.06);
 }
 
-table.fs-table tbody tr:hover{
-  background: rgba(59,130,246,.06); /* hover suave */
+table.fs-table tbody tr:hover {
+  background: rgba(59, 130, 246, .06);
 }
 
 .fs-table-loading,

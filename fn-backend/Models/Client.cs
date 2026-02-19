@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace fn_backend.Models;
 
@@ -46,4 +47,8 @@ public class Client
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
+
+    // Models/Client.cs
+    [InverseProperty("Client")]  // ⭐ AGREGAR ESTO
+    public ICollection<Project>? Projects { get; set; }
 }

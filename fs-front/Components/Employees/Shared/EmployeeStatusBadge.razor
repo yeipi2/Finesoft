@@ -1,0 +1,7 @@
+﻿<span class="badge @(IsActive ? "bg-success" : "bg-secondary")">
+    @(IsActive ? "Activo" : "Inactivo")
+</span>
+
+@code {
+    [Parameter] public bool IsActive { get; set; }
+}

@@ -16,4 +16,5 @@ public interface IInvoiceService
     Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId);
     Task<InvoiceStatsDto> GetInvoiceStatsAsync();
     Task<byte[]> GenerateInvoicePdfAsync(int id);
+    Task<List<int>> GetTicketsInUseAsync();
 }

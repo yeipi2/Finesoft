@@ -1,0 +1,95 @@
+﻿@using fs_front.DTO
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="headingWork">
+        <button class="accordion-button collapsed @(IsComplete ? "" : "text-danger")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseWork"
+                aria-expanded="false"
+                aria-controls="collapseWork"
+                @onclick="OnToggle">
+            <i class="bi bi-briefcase me-2"></i>
+            <strong>Datos Laborales</strong>
+            @if (!IsComplete)
+            {
+                <span class="badge bg-danger ms-2">Incompleto</span>
+            }
+            else
+            {
+                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+            }
+        </button>
+    </h2>
+    <div id="collapseWork"
+         class="accordion-collapse collapse @(IsExpanded ? "show" : "")"
+         aria-labelledby="headingWork">
+        <div class="accordion-body">
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <label for="Position" class="form-label small fw-bold">
+                        Puesto <span class="text-danger">*</span>
+                    </label>
+                    <InputText id="Position"
+                               class="form-control form-control-sm"
+                               placeholder="Desarrollador, Gerente, etc."
+                               Value="@Employee.Position"
+                               ValueChanged="@(v => { Employee.Position = v; OnChanged?.Invoke(); })"
+                               ValueExpression="@(() => Employee.Position)" />
+                    <ValidationMessage For="@(() => Employee.Position)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="Department" class="form-label small fw-bold">Departamento</label>
+                    <InputText id="Department"
+                               class="form-control form-control-sm"
+                               placeholder="TI, Ventas, RRHH, etc."
+                               @bind-Value="Employee.Department" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="HireDate" class="form-label small fw-bold">
+                        Fecha de Contratación <span class="text-danger">*</span>
+                    </label>
+                    <InputDate id="HireDate"
+                               class="form-control form-control-sm"
+                               Value="@Employee.HireDate"
+                               ValueChanged="@((DateTime v) => { Employee.HireDate = v; OnChanged?.Invoke(); })"
+                               ValueExpression="@(() => Employee.HireDate)" />
+                    <ValidationMessage For="@(() => Employee.HireDate)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="Salary" class="form-label small fw-bold">Salario (Mensual MXN)</label>
+                    <InputNumber id="Salary"
+                                 class="form-control form-control-sm"
+                                 placeholder="0.00"
+                                 @bind-Value="Employee.Salary" />
+                    <small class="text-muted">Campo opcional y confidencial</small>
+                    <ValidationMessage For="@(() => Employee.Salary)" />
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <InputCheckbox id="IsActive"
+                                       class="form-check-input"
+                                       @bind-Value="Employee.IsActive" />
+                        <label class="form-check-label small fw-bold" for="IsActive">
+                            Empleado Activo
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EmployeeDto Employee { get; set; } = new();
+    [Parameter] public bool IsExpanded { get; set; }
+    [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public Action? OnChanged { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+}

@@ -1,321 +1,483 @@
 ﻿@using fs_front.DTO
 @using System.Globalization
 
-<section class="container-fluid px-3 py-2">
-    <EditForm Model="_invoiceDto" OnValidSubmit="HandleSubmit">
-        <DataAnnotationsValidator />
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label for="ClientSearch" class="form-label fw-bold small">Cliente *</label>
-                @if (_isLoadingClients)
-                {
-                    <div class="d-flex align-items-center">
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span>Cargando clientes...</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="position-relative">
-                        <input type="text" class="form-control" id="ClientSearch" placeholder="Buscar cliente por nombre..."
-                               value="@_clientSearchText" @oninput="OnClientSearchInput" @onkeydown="OnKeyDown"
-                               @onfocus="OnClientFocus" @onblur="OnClientBlur" autocomplete="off" />
-
-                        @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
-                        {
-                            <div class="autocomplete-dropdown">
-                                @foreach (var client in _filteredClients.Take(10))
-                                {
-                                    <div class="autocomplete-item" @onmousedown="@(() => SelectClient(client))"
-                                         @onmousedown:preventDefault>
-                                        @client.CompanyName
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-
-                    @if (_invoiceDto.ClientId > 0 && _selectedClient != null)
-                    {
-                        <small class="text-success mt-1 d-block">
-                            ✓ Cliente seleccionado: <strong>@_selectedClient.CompanyName</strong>
-                        </small>
-                    }
-
-                    @if (_invoiceDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
-                    {
-                        <div class="form-text text-danger mt-1">
-                            <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
-                        </div>
-                    }
-                }
-                <ValidationMessage For="@(() => _invoiceDto.ClientId)" />
-            </div>
-
-            <div class="col-md-6">
-                <label for="InvoiceType" class="form-label fw-bold small">Tipo de Factura *</label>
-                <select id="InvoiceType" class="form-select" @bind="_invoiceDto.InvoiceType">
-                    <option value="Event">Por Evento</option>
-                    <option value="Monthly">Mensual</option>
-                </select>
-            </div>
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center p-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
         </div>
+        <span class="ms-3 fs-5">Cargando datos de la factura...</span>
+    </div>
+}
+else
+{
+    <div style="max-width: 1000px; margin: 0 auto;">
+        <EditForm Model="_invoiceDto" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
 
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <label for="InvoiceDate" class="form-label fw-bold small">Fecha de Factura</label>
-                <InputDate id="InvoiceDate" class="form-control" @bind-Value="_invoiceDto.InvoiceDate" />
-            </div>
+            @* ========== ALERTAS DE VALIDACIÓN ========== *@
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                </div>
+            }
 
-            <div class="col-md-4">
-                <label for="DueDate" class="form-label fw-bold small">Fecha de Vencimiento</label>
-                <InputDate id="DueDate" class="form-control" @bind-Value="_invoiceDto.DueDate" />
-            </div>
+            @* ========== ACORDEÓN DE SECCIONES ========== *@
+            <div class="accordion mb-3" id="invoiceAccordion">
 
-            <div class="col-md-4">
-                <label for="Status" class="form-label fw-bold small">Estado *</label>
-                <select id="Status" class="form-select" @bind="_invoiceDto.Status" disabled="@(!_isEditMode)">
-                    <option value="Borrador">Borrador</option>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="Pagada">Pagada</option>
-                    <option value="Vencida">Vencida</option>
-                    <option value="Cancelada">Cancelada</option>
-                </select>
+                @* ========== SECCIÓN 1: INFORMACIÓN GENERAL (TODO EN UNO) ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingGeneral">
+                        <button class="accordion-button @(_section1Complete ? "" : "text-danger")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseGeneral"
+                                aria-expanded="true"
+                                aria-controls="collapseGeneral"
+                                @onclick="() => ToggleSection(1)">
+                            <i class="bi bi-receipt me-2"></i>
+                            <strong>Información General</strong>
+                            @if (!_section1Complete)
+                            {
+                                <span class="badge bg-danger ms-2">Incompleto</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                            }
+                        </button>
+                    </h2>
+                    <div id="collapseGeneral"
+                         class="accordion-collapse collapse @(_activeSection == 1 ? "show" : "")"
+                         aria-labelledby="headingGeneral">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                @* Cliente *@
+                                <div class="col-md-6">
+                                    <label for="ClientSearch" class="form-label small fw-bold">
+                                        Cliente <span class="text-danger">*</span>
+                                    </label>
+                                    @if (_isLoadingClients)
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                            <span>Cargando clientes...</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="position-relative">
+                                            <input type="text"
+                                                   class="form-control form-control-sm"
+                                                   id="ClientSearch"
+                                                   placeholder="Buscar cliente por nombre..."
+                                                   value="@_clientSearchText"
+                                                   @oninput="OnClientSearchInput"
+                                                   @onkeydown="OnKeyDown"
+                                                   @onfocus="OnClientFocus"
+                                                   @onblur="OnClientBlur"
+                                                   autocomplete="off" />
 
-                @if (!_isEditMode)
-                {
-                    <small class="text-muted">Al crear, la factura inicia como <strong>Borrador</strong>.</small>
-                }
-            </div>
+                                            @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
+                                            {
+                                                <div class="autocomplete-dropdown">
+                                                    @foreach (var client in _filteredClients.Take(10))
+                                                    {
+                                                        <div class="autocomplete-item"
+                                                             @onmousedown="@(() => SelectClient(client))"
+                                                             @onmousedown:preventDefault>
+                                                            @client.CompanyName
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
 
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-12">
-                <label for="PaymentMethod" class="form-label fw-bold small">Método de Pago</label>
-                <select id="PaymentMethod" class="form-select" @bind="_invoiceDto.PaymentMethod">
-                    <option value="">-- Selecciona un método --</option>
-                    @foreach (var pm in _paymentMethods)
-                    {
-                        <option value="@pm">@pm</option>
-                    }
-                </select>
-                <small class="text-muted">Si no aplica todavía, puedes dejarlo vacío.</small>
-            </div>
-        </div>
-
-
-        <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <label class="form-label fw-bold small mb-0">Artículos de la Factura</label>
-                <button type="button" class="btn btn-sm btn-primary" @onclick="AddItem">
-                    <i class="bi bi-plus-lg"></i> Agregar Artículo
-                </button>
-            </div>
-
-            <div class="border rounded p-3 mb-3 bg-light" style="max-height: 280px; overflow-y: auto;">
-                @if (!_invoiceDto.Items.Any())
-                {
-                    <div class="text-center text-muted py-3">
-                        <i class="bi bi-inbox fs-3"></i>
-                        <p class="mb-0 mt-2">No hay artículos. Agregue al menos uno.</p>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var (item, index) in _invoiceDto.Items.Select((item, i) => (item, i)))
-                    {
-                        <div class="card mb-2 shadow-sm">
-                            <div class="card-body p-2">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="mb-0 text-primary small">
-                                        <i class="bi bi-card-list me-1"></i>
-                                        Artículo #@(index + 1)
-                                    </h6>
-                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
-                                            @onclick="() => RemoveItem(index)" title="Eliminar artículo">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-
-                                <div class="row g-2">
-                                    <div class="col-md-12">
-                                        <label class="form-label small mb-1">Descripción *</label>
-                                        <InputText class="form-control form-control-sm" @bind-Value="item.Description"
-                                                   placeholder="Descripción del servicio o producto" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label small mb-1">Cantidad *</label>
-                                        <InputNumber class="form-control form-control-sm" @bind-Value="item.Quantity"
-                                                     @bind-Value:after="RecalculateTotals" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label small mb-1">Precio Unitario *</label>
-                                        <InputNumber class="form-control form-control-sm" @bind-Value="item.UnitPrice"
-                                                     @bind-Value:after="RecalculateTotals" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label small mb-1">Subtotal</label>
-                                        <input type="text" class="form-control form-control-sm bg-white"
-                                               value="@FormatCurrency(item.Quantity * item.UnitPrice)" readonly />
-                                    </div>
-
-                                    @* ⭐ BUSCADOR DE TICKETS CON AUTOCOMPLETADO *@
-                                    <div class="col-md-12">
-                                        <label class="form-label small mb-1">
-                                            Ticket Asociado (Opcional)
-                                            <i class="bi bi-info-circle text-muted"
-                                               title="Buscar por #ID, título o cliente"></i>
-                                        </label>
-
-                                        @if (_isLoadingTickets)
+                                        @if (_invoiceDto.ClientId > 0 && _selectedClient != null)
                                         {
-                                            <div class="d-flex align-items-center">
-                                                <span class="spinner-border spinner-border-sm me-2"></span>
-                                                <span class="small">Cargando tickets...</span>
-                                            </div>
-                                        }
-                                        else if (_availableTickets == null || !_availableTickets.Any())
-                                        {
-                                            <input type="text" class="form-control form-control-sm"
-                                                   value="-- No hay tickets disponibles --" disabled />
-                                            <small class="text-muted">
-                                                <i class="bi bi-exclamation-circle"></i>
-                                                Solo se pueden asociar tickets cerrados sin cotización
+                                            <small class="text-success mt-1 d-block">
+                                                ✓ Cliente seleccionado: <strong>@_selectedClient.CompanyName</strong>
                                             </small>
                                         }
-                                        else
+
+                                        @if (_invoiceDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
                                         {
-                                            <div class="position-relative">
-                                                <input type="text" class="form-control form-control-sm"
-                                                       placeholder="Buscar ticket por #ID, título o cliente..."
-                                                       value="@GetTicketSearchText(item)"
-                                                       @oninput="@(e => OnTicketSearchInput(e, item, index))"
-                                                       @onfocus="@(() => OnTicketFocus(index))" @onblur="@(() => OnTicketBlur(index))"
-                                                       @onkeydown="OnKeyDown" autocomplete="off" />
-
-                                                @if (IsTicketSuggestionsVisible(index) && GetFilteredTickets(item, index).Any())
-                                                {
-                                                    <div class="autocomplete-dropdown">
-                                                        @foreach (var ticket in GetFilteredTickets(item, index).Take(8))
-                                                        {
-                                                            <div class="autocomplete-item"
-                                                                 @onmousedown="@(() => SelectTicket(item, ticket, index))"
-                                                                 @onmousedown:preventDefault>
-                                                                <div class="d-flex justify-content-between align-items-start">
-                                                                    <div class="flex-grow-1">
-                                                                        <strong class="text-primary">#@ticket.Id</strong> - @ticket.Title
-                                                                        <br />
-                                                                        <small class="text-muted">
-                                                                            <i class="bi bi-building"></i> @ticket.ClientName |
-                                                                            <i class="bi bi-clock"></i> @ticket.ActualHours.ToString("0.0")h
-                                                                        </small>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                }
+                                            <div class="form-text text-danger mt-1">
+                                                <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
                                             </div>
-
-                                            @* Mostrar ticket seleccionado *@
-                                            @if (item.TicketId.HasValue && item.TicketId.Value > 0)
-                                            {
-                                                var selectedTicket = _availableTickets.FirstOrDefault(t => t.Id == item.TicketId.Value);
-                                                if (selectedTicket != null)
-                                                {
-                                                    <div class="alert alert-success p-2 mt-2 mb-0">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <small>
-                                                                <i class="bi bi-check-circle-fill"></i>
-                                                                <strong>#@selectedTicket.Id - @selectedTicket.Title</strong><br />
-                                                                Cliente: @selectedTicket.ClientName |
-                                                                Horas: @selectedTicket.ActualHours.ToString("0.0")h |
-                                                                Costo: $@((selectedTicket.ActualHours *
-                                                                                                                                                                                                                                            selectedTicket.HourlyRate).ToString("N2"))
-                                                            </small>
-                                                            <button type="button" class="btn btn-sm btn-link text-danger p-0"
-                                                                    @onclick="() => ClearTicket(item, index)" title="Quitar ticket">
-                                                                <i class="bi bi-x-lg"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            }
-                                            else if (!string.IsNullOrEmpty(GetTicketSearchText(item)))
-                                            {
-                                                <small class="text-warning d-block mt-1">
-                                                    <i class="bi bi-exclamation-triangle"></i>
-                                                    Debe seleccionar un ticket de la lista o dejar vacío
-                                                </small>
-                                            }
                                         }
-                                    </div>
+                                    }
+                                </div>
+
+                                @* Tipo de Factura *@
+                                <div class="col-md-6">
+                                    <label for="InvoiceType" class="form-label small fw-bold">
+                                        Tipo de Factura <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="InvoiceType"
+                                            class="form-select form-select-sm"
+                                            @bind="_invoiceDto.InvoiceType"
+                                            @bind:after="ValidateSections">
+                                        <option value="Event">Por Evento</option>
+                                        <option value="Monthly">Mensual</option>
+                                    </select>
+                                </div>
+
+                                @* Fecha de Factura *@
+                                <div class="col-md-4">
+                                    <label for="InvoiceDate" class="form-label small fw-bold">
+                                        Fecha de Factura <span class="text-danger">*</span>
+                                    </label>
+                                    <InputDate id="InvoiceDate"
+                                               class="form-control form-control-sm"
+                                               @bind-Value="_invoiceDto.InvoiceDate"
+                                               @bind-Value:after="ValidateSections" />
+                                </div>
+
+                                @* Fecha de Vencimiento *@
+                                <div class="col-md-4">
+                                    <label for="DueDate" class="form-label small fw-bold">
+                                        Fecha de Vencimiento <span class="text-danger">*</span>
+                                    </label>
+                                    <InputDate id="DueDate"
+                                               class="form-control form-control-sm"
+                                               @bind-Value="_invoiceDto.DueDate"
+                                               @bind-Value:after="ValidateSections" />
+                                </div>
+
+                                @* Estado *@
+                                <div class="col-md-4">
+                                    <label for="Status" class="form-label small fw-bold">
+                                        Estado <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="Status"
+                                            class="form-select form-select-sm"
+                                            @bind="_invoiceDto.Status"
+                                            disabled="@(!_isEditMode)"
+                                            @bind:after="ValidateSections">
+                                        <option value="Borrador">Borrador</option>
+                                        <option value="Pendiente">Pendiente</option>
+                                        <option value="Pagada">Pagada</option>
+                                        <option value="Vencida">Vencida</option>
+                                        <option value="Cancelada">Cancelada</option>
+                                    </select>
+
+                                    @if (!_isEditMode)
+                                    {
+                                        <small class="text-muted d-block mt-1">
+                                            Al crear, la factura inicia como <strong>Borrador</strong>
+                                        </small>
+                                    }
+                                </div>
+
+                                @* Método de Pago *@
+                                <div class="col-12">
+                                    <label for="PaymentMethod" class="form-label small fw-bold">
+                                        Método de Pago
+                                    </label>
+                                    <select id="PaymentMethod"
+                                            class="form-select form-select-sm"
+                                            @bind="_invoiceDto.PaymentMethod">
+                                        <option value="">-- Selecciona un método --</option>
+                                        @foreach (var pm in _paymentMethods)
+                                        {
+                                            <option value="@pm">@pm</option>
+                                        }
+                                    </select>
+                                    <small class="text-muted">
+                                        Si no aplica todavía, puedes dejarlo vacío
+                                    </small>
                                 </div>
                             </div>
-                        </div>
-                    }
-                }
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
-            <InputTextArea id="Notes" class="form-control" rows="2"
-                           placeholder="Términos de pago, condiciones adicionales..." @bind-Value="_invoiceDto.Notes" />
-        </div>
-
-        <div class="card bg-light border-primary mb-3">
-            <div class="card-body p-2">
-                <div class="row justify-content-end">
-                    <div class="col-md-5 col-lg-4">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">Subtotal:</span>
-                            <strong class="small">@FormatCurrency(_calculatedSubtotal)</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">IVA (16%):</span>
-                            <strong class="small">@FormatCurrency(_calculatedTax)</strong>
-                        </div>
-                        <hr class="my-1" />
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold">Total:</span>
-                            <strong class="text-success h5 mb-0">@FormatCurrency(_calculatedTotal)</strong>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-secondary" @onclick="Cancel">
-                <i class="bi bi-x-lg me-1"></i>
-                Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary"
-                    disabled="@(_isSaving || !_invoiceDto.Items.Any() || _invoiceDto.ClientId == 0)">
-                @if (_isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                }
-                <i class="bi bi-check-lg me-1"></i>
-                @(_isEditMode ? "Actualizar" : "Crear") Factura
-            </button>
-        </div>
+                @* ========== SECCIÓN 2: ARTÍCULOS ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingItems">
+                        <button class="accordion-button collapsed @(_section2Complete ? "" : "text-danger")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseItems"
+                                aria-expanded="false"
+                                aria-controls="collapseItems"
+                                @onclick="() => ToggleSection(2)">
+                            <i class="bi bi-list-ul me-2"></i>
+                            <strong>Artículos de la Factura</strong>
+                            @if (!_section2Complete)
+                            {
+                                <span class="badge bg-danger ms-2">Incompleto</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                            }
+                        </button>
+                    </h2>
+                    <div id="collapseItems"
+                         class="accordion-collapse collapse @(_activeSection == 2 ? "show" : "")"
+                         aria-labelledby="headingItems">
+                        <div class="accordion-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small text-muted">
+                                    @_invoiceDto.Items.Count artículo(s) agregado(s)
+                                </span>
+                                <button type="button" class="btn btn-sm btn-primary" @onclick="AddItem">
+                                    <i class="bi bi-plus-lg"></i> Agregar Artículo
+                                </button>
+                            </div>
 
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-danger mt-2 py-2">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                @_errorMessage
+                            <div class="border rounded p-3 bg-light" style="max-height: 400px; overflow-y: auto;">
+                                @if (!_invoiceDto.Items.Any())
+                                {
+                                    <div class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox fs-2"></i>
+                                        <p class="mb-0 mt-2">No hay artículos. Agregue al menos uno.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var (item, index) in _invoiceDto.Items.Select((item, i) => (item, i)))
+                                    {
+                                        <div class="card mb-2 shadow-sm">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <h6 class="mb-0 text-primary small">
+                                                        <i class="bi bi-card-list me-1"></i>
+                                                        Artículo #@(index + 1)
+                                                    </h6>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-danger py-0 px-2"
+                                                            @onclick="() => RemoveItem(index)"
+                                                            title="Eliminar artículo">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+
+                                                <div class="row g-2">
+                                                    <div class="col-md-12">
+                                                        <label class="form-label small mb-1">Descripción *</label>
+                                                        <InputText class="form-control form-control-sm"
+                                                                   @bind-Value="item.Description"
+                                                                   placeholder="Descripción del servicio o producto"
+                                                                   @bind-Value:after="ValidateSections" />
+                                                    </div>
+
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small mb-1">Cantidad *</label>
+                                                        <InputNumber class="form-control form-control-sm"
+                                                                     @bind-Value="item.Quantity"
+                                                                     @bind-Value:after="RecalculateTotals" />
+                                                    </div>
+
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small mb-1">Precio Unitario *</label>
+                                                        <InputNumber class="form-control form-control-sm"
+                                                                     @bind-Value="item.UnitPrice"
+                                                                     @bind-Value:after="RecalculateTotals" />
+                                                    </div>
+
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small mb-1">Subtotal</label>
+                                                        <input type="text"
+                                                               class="form-control form-control-sm bg-white"
+                                                               value="@FormatCurrency(item.Quantity * item.UnitPrice)"
+                                                               readonly />
+                                                    </div>
+
+                                                    @* ⭐ BUSCADOR DE TICKETS *@
+                                                    <div class="col-md-12">
+                                                        <label class="form-label small mb-1">
+                                                            Ticket Asociado (Opcional)
+                                                            <i class="bi bi-info-circle text-muted"
+                                                               title="Buscar por #ID, título o cliente"></i>
+                                                        </label>
+
+                                                        @if (_isLoadingTickets)
+                                                        {
+                                                            <div class="d-flex align-items-center">
+                                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                                                <span class="small">Cargando tickets...</span>
+                                                            </div>
+                                                        }
+                                                        else if (_availableTickets == null || !_availableTickets.Any())
+                                                        {
+                                                            <input type="text"
+                                                                   class="form-control form-control-sm"
+                                                                   value="-- No hay tickets disponibles --"
+                                                                   disabled />
+                                                            <small class="text-muted">
+                                                                <i class="bi bi-exclamation-circle"></i>
+                                                                Solo se pueden asociar tickets cerrados sin cotización
+                                                            </small>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="position-relative">
+                                                                <input type="text"
+                                                                       class="form-control form-control-sm"
+                                                                       placeholder="Buscar ticket por #ID, título o cliente..."
+                                                                       value="@GetTicketSearchText(item)"
+                                                                       @oninput="@(e => OnTicketSearchInput(e, item, index))"
+                                                                       @onfocus="@(() => OnTicketFocus(index))"
+                                                                       @onblur="@(() => OnTicketBlur(index))"
+                                                                       @onkeydown="OnKeyDown"
+                                                                       autocomplete="off" />
+
+                                                                @if (IsTicketSuggestionsVisible(index) && GetFilteredTickets(item, index).Any())
+                                                                {
+                                                                    <div class="autocomplete-dropdown">
+                                                                        @foreach (var ticket in GetFilteredTickets(item, index).Take(8))
+                                                                        {
+                                                                            <div class="autocomplete-item"
+                                                                                 @onmousedown="@(() => SelectTicket(item, ticket, index))"
+                                                                                 @onmousedown:preventDefault>
+                                                                                <div class="d-flex justify-content-between align-items-start">
+                                                                                    <div class="flex-grow-1">
+                                                                                        <strong class="text-primary">#@ticket.Id</strong> - @ticket.Title
+                                                                                        <br />
+                                                                                        <small class="text-muted">
+                                                                                            <i class="bi bi-building"></i> @ticket.ClientName |
+                                                                                            <i class="bi bi-clock"></i> @ticket.ActualHours.ToString("0.0")h
+                                                                                        </small>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+
+                                                            @if (item.TicketId.HasValue && item.TicketId.Value > 0)
+                                                            {
+                                                                var selectedTicket = _availableTickets.FirstOrDefault(t => t.Id == item.TicketId.Value);
+                                                                if (selectedTicket != null)
+                                                                {
+                                                                    <div class="alert alert-success p-2 mt-2 mb-0">
+                                                                        <div class="d-flex justify-content-between align-items-start">
+                                                                            <small>
+                                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                                <strong>#@selectedTicket.Id - @selectedTicket.Title</strong><br />
+                                                                                Cliente: @selectedTicket.ClientName |
+                                                                                Horas: @selectedTicket.ActualHours.ToString("0.0")h |
+                                                                                Costo: $@((selectedTicket.ActualHours * selectedTicket.HourlyRate).ToString("N2"))
+                                                                            </small>
+                                                                            <button type="button"
+                                                                                    class="btn btn-sm btn-link text-danger p-0"
+                                                                                    @onclick="() => ClearTicket(item, index)"
+                                                                                    title="Quitar ticket">
+                                                                                <i class="bi bi-x-lg"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            }
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            @* Resumen de Totales *@
+                            <div class="card bg-light border-primary mt-3">
+                                <div class="card-body p-3">
+                                    <div class="row justify-content-end">
+                                        <div class="col-md-6 col-lg-5">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="small">Subtotal:</span>
+                                                <strong class="small">@FormatCurrency(_calculatedSubtotal)</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="small">IVA (16%):</span>
+                                                <strong class="small">@FormatCurrency(_calculatedTax)</strong>
+                                            </div>
+                                            <hr class="my-2" />
+                                            <div class="d-flex justify-content-between">
+                                                <span class="fw-bold">Total:</span>
+                                                <strong class="text-success h5 mb-0">@FormatCurrency(_calculatedTotal)</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ========== SECCIÓN 3: NOTAS ADICIONALES ========== *@
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingNotes">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseNotes"
+                                aria-expanded="false"
+                                aria-controls="collapseNotes"
+                                @onclick="() => ToggleSection(3)">
+                            <i class="bi bi-sticky me-2"></i>
+                            <strong>Notas Adicionales</strong>
+                            <span class="badge bg-secondary ms-2">Opcional</span>
+                        </button>
+                    </h2>
+                    <div id="collapseNotes"
+                         class="accordion-collapse collapse @(_activeSection == 3 ? "show" : "")"
+                         aria-labelledby="headingNotes">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="Notes" class="form-label small fw-bold">
+                                        Notas
+                                    </label>
+                                    <InputTextArea id="Notes"
+                                                   class="form-control"
+                                                   rows="3"
+                                                   placeholder="Términos de pago, condiciones adicionales..."
+                                                   @bind-Value="_invoiceDto.Notes" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        }
-    </EditForm>
-</section>
+
+            @* ========== BOTONES DE ACCIÓN ========== *@
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    @if (!_allSectionsComplete)
+                    {
+                        <small class="text-danger">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            Complete las secciones obligatorias
+                        </small>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
+                        <i class="bi bi-x-lg me-1"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="btn btn-primary btn-sm"
+                            disabled="@(_isSaving || !_allSectionsComplete)">
+                        @if (_isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i>
+                        @(_isEditMode ? "Actualizar" : "Crear") Factura
+                    </button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+}
 
 <style>
     .autocomplete-dropdown {
@@ -341,13 +503,13 @@
         transition: background-color 0.15s ease;
     }
 
-    .autocomplete-item:hover {
-        background-color: #e7f3ff;
-    }
+        .autocomplete-item:hover {
+            background-color: #e7f3ff;
+        }
 
-    .autocomplete-item:last-child {
-        border-bottom: none;
-    }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
 
     .bg-light::-webkit-scrollbar {
         width: 8px;
@@ -363,9 +525,9 @@
         border-radius: 4px;
     }
 
-    .bg-light::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
+        .bg-light::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
 </style>
 
 @inject IInvoiceApiService InvoiceApiService
@@ -391,7 +553,6 @@
     private List<TicketDetailDto>? _availableTickets;
     private bool _isLoadingTickets = false;
 
-    // ⭐ Variables para el autocompletado de tickets
     private Dictionary<int, string> _ticketSearchTexts = new();
     private Dictionary<int, List<TicketDetailDto>> _filteredTicketsCache = new();
     private HashSet<int> _ticketSuggestionsVisible = new();
@@ -401,19 +562,31 @@
     private decimal _calculatedTotal = 0;
 
     private bool _isSaving = false;
+    private bool _isLoading = false;
     private bool _isLoadingClients = false;
     private string? _errorMessage;
     private bool _isEditMode => InvoiceId.HasValue;
 
     private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
 
+    // ⭐ Control de secciones del acordeón (SOLO 3 SECCIONES)
+    private int _activeSection = 1;
+    private bool _section1Complete = false;  // Información General (Cliente, Tipo, Fechas, Estado, Método Pago)
+    private bool _section2Complete = false;  // Artículos
+    // Sección 3 (Notas) es opcional, no se valida
+    private bool _allSectionsComplete => _section1Complete && _section2Complete;
+
     protected override async Task OnInitializedAsync()
     {
+        _isLoading = true;
+        StateHasChanged();
+
         await LoadInitialData();
 
         if (_isEditMode)
         {
             await LoadInvoice();
+            _activeSection = 1;
         }
         else
         {
@@ -427,6 +600,34 @@
         }
 
         RecalculateTotals();
+        ValidateSections();
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ToggleSection(int section)
+    {
+        _activeSection = section;
+    }
+
+    private void ValidateSections()
+    {
+        // Sección 1: Información General (Cliente + Tipo + Fechas + Estado)
+        _section1Complete = _invoiceDto.ClientId > 0 &&
+                           !string.IsNullOrWhiteSpace(_invoiceDto.InvoiceType) &&
+                           _invoiceDto.InvoiceDate != default &&
+                           _invoiceDto.DueDate != default &&
+                           !string.IsNullOrWhiteSpace(_invoiceDto.Status);
+
+        // Sección 2: Artículos (al menos 1 con descripción y cantidad/precio)
+        _section2Complete = _invoiceDto.Items.Any() &&
+                           _invoiceDto.Items.All(i =>
+                               !string.IsNullOrWhiteSpace(i.Description) &&
+                               i.Quantity > 0 &&
+                               i.UnitPrice >= 0);
+
+        StateHasChanged();
     }
 
     private string FormatCurrency(decimal amount)
@@ -446,8 +647,11 @@
             var servicesTask = ServiceApiService.GetServicesAsync();
             var ticketsTask = TicketApiService.GetTicketsAsync();
             var quotesTask = QuoteApiService.GetQuotesAsync();
+            var ticketsInUseTask = InvoiceApiService.GetTicketsInUseAsync();
 
-            await Task.WhenAll(clientsTask, servicesTask, ticketsTask, quotesTask);
+            await Task.WhenAll(clientsTask, servicesTask, ticketsTask, quotesTask, ticketsInUseTask);
+
+            var ticketsInInvoices = (await ticketsInUseTask)?.ToHashSet() ?? new HashSet<int>();
 
             _allClients = (await clientsTask) ?? new List<ClientDto>();
             _filteredClients = new List<ClientDto>();
@@ -456,11 +660,11 @@
             var allQuotes = await quotesTask;
 
             var ticketsInQuotes = allQuotes?
-            .SelectMany(q => q.Items)
-            .Where(item => item.TicketId.HasValue)
-            .Select(item => item.TicketId!.Value)
-            .Distinct()
-            .ToHashSet() ?? new HashSet<int>();
+                .SelectMany(q => q.Items)
+                .Where(item => item.TicketId.HasValue)
+                .Select(item => item.TicketId!.Value)
+                .Distinct()
+                .ToHashSet() ?? new HashSet<int>();
 
             var ticketsInCurrentInvoice = new HashSet<int>();
             if (_isEditMode && InvoiceId.HasValue)
@@ -469,20 +673,19 @@
                 if (currentInvoice != null)
                 {
                     ticketsInCurrentInvoice = currentInvoice.Items
-                    .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
-                    .Select(i => i.TicketId!.Value)
-                    .ToHashSet();
+                        .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
+                        .Select(i => i.TicketId!.Value)
+                        .ToHashSet();
                 }
             }
 
             _availableTickets = _allTickets?
-            .Where(t =>
-            t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true &&
-            (!ticketsInQuotes.Contains(t.Id) || ticketsInCurrentInvoice.Contains(t.Id)))
-            .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
-            .ToList() ?? new List<TicketDetailDto>();
-
-            Console.WriteLine($"✅ Tickets disponibles para factura: {_availableTickets.Count} de {_allTickets?.Count ?? 0} totales");
+                .Where(t =>
+                    t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true &&
+                    !ticketsInQuotes.Contains(t.Id) &&
+                    (!ticketsInInvoices.Contains(t.Id) || ticketsInCurrentInvoice.Contains(t.Id)))
+                .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
+                .ToList() ?? new List<TicketDetailDto>();
         }
         catch (Exception ex)
         {
@@ -538,7 +741,6 @@
                     }
                 }
 
-                // ⭐ Inicializar textos de búsqueda para tickets existentes
                 for (int i = 0; i < _invoiceDto.Items.Count; i++)
                 {
                     var item = _invoiceDto.Items[i];
@@ -566,7 +768,6 @@
         }
     }
 
-    // ⭐ MÉTODOS DE AUTOCOMPLETADO DE TICKETS
     private string GetTicketSearchText(InvoiceItemDto item)
     {
         var itemIndex = _invoiceDto.Items.IndexOf(item);
@@ -603,12 +804,12 @@
         else
         {
             var filtered = _availableTickets?
-            .Where(t =>
-            t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-            t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-            t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(t => t.Id)
-            .ToList() ?? new List<TicketDetailDto>();
+                .Where(t =>
+                    t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(t => t.Id)
+                .ToList() ?? new List<TicketDetailDto>();
 
             _filteredTicketsCache[index] = filtered;
             _ticketSuggestionsVisible.Add(index);
@@ -667,7 +868,6 @@
         StateHasChanged();
     }
 
-    // ⭐ MÉTODOS DE CLIENTES
     private void OnClientFocus()
     {
         if (!string.IsNullOrWhiteSpace(_clientSearchText))
@@ -697,13 +897,13 @@
         else
         {
             _filteredClients = _allClients
-            .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(c => c.CompanyName)
-            .ToList();
+                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.CompanyName)
+                .ToList();
             _showSuggestions = true;
 
             var exactMatch = _allClients.FirstOrDefault(c =>
-            c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
+                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
 
             if (exactMatch == null && _selectedClient != null)
             {
@@ -712,6 +912,7 @@
             }
         }
 
+        ValidateSections();
         StateHasChanged();
     }
 
@@ -730,6 +931,7 @@
         _invoiceDto.ClientId = client.Id ?? 0;
         _clientSearchText = client.CompanyName;
         _showSuggestions = false;
+        ValidateSections();
         StateHasChanged();
     }
 
@@ -747,6 +949,7 @@
         _filteredTicketsCache[index] = new List<TicketDetailDto>();
 
         RecalculateTotals();
+        ValidateSections();
     }
 
     private void RemoveItem(int index)
@@ -778,6 +981,7 @@
         _ticketSuggestionsVisible = newVisibleSet;
 
         RecalculateTotals();
+        ValidateSections();
     }
 
     private void RecalculateTotals()
@@ -804,7 +1008,6 @@
             {
                 item.TicketId = null;
             }
-            Console.WriteLine($"Item: {item.Description}, TicketId: {item.TicketId?.ToString() ?? "null"}");
         }
 
         _isSaving = true;
@@ -868,12 +1071,11 @@
     }
 
     private readonly List<string> _paymentMethods = new()
-{
-    "Transferencia",
-    "Efectivo",
-    "Tarjeta",
-    "Cheque",
-    "Depósito"
-};
-
+    {
+        "Transferencia",
+        "Efectivo",
+        "Tarjeta",
+        "Cheque",
+        "Depósito"
+    };
 }

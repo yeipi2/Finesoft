@@ -1,5 +1,7 @@
 ﻿@page "/clientes"
 @using fs_front.DTO
+@using fs_front.Components.Clients.Index
+@using fs_front.Components.Clients.Shared
 @inject IClientApiService ClientApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -10,140 +12,51 @@
 
 <PageTitle>Finesoft - Clientes</PageTitle>
 
-@* ── ESTADO: verificando acceso ── *@
 @if (_checkingAccess)
 {
-    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-        background:white;z-index:9999;
-        display:flex;align-items:center;justify-content:center;">
+    <div class="loading-overlay">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
-@* ── ESTADO: sin acceso (seguridad extra mientras redirige) ── *@
 else if (!_hasAccess)
 {
     <div></div>
 }
-@* ── ESTADO: contenido real ── *@
 else
 {
-    <container class="container p-4">
+    <div class="container p-4">
         <section class="container-fluid px-xl-5">
-            <div class="d-flex justify-content-between align-items-start mb-4">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-people fs-1 text-primary me-3"></i>
-                    <div>
-                        <p class="display-6 fw-bolder mb-2">Clientes Registrados</p>
-                        <p class="text-muted mb-0">Lista de todos los clientes con sus modalidades de servicio</p>
-                    </div>
-                </div>
-                @if (_canCreate)
-                {
-                    <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
-                        <i class="bi bi-plus-lg"></i> Nuevo Cliente
-                    </button>
-                }
-            </div>
-
+            <ClientsHeader CanCreate="@_canCreate" OnCreateClick="ShowCreateModal" />
         </section>
-        <section class="container-fluid px-xl-5 mb-4">
-            <FilterBar Class="mb-0" SearchPlaceholder="Buscar clientes..." SearchValue="@_searchText"
-                       SearchValueChanged="@(v => { _searchText = v; })" OnClear="ClearFilters">
 
+        <section class="container-fluid px-xl-5 mb-4">
+            <FilterBar Class="mb-0"
+                       SearchPlaceholder="Buscar clientes..."
+                       SearchValue="@_searchText"
+                       SearchValueChanged="@(v => _searchText = v)"
+                       OnClear="ClearFilters">
                 <Filters>
-                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
+                    <select class="form-select" @bind="_statusFilter">
                         <option value="Todos">Estados</option>
                         <option value="Activos">Activos</option>
                         <option value="Inactivos">Inactivos</option>
                     </select>
                 </Filters>
-
             </FilterBar>
         </section>
 
-
         <section class="container-fluid p-xl-5">
-            <FsDataTable TItem="ClientDto" Title="Clientes"
-                         Subtitle="Lista de todos los clientes con sus modalidades de servicio" Items="_sortedClients"
-                         IsLoading="_isLoading" ColSpan="7"
-                         EmptyTitle="@(_clients == null || !_clients.Any() ? "No hay clientes registrados" : "No se encontraron clientes")"
-                         EmptySubtitle="Prueba con otra búsqueda.">
-
-                <Header>
-                    <FsSortHeader Text="Empresa" Field="company" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" ThClass="ps-4" />
-                    <FsSortHeader Text="Contacto" Field="contact" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Email" Field="email" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Servicio" Field="service" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <th>Proyectos</th>
-                    <th class="text-center">Acciones</th>
-                </Header>
-
-                <RowTemplate Context="client">
-                    <tr>
-                        <td class="fw-bold ps-4">@client.CompanyName</td>
-
-                        <td>
-                            <div class="fw-bold">@client.ContactName</div>
-                            <div class="text-muted small">@client.Phone</div>
-                        </td>
-
-                        <td class="fw-bold">@client.Email</td>
-
-                        <td>
-                            @if (client.ServiceMode == "Póliza Mensual")
-                            {
-                                <div class="fw-bold">
-                                    <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
-                                    <div class="text-muted small">@client.MonthlyRate</div>
-                                </div>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-dark">@client.ServiceMode</span>
-                            }
-                        </td>
-
-                        <td>
-                            <span class="badge @(client.IsActive ? "bg-success" : "bg-secondary")">
-                                @(client.IsActive ? "Activo" : "Inactivo")
-                            </span>
-                        </td>
-
-                        <td>
-                            <span class="badge bg-primary">1 proyectos</span>
-                        </td>
-
-                        <td class="text-center">
-                            @if (_canEdit)
-                            {
-                                <button @onclick="@(() => ShowEditModal(client.Id))" class="btn btn-sm btn-outline-primary me-1"
-                                        title="Editar">
-                                    <i class="bi bi-pencil-fill"></i>
-                                </button>
-                            }
-                            @if (_canDelete)
-                            {
-                                <button @onclick="@(() => ToggleClientStatus(client))"
-                                        class="btn btn-sm @(client.IsActive ? "btn-outline-warning" : "btn-outline-success")"
-                                        title="@(client.IsActive ? "Desactivar" : "Activar")">
-
-                                    <i class="bi @(client.IsActive ? "bi-person-x-fill" : "bi-person-check-fill")"></i>
-                                </button>
-                            }
-
-                        </td>
-                    </tr>
-                </RowTemplate>
-
-            </FsDataTable>
+            <ClientsTable Clients="@_sortedClients"
+                          IsLoading="@_isLoading"
+                          CanEdit="@_canEdit"
+                          CanDelete="@_canDelete"
+                          SortField="@_sortField"
+                          SortDirection="@_sortDir"
+                          OnSortChanged="OnSortChanged"
+                          OnEdit="ShowEditModal"
+                          OnToggleStatus="ToggleClientStatus" />
         </section>
-    </container>
+    </div>
 }
 
 @code {
@@ -155,80 +68,21 @@ else
     private string _sortField = "company";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
-    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
-    {
-        _sortField = s.field;
-        _sortDir = s.dir;
-    }
-
-    private IEnumerable<ClientDto> _sortedClients => ApplySort(_filteredClients);
-
-    private IEnumerable<ClientDto> ApplySort(IEnumerable<ClientDto> q)
-    {
-        return (_sortField, _sortDir) switch
-        {
-            ("company", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CompanyName),
-            ("company", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CompanyName),
-
-            ("contact", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ContactName ?? ""),
-            ("contact", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ContactName ?? ""),
-
-            ("email", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Email ?? ""),
-            ("email", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Email ?? ""),
-
-            ("service", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ServiceMode ?? ""),
-            ("service", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ServiceMode ?? ""),
-
-            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
-            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
-
-            _ => q.OrderByDescending(x => x.CompanyName),
-        };
-    }
-
-
-    private IEnumerable<ClientDto> _filteredClients
-    => _clients?
-        .Where(c =>
-
-            // 🔎 Filtro texto
-            (string.IsNullOrWhiteSpace(_searchText) ||
-             c.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-             (c.ContactName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-             (c.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-             (c.Phone?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
-
-            // 📊 Filtro estado
-            && (_statusFilter == "Todos"
-                || (_statusFilter == "Activos" && c.IsActive)
-                || (_statusFilter == "Inactivos" && !c.IsActive))
-        )
-        ?? Enumerable.Empty<ClientDto>();
-
-
-    // ⭐ Control de acceso integrado en la página
-    private bool _checkingAccess = true; // empieza bloqueando
+    private bool _checkingAccess = true;
     private bool _hasAccess = false;
-
-    private bool _canCreate;
-    private bool _canEdit;
-    private bool _canDelete;
+    private bool _canCreate, _canEdit, _canDelete;
 
     protected override async Task OnInitializedAsync()
     {
-        // ── 1. Verificar permiso ANTES de cargar cualquier dato ──
         var canView = await PermissionService.HasPermissionAsync("clients.view");
-
         if (!canView)
         {
-            Console.WriteLine("⛔ Sin permiso clients.view → redirigiendo");
             _checkingAccess = false;
             _hasAccess = false;
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
             return;
         }
 
-        // ── 2. Tiene acceso: cargar permisos de acciones y datos ──
         _hasAccess = true;
         _checkingAccess = false;
 
@@ -257,6 +111,44 @@ else
         }
     }
 
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    {
+        _sortField = s.field;
+        _sortDir = s.dir;
+    }
+
+    private IEnumerable<ClientDto> _sortedClients => ApplySort(_filteredClients);
+
+    private IEnumerable<ClientDto> ApplySort(IEnumerable<ClientDto> q)
+    {
+        return (_sortField, _sortDir) switch
+        {
+            ("company", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CompanyName),
+            ("company", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CompanyName),
+            ("contact", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ContactName ?? ""),
+            ("contact", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ContactName ?? ""),
+            ("email", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Email ?? ""),
+            ("email", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Email ?? ""),
+            ("service", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ServiceMode ?? ""),
+            ("service", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ServiceMode ?? ""),
+            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
+            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
+            _ => q.OrderByDescending(x => x.CompanyName),
+        };
+    }
+
+    private IEnumerable<ClientDto> _filteredClients =>
+        _clients?
+            .Where(c =>
+                (string.IsNullOrWhiteSpace(_searchText) ||
+                 c.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                 (c.ContactName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                 (c.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                 (c.Phone?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                && (_statusFilter == "Todos" ||
+                    (_statusFilter == "Activos" && c.IsActive) ||
+                    (_statusFilter == "Inactivos" && !c.IsActive))
+            ) ?? Enumerable.Empty<ClientDto>();
 
     private async Task ShowCreateModal()
     {
@@ -276,7 +168,6 @@ else
     private async Task ToggleClientStatus(ClientDto client)
     {
         var actionText = client.IsActive ? "desactivar" : "activar";
-
         var confirmed = await DialogService.Confirm(
             $"¿Estás seguro de que quieres {actionText} a {client.CompanyName}?",
             $"Confirmar {actionText}",
@@ -290,22 +181,17 @@ else
         {
             try
             {
-                var (success, errorMessage) =
-                    await ClientApiService.DeleteClientAsync(client.Id);
-
+                var (success, errorMessage) = await ClientApiService.DeleteClientAsync(client.Id);
                 if (success)
                 {
                     ShowNotification("Éxito",
                         $"Cliente {(client.IsActive ? "desactivado" : "activado")} correctamente.",
                         NotificationSeverity.Success);
-
                     await LoadClients();
                 }
                 else
                 {
-                    ShowNotification("Error",
-                        errorMessage ?? "No se pudo actualizar el estado.",
-                        NotificationSeverity.Error);
+                    ShowNotification("Error", errorMessage ?? "No se pudo actualizar el estado.", NotificationSeverity.Error);
                 }
             }
             catch (Exception ex)
@@ -320,7 +206,6 @@ else
         _searchText = string.Empty;
         _statusFilter = "Todos";
     }
-
 
     private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage

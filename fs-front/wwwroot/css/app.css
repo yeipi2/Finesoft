@@ -979,3 +979,166 @@ code {
         background: rgba(255, 255, 255, 0.30) !important;
         border-color: rgba(30, 30, 80, 0.9) !important;
     }
+
+[data-theme="dark"] .fs-table-card table.fs-table tbody tr:hover td {
+    color: #f1f1f1 !important;
+    background-color: rgba(255, 255, 255, 0.05) 
+}
+
+[data-theme="dark"] .fs-table-card table.fs-table tbody tr:hover .text-muted {
+    color: #a0aec0 !important;
+}
+
+[data-theme="dark"] .fs-table-card table.fs-table tbody tr:hover .text-primary {
+    color: #60a5fa !important;
+}
+
+/* ============================================================
+   DARK MODE - MODALES RADZEN
+   ============================================================ */
+
+[data-theme="dark"] .rz-dialog {
+    background-color: #1e1e35 !important;
+    color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] .rz-dialog-titlebar {
+    background-color: #1e1e35 !important;
+    border-bottom: 1px solid #2d2d4e !important;
+    color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] .rz-dialog-content {
+    background-color: #1e1e35 !important;
+    color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper {
+    background-color: #1e1e35 !important;
+}
+
+/* Por esto: */
+[data-theme="dark"] .form-label {
+    color: #e2e8f0 !important;
+}
+
+/* Overlay/backdrop del modal */
+[data-theme="dark"] .rz-overlay {
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Botón cerrar X */
+[data-theme="dark"] .rz-dialog-titlebar-close {
+    color: #a0aec0 !important;
+}
+
+    [data-theme="dark"] .rz-dialog-titlebar-close:hover {
+        color: #f1f1f1 !important;
+        background-color: #252545 !important;
+    }
+
+/* ============================================================
+   DARK MODE - RADZEN AUTOCOMPLETE / DROPDOWNS
+   ============================================================ */
+
+[data-theme="dark"] .rz-autocomplete-panel,
+[data-theme="dark"] .rz-dropdown-panel {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+}
+
+[data-theme="dark"] .rz-autocomplete-item,
+[data-theme="dark"] .rz-dropdown-item {
+    color: #f1f1f1 !important;
+}
+
+    [data-theme="dark"] .rz-autocomplete-item:hover,
+    [data-theme="dark"] .rz-dropdown-item:hover,
+    [data-theme="dark"] .rz-state-highlight {
+        background-color: #252545 !important;
+        color: #f1f1f1 !important;
+    }
+
+/* ============================================================
+   DARK MODE - ACCORDION (Bootstrap)
+   ============================================================ */
+
+[data-theme="dark"] .accordion-item {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+    color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] .accordion-button {
+    background-color: #252545 !important;
+    color: #f1f1f1 !important;
+    box-shadow: inset 0 -1px 0 #2d2d4e !important;
+}
+
+    [data-theme="dark"] .accordion-button:not(.collapsed) {
+        background-color: #1a1a3e !important;
+        color: #f1f1f1 !important;
+        box-shadow: inset 0 -1px 0 #2d2d4e !important;
+    }
+
+    /* El ícono de flecha del accordion */
+    [data-theme="dark"] .accordion-button::after {
+        filter: invert(1);
+    }
+
+[data-theme="dark"] .accordion-body {
+    background-color: #1e1e35 !important;
+    color: #f1f1f1 !important;
+}
+
+/* ============================================================
+   DARK MODE - AUTOCOMPLETE DROPDOWN (custom, en facturas)
+   ============================================================ */
+
+[data-theme="dark"] .autocomplete-dropdown {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .4) !important;
+}
+
+[data-theme="dark"] .autocomplete-item {
+    color: #f1f1f1 !important;
+    border-bottom-color: #2d2d4e !important;
+}
+
+    [data-theme="dark"] .autocomplete-item:hover {
+        background-color: #252545 !important;
+    }
+/* ============================================================
+   DARK MODE - TÍTULO DEL MODAL RADZEN
+   ============================================================ */
+
+[data-theme="dark"] .rz-dialog-title,
+[data-theme="dark"] .rz-dialog-titlebar .rz-dialog-title,
+[data-theme="dark"] .rz-dialog-titlebar span,
+[data-theme="dark"] .rz-dialog-titlebar h5,
+[data-theme="dark"] .rz-dialog-titlebar h4,
+[data-theme="dark"] .rz-dialog-titlebar > * {
+    color: #f1f1f1 !important;
+}
+
+/* FIX rápido para las cards del dashboard en dark mode */
+[data-theme="dark"] .card .btn-outline-dark {
+    color: #f1f1f1 !important;
+    border-color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] .card .btn-outline-dark:hover {
+    background-color: #f1f1f1 !important;
+    color: #1e1e35 !important;
+}
+
+/* Arreglar texto muted dentro de cards */
+[data-theme="dark"] .card .text-muted {
+    color: #a0aec0 !important;
+}
+
+/* Arreglar círculo oscuro del icono */
+[data-theme="dark"] .card .bg-dark {
+    background-color: #252545 !important;
+}

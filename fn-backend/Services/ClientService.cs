@@ -147,15 +147,32 @@ public class ClientService : IClientService
 
     public async Task<bool> DeleteClientAsync(int id)
     {
-        var client = await _context.Clients.FindAsync(id);
+        var client = await _context.Clients
+            .Include(c => c.Projects)  // ⭐ AGREGAR Include
+            .FirstOrDefaultAsync(c => c.Id == id);
+
         if (client == null)
             return false;
 
-        // ⭐ CAMBIO: Alternar estado en lugar de solo desactivar
+        // Alternar estado del cliente
         client.IsActive = !client.IsActive;
         client.UpdatedAt = DateTime.UtcNow;
 
-        // ⭐ Actualizar usuario según el nuevo estado
+        // ⭐ NUEVO: Sincronizar proyectos con el estado del cliente
+        if (client.Projects != null && client.Projects.Any())
+        {
+            foreach (var project in client.Projects)
+            {
+                project.IsActive = client.IsActive;
+            }
+            _logger.LogInformation(
+                "✅ {Count} proyectos {Status} para cliente {Id}",
+                client.Projects.Count,
+                client.IsActive ? "reactivados" : "desactivados",
+                id);
+        }
+
+        // Actualizar usuario según el nuevo estado
         if (!string.IsNullOrEmpty(client.UserId))
         {
             var user = await _userManager.FindByIdAsync(client.UserId);
@@ -163,25 +180,19 @@ public class ClientService : IClientService
             {
                 if (client.IsActive)
                 {
-                    // ✅ Reactivar: quitar bloqueo
                     user.LockoutEnabled = false;
                     user.LockoutEnd = null;
-                    _logger.LogInformation("✅ Cliente reactivado: {Id}", id);
                 }
                 else
                 {
-                    // ❌ Desactivar: bloquear acceso
                     user.LockoutEnabled = true;
                     user.LockoutEnd = DateTimeOffset.MaxValue;
-                    _logger.LogInformation("✅ Cliente desactivado: {Id}", id);
                 }
-
                 await _userManager.UpdateAsync(user);
             }
         }
 
         await _context.SaveChangesAsync();
-
         return true;
     }
 

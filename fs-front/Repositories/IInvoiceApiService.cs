@@ -15,4 +15,5 @@ public interface IInvoiceApiService
     Task<(bool Success, string? ErrorMessage)> GenerateMonthlyInvoicesAsync();
     Task<InvoiceStatsDto?> GetInvoiceStatsAsync();
     Task<byte[]?> GenerateInvoicePdfAsync(int id);
+    Task<List<int>?> GetTicketsInUseAsync();
 }

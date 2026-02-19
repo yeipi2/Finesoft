@@ -1,0 +1,20 @@
+﻿/* fs-front/Pages/Clients/ClientForm.razor.css */
+
+.form-loading {
+    display: flex;
+    justify-content: center;
+    padding: 3rem;
+    align-items: center;
+}
+
+.client-form-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}

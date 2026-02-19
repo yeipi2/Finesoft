@@ -1,0 +1,32 @@
+﻿/* fs-front/Components/Clients/Index/ClientsTable.razor.css */
+
+.service-monthly {
+    display: flex;
+    flex-direction: column;
+}
+
+.action-buttons {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.65rem; /* ↓ menos alto */
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.5rem; /* ↓ menos redondeado */
+    display: inline-block;
+    line-height: 1.2;
+}
+
+    /* Activo */
+    .status-badge.active {
+        background-color: #198754;
+        color: #ffffff;
+    }
+
+    /* Inactivo */
+    .status-badge.inactive {
+        background-color: #6c757d;
+        color: #ffffff;
+    }

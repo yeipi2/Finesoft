@@ -2,6 +2,8 @@
 @using fs_front.DTO
 @using fs_front.Services
 @using fs_front.Repositories
+@using fs_front.Components.Employees.Index
+@using fs_front.Components.Employees.Form
 @inject IEmployeeApiService EmployeeApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -15,8 +17,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-        background:white;z-index:9999;
-        display:flex;align-items:center;justify-content:center;">
+            background:white;z-index:9999;
+            display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -29,25 +31,14 @@ else
     <container class="container p-4">
 
         <section class="container-fluid px-xl-5">
-            <div class="d-flex justify-content-between align-items-start mb-4">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-person-badge fs-1 text-primary me-3"></i>
-                    <div>
-                        <p class="display-6 fw-bolder mb-2">Empleados Registrados</p>
-                        <p class="text-muted mb-0">Gestión del personal de la empresa</p>
-                    </div>
-                </div>
-                @if (_canCreate)
-                {
-                    <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
-                        <i class="bi bi-plus-lg"></i> Nuevo Empleado
-                    </button>
-                }
-            </div>
+            <EmployeesHeader CanCreate="_canCreate"
+                             OnCreateClicked="ShowCreateModal" />
 
-            <FilterBar Class="mb-4" SearchPlaceholder="Buscar empleados..." SearchValue="@_searchTerm"
-                       SearchValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })" OnClear="ClearFilters">
-
+            <FilterBar Class="mb-4"
+                       SearchPlaceholder="Buscar empleados..."
+                       SearchValue="@_searchTerm"
+                       SearchValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })"
+                       OnClear="ClearFilters">
                 <Filters>
                     <select class="form-select" @bind="_statusFilter" @bind:event="onchange" @bind:after="FilterEmployees">
                         <option value="Todos">Estados</option>
@@ -55,82 +46,21 @@ else
                         <option value="Inactivos">Inactivos</option>
                     </select>
                 </Filters>
-
             </FilterBar>
-
         </section>
-
 
         <section class="container-fluid p-xl-5">
-            <FsDataTable TItem="EmployeeDto" Title="Empleados" Subtitle="Gestión del personal de la empresa"
-                         Items="_sortedEmployees" IsLoading="_isLoading" ColSpan="7"
-                         EmptyTitle="@(_employees == null || !_employees.Any() ? "No hay empleados registrados" : "No se encontraron empleados")"
-                         EmptySubtitle="Prueba con otra búsqueda.">
-
-                <Header>
-                    <FsSortHeader Text="Nombre" Field="name" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" ThClass="ps-4" />
-                    <FsSortHeader Text="Email / RFC" Field="email" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Puesto" Field="position" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Departamento" Field="department" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Rol" Field="role" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <th class="text-center">Acciones</th>
-                </Header>
-
-                <RowTemplate Context="employee">
-                    <tr>
-                        <td class="fw-bold ps-4">
-                            @employee.FullName
-                            <div class="text-muted small">@employee.Phone</div>
-                        </td>
-
-                        <td>
-                            <div class="fw-bold">@employee.Email</div>
-                            <div class="text-muted small">@employee.RFC</div>
-                        </td>
-
-                        <td>@employee.Position</td>
-                        <td>@employee.Department</td>
-
-                        <td>
-                            <span class="badge bg-info text-dark">@employee.RoleName</span>
-                        </td>
-
-                        <td>
-                            <span class="badge @(employee.IsActive ? "bg-success" : "bg-secondary")">
-                                @(employee.IsActive ? "Activo" : "Inactivo")
-                            </span>
-                        </td>
-
-                        <td class="text-center">
-                            @if (_canEdit)
-                            {
-                                <button @onclick="@(() => ShowEditModal(employee.Id))"
-                                        class="btn btn-sm btn-outline-primary me-1" title="Editar">
-                                    <i class="bi bi-pencil-fill"></i>
-                                </button>
-                            }
-                            @if (_canEdit)
-                            {
-                                <button @onclick="@(() => ToggleEmployeeStatus(employee))"
-                                        class="btn btn-sm @(employee.IsActive ? "btn-outline-warning" : "btn-outline-success")"
-                                        title="Cambiar estado">
-                                    <i class="bi @(employee.IsActive ? "bi-person-x-fill" : "bi-person-check-fill")"></i>
-                                </button>
-                            }
-
-                        </td>
-                    </tr>
-                </RowTemplate>
-
-            </FsDataTable>
+            <EmployeesTable Items="_sortedEmployees"
+                            IsLoading="_isLoading"
+                            CanEdit="_canEdit"
+                            SortField="_sortField"
+                            SortDir="_sortDir"
+                            SortChanged="OnSortChanged"
+                            OnEditClicked="ShowEditModal"
+                            OnToggleStatusClicked="ToggleEmployeeStatus"
+                            EmptyTitle="@(_employees == null || !_employees.Any() ? "No hay empleados registrados" : "No se encontraron empleados")" />
         </section>
+
     </container>
 }
 
@@ -139,12 +69,10 @@ else
     private List<EmployeeDto>? _filteredEmployees = new();
     private string _statusFilter = "Todos";
 
-
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
     private bool _canCreate;
     private bool _canEdit;
-    private bool _canDelete;
     private bool _isLoading = false;
 
     private string _searchTerm = "";
@@ -160,32 +88,23 @@ else
     private IEnumerable<EmployeeDto> _sortedEmployees
         => ApplySort(_filteredEmployees ?? Enumerable.Empty<EmployeeDto>());
 
-    private IEnumerable<EmployeeDto> ApplySort(IEnumerable<EmployeeDto> q)
-    {
-        return (_sortField, _sortDir) switch
+    private IEnumerable<EmployeeDto> ApplySort(IEnumerable<EmployeeDto> q) =>
+        (_sortField, _sortDir) switch
         {
             ("name", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.FullName),
             ("name", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.FullName),
-
             ("email", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Email),
             ("email", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Email),
-
             ("position", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Position),
             ("position", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Position),
-
             ("department", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Department),
             ("department", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Department),
-
             ("role", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.RoleName),
             ("role", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.RoleName),
-
             ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
             ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
-
             _ => q.OrderByDescending(x => x.FullName),
         };
-    }
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,7 +112,6 @@ else
 
         if (!canView)
         {
-            Console.WriteLine("⛔ Sin permiso employees.view → redirigiendo");
             _checkingAccess = false;
             _hasAccess = false;
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
@@ -205,7 +123,6 @@ else
 
         _canCreate = await PermissionService.HasPermissionAsync("employees.create");
         _canEdit = await PermissionService.HasPermissionAsync("employees.edit");
-        _canDelete = await PermissionService.HasPermissionAsync("employees.delete");
 
         await LoadEmployees();
     }
@@ -236,7 +153,6 @@ else
 
         IEnumerable<EmployeeDto> query = _employees;
 
-        // 🔎 Filtro por búsqueda
         if (!string.IsNullOrWhiteSpace(_searchTerm))
         {
             query = query.Where(e =>
@@ -247,15 +163,11 @@ else
                 e.Department.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
         }
 
-        // 🔘 Filtro por estado
-        if (_statusFilter == "Activos")
-            query = query.Where(e => e.IsActive);
-        else if (_statusFilter == "Inactivos")
-            query = query.Where(e => !e.IsActive);
+        if (_statusFilter == "Activos") query = query.Where(e => e.IsActive);
+        else if (_statusFilter == "Inactivos") query = query.Where(e => !e.IsActive);
 
         _filteredEmployees = query.ToList();
     }
-
 
     private async Task ShowCreateModal()
     {
@@ -272,41 +184,11 @@ else
         if (result == true) await LoadEmployees();
     }
 
-    private async Task DeleteEmployee(int? employeeId, string employeeName)
-    {
-        var confirmed = await DialogService.Confirm(
-            $"¿Estás seguro de que quieres eliminar a {employeeName}? Esto también eliminará su usuario asociado.",
-            "Confirmar Eliminación",
-            new ConfirmOptions { OkButtonText = "Sí, Eliminar", CancelButtonText = "Cancelar" });
-
-        if (confirmed == true)
-        {
-            try
-            {
-                var (success, errorMessage) = await EmployeeApiService.DeleteEmployeeAsync(employeeId.Value);
-                if (success)
-                {
-                    ShowNotification("Éxito", "Empleado eliminado correctamente.", NotificationSeverity.Success);
-                    await LoadEmployees();
-                }
-                else
-                {
-                    ShowNotification("Error", errorMessage ?? "No se pudo eliminar.", NotificationSeverity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowNotification("Error Grave", ex.Message, NotificationSeverity.Error);
-            }
-        }
-    }
     private async Task ToggleEmployeeStatus(EmployeeDto employee)
     {
         try
         {
-            var (success, errorMessage) =
-                await EmployeeApiService.ToggleEmployeeStatusAsync(employee.Id!.Value);
-
+            var (success, errorMessage) = await EmployeeApiService.ToggleEmployeeStatusAsync(employee.Id!.Value);
             if (success)
             {
                 ShowNotification("Éxito", "Estado actualizado correctamente.", NotificationSeverity.Success);
@@ -323,6 +205,12 @@ else
         }
     }
 
+    private void ClearFilters()
+    {
+        _searchTerm = string.Empty;
+        _statusFilter = "Todos";
+        FilterEmployees();
+    }
 
     private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
@@ -332,12 +220,4 @@ else
             Detail = message,
             Duration = 4000
         });
-
-    private void ClearFilters()
-    {
-        _searchTerm = string.Empty;
-        _statusFilter = "Todos";
-        FilterEmployees();
-    }
-
 }

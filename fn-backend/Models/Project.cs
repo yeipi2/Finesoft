@@ -1,4 +1,6 @@
-﻿namespace fn_backend.Models;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace fn_backend.Models;
 
 public class Project
 {
@@ -14,6 +16,7 @@ public class Project
     public int ClientId { get; set; }
     public bool IsActive { get; set; } = true;
 
+    [ForeignKey("ClientId")]  // ⭐ AGREGAR ESTO
     public Client? Client { get; set; }
 
     // CÓDIGO FUTURO - Relación con servicios deshabilitada

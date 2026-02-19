@@ -38,4 +38,5 @@ public class InvoiceDetailDto
     public DateTime? CancelledDate { get; set; }
     public string? CancellationReason { get; set; }
 
+    public int TicketCount { get; set; }
 }

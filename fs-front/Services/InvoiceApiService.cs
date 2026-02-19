@@ -44,9 +44,7 @@ public class InvoiceApiService : IInvoiceApiService
             return null;
         }
     }
-
-    public async Task<(bool Success, InvoiceDetailDto? CreatedInvoice, string? ErrorMessage)> CreateInvoiceAsync(
-        InvoiceDto invoice)
+    public async Task<(bool Success, InvoiceDetailDto? CreatedInvoice, string? ErrorMessage)> CreateInvoiceAsync(InvoiceDto invoice)
     {
         try
         {
@@ -57,13 +55,46 @@ public class InvoiceApiService : IInvoiceApiService
                 return (true, created, null);
             }
 
+            // ⭐ MEJORADO: extraer mensajes legibles
             var errorContent = await response.Content.ReadAsStringAsync();
-            return (false, null, $"Error al crear factura: {errorContent}");
+            var friendlyMessage = ExtractErrorMessage(errorContent);
+            return (false, null, friendlyMessage);
         }
         catch (Exception e)
         {
-            return (false, null, $"Error: {e.Message}");
+            return (false, null, $"Error de conexión: {e.Message}");
         }
+    }
+
+    // ⭐ AGREGAR este método helper en la misma clase:
+    private string ExtractErrorMessage(string errorContent)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonDocument.Parse(errorContent);
+
+            // Formato ASP.NET validation errors: {"errors": {"Field": ["mensaje"]}}
+            if (json.RootElement.TryGetProperty("errors", out var errors))
+            {
+                var messages = new List<string>();
+                foreach (var field in errors.EnumerateObject())
+                {
+                    foreach (var msg in field.Value.EnumerateArray())
+                    {
+                        messages.Add(msg.GetString() ?? "");
+                    }
+                }
+                if (messages.Any())
+                    return string.Join(" | ", messages);
+            }
+
+            // Formato simple: {"message": "..."}
+            if (json.RootElement.TryGetProperty("message", out var message))
+                return message.GetString() ?? errorContent;
+        }
+        catch { }
+
+        return errorContent;
     }
 
     public async Task<(bool Success, InvoiceDetailDto? CreatedInvoice, string? ErrorMessage)>
@@ -195,6 +226,19 @@ public class InvoiceApiService : IInvoiceApiService
         catch (Exception e)
         {
             Console.WriteLine($"Error al obtener estadísticas: {e.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<int>?> GetTicketsInUseAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<List<int>>("api/invoices/tickets-in-use");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener tickets en uso: {e.Message}");
             return null;
         }
     }

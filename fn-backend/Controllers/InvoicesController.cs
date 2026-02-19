@@ -1,9 +1,11 @@
-﻿using fs_backend.DTO;
+﻿using fs_backend.Attributes;
+using fs_backend.DTO;
 using fs_backend.Repositories;
-using fs_backend.Attributes;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using fs_backend.Services;
 
 namespace fs_backend.Controllers;
 
@@ -223,6 +225,14 @@ public class InvoicesController : ControllerBase
     {
         var stats = await _invoiceService.GetInvoiceStatsAsync();
         return Ok(stats);
+    }
+
+    [HttpGet("tickets-in-use")]
+    [Authorize]
+    public async Task<IActionResult> GetTicketsInUse()
+    {
+        var ticketIds = await _invoiceService.GetTicketsInUseAsync();
+        return Ok(ticketIds);
     }
 
     /// <summary>

@@ -1,0 +1,103 @@
+﻿@* fs-front/Components/Clients/Index/ClientsTable.razor *@
+@using fs_front.DTO
+
+<FsDataTable TItem="ClientDto" 
+             Title="Clientes"
+             Subtitle="Lista de todos los clientes con sus modalidades de servicio" 
+             Items="Clients"
+             IsLoading="IsLoading" 
+             ColSpan="7"
+             EmptyTitle="@(Clients == null || !Clients.Any() ? "No hay clientes registrados" : "No se encontraron clientes")"
+             EmptySubtitle="Prueba con otra búsqueda.">
+
+    <Header>
+        <FsSortHeader Text="Empresa" Field="company" ActiveField="@SortField" Direction="@SortDirection"
+                      SortChanged="OnSortChanged" ThClass="ps-4" />
+        <FsSortHeader Text="Contacto" Field="contact" ActiveField="@SortField" Direction="@SortDirection"
+                      SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Email" Field="email" ActiveField="@SortField" Direction="@SortDirection"
+                      SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Servicio" Field="service" ActiveField="@SortField" Direction="@SortDirection"
+                      SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Estado" Field="status" ActiveField="@SortField" Direction="@SortDirection"
+                      SortChanged="OnSortChanged" />
+        <th>Proyectos</th>
+        <th class="text-center">Acciones</th>
+    </Header>
+
+    <RowTemplate Context="client">
+        <tr>
+            <td class="fw-bold ps-4">@client.CompanyName</td>
+
+            <td>
+                <div class="fw-bold">@client.ContactName</div>
+                <div class="text-muted small">@client.Phone</div>
+            </td>
+
+            <td class="fw-bold">@client.Email</td>
+
+            <td>
+                @if (client.ServiceMode == "Mensual")
+                {
+                    <div class="service-monthly">
+                        <div class="badge bg-primary text-white mb-1">@client.ServiceMode</div>
+                        <div class="text-muted small">@client.MonthlyRate?.ToString("C2")</div>
+                    </div>
+                }
+                else
+                {
+                    <span class="badge bg-light text-dark">@client.ServiceMode</span>
+                }
+            </td>
+
+            <td>
+                <span class="status-badge @(client.IsActive ? "active" : "inactive")">
+                    @(client.IsActive ? "Activo" : "Inactivo")
+                </span>
+            </td>
+
+
+
+
+            <td>
+                <span class="badge bg-primary">1 proyectos</span>
+            </td>
+
+            <td class="text-center">
+                <div class="action-buttons">
+                    @if (CanEdit)
+                    {
+                        <button @onclick="@(() => OnEdit.InvokeAsync(client.Id))" 
+                                class="btn btn-sm btn-outline-primary me-1"
+                                title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                    }
+                    @if (CanDelete)
+                    {
+                        <button @onclick="@(() => OnToggleStatus.InvokeAsync(client))"
+                                class="btn btn-sm @(client.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                title="@(client.IsActive ? "Desactivar" : "Activar")">
+                            <i class="bi @(client.IsActive ? "bi-person-x-fill" : "bi-person-check-fill")"></i>
+                        </button>
+                    }
+                </div>
+            </td>
+        </tr>
+    </RowTemplate>
+
+</FsDataTable>
+
+@code {
+    [Parameter] public IEnumerable<ClientDto>? Clients { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public bool CanDelete { get; set; }
+    
+    [Parameter] public string SortField { get; set; } = "company";
+    [Parameter] public FsSortHeader.SortDirection SortDirection { get; set; }
+    [Parameter] public EventCallback<(string field, FsSortHeader.SortDirection dir)> OnSortChanged { get; set; }
+    
+    [Parameter] public EventCallback<int?> OnEdit { get; set; }
+    [Parameter] public EventCallback<ClientDto> OnToggleStatus { get; set; }
+}

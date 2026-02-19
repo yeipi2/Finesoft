@@ -36,4 +36,5 @@ public class InvoiceDetailDto
     public List<InvoicePaymentDto> Payments { get; set; } = new List<InvoicePaymentDto>();
     public DateTime? CancelledDate { get; internal set; }
     public string? CancellationReason { get; internal set; }
+    public int TicketCount { get; set; }
 }

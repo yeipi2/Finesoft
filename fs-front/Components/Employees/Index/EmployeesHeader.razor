@@ -1,0 +1,22 @@
+﻿@using fs_front.DTO
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-person-badge fs-1 text-primary me-3"></i>
+        <div>
+            <p class="display-6 fw-bolder mb-2">Empleados Registrados</p>
+            <p class="text-muted mb-0">Gestión del personal de la empresa</p>
+        </div>
+    </div>
+    @if (CanCreate)
+    {
+        <button @onclick="OnCreateClicked" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+            <i class="bi bi-plus-lg"></i> Nuevo Empleado
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public bool CanCreate { get; set; }
+    [Parameter] public EventCallback OnCreateClicked { get; set; }
+}

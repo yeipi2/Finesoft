@@ -37,7 +37,7 @@ namespace fs_backend.Identity
 
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.Client)
-                .WithMany()
+                .WithMany(c => c.Projects)     // ← apunta a la propiedad que agregaste
                 .HasForeignKey(p => p.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
 

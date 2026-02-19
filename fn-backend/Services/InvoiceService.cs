@@ -948,6 +948,15 @@ public class InvoiceService : IInvoiceService
         });
     }
 
+    public async Task<List<int>> GetTicketsInUseAsync()
+    {
+        return await _context.InvoiceItems
+            .Where(ii => ii.TicketId.HasValue)
+            .Select(ii => ii.TicketId!.Value)
+            .Distinct()
+            .ToListAsync();
+    }
+
     private async Task<string> GenerateInvoiceNumber()
     {
         var year = DateTime.UtcNow.Year;
@@ -1013,6 +1022,7 @@ public class InvoiceService : IInvoiceService
             Subtotal = invoice.Subtotal,
             Tax = invoice.Tax,
             Total = invoice.Total,
+            TicketCount = invoice.Items.Count(i => i.TicketId.HasValue && i.TicketId > 0),
 
             // Si está pagada, muestra el total como pagado; si no, lo acumulado.
             PaidAmount = invoice.Status == "Pagada" ? invoice.Total : totalPaid,

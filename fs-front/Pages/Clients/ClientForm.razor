@@ -1,4 +1,5 @@
 ﻿@using fs_front.DTO
+@using fs_front.Components.Clients.Form
 @inject IClientApiService ClientApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -6,7 +7,7 @@
 
 @if (_isLoading)
 {
-    <div class="d-flex justify-content-center p-5">
+    <div class="form-loading">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando...</span>
         </div>
@@ -15,11 +16,10 @@
 }
 else
 {
-    <div style="max-width: 900px; margin: 0 auto;">
+    <div class="client-form-container">
         <EditForm Model="_clientModel" OnValidSubmit="HandleSubmit">
             <DataAnnotationsValidator />
 
-            @* ========== ALERTAS DE VALIDACIÓN ========== *@
             @if (!string.IsNullOrEmpty(_errorMessage))
             {
                 <div class="alert alert-danger mb-3" role="alert">
@@ -27,335 +27,44 @@ else
                 </div>
             }
 
-            @* ========== ACORDEÓN DE SECCIONES ========== *@
             <div class="accordion mb-3" id="clientAccordion">
 
-                @* ========== SECCIÓN 1: DATOS DE ACCESO (Solo en creación) ========== *@
                 @if (!_isEditMode)
                 {
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="headingAccess">
-                            <button class="accordion-button @(_section1Complete ? "" : "text-danger")"
-                                    type="button"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#collapseAccess"
-                                    aria-expanded="true"
-                                    aria-controls="collapseAccess"
-                                    @onclick="() => ToggleSection(1)">
-                                <i class="bi bi-lock me-2"></i>
-                                <strong>Datos de Acceso al Sistema</strong>
-                                @if (!_section1Complete)
-                                {
-                                    <span class="badge bg-danger ms-2">Incompleto</span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-check-circle-fill text-success ms-2"></i>
-                                }
-                            </button>
-                        </h2>
-                        <div id="collapseAccess"
-                             class="accordion-collapse collapse @(_activeSection == 1 ? "show" : "")"
-                             aria-labelledby="headingAccess">
-                            <div class="accordion-body">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label for="Email" class="form-label small fw-bold">
-                                            Email / Usuario <span class="text-danger">*</span>
-                                        </label>
-                                        <InputText id="Email"
-                                                   type="email"
-                                                   class="form-control form-control-sm"
-                                                   placeholder="correo@empresa.com"
-                                                   @bind-Value="_clientModel.Email"
-                                                   @bind-Value:after="ValidateSections" />
-                                        <small class="text-muted">Este será el usuario de acceso al sistema</small>
-                                        @if (_validationErrors.ContainsKey("Email"))
-                                        {
-                                            <div class="text-danger small mt-1">
-                                                <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["Email"]
-                                            </div>
-                                        }
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label for="Password" class="form-label small fw-bold">
-                                            Contraseña <span class="text-danger">*</span>
-                                        </label>
-                                        <div class="input-group input-group-sm">
-                                            <InputText id="Password"
-                                                       type="@(_showPassword ? "text" : "password")"
-                                                       class="form-control"
-                                                       placeholder="Mínimo 8 caracteres"
-                                                       @bind-Value="_clientModel.Password"
-                                                       @oninput="OnPasswordInput" />
-                                            <button class="btn btn-outline-secondary"
-                                                    type="button"
-                                                    @onclick="TogglePasswordVisibility"
-                                                    tabindex="-1">
-                                                <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")"></i>
-                                            </button>
-                                        </div>
-                                        <small class="text-muted d-block mt-1">
-                                            Debe contener: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial
-                                        </small>
-                                        @if (_validationErrors.ContainsKey("Password"))
-                                        {
-                                            <div class="text-danger small mt-1">
-                                                <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["Password"]
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <AccessDataSection Model="@_clientModel"
+                                       ValidationErrors="@_validationErrors"
+                                       IsComplete="@_section1Complete"
+                                       IsExpanded="@(_activeSection == 1)"
+                                       OnToggle="@(() => ToggleSection(1))"
+                                       OnValidate="ValidateSections"
+                                       OnPasswordInput="OnPasswordInput" />
                 }
 
-                @* ========== SECCIÓN 2: DATOS DE LA EMPRESA ========== *@
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingCompany">
-                        <button class="accordion-button @(!_isEditMode && _activeSection != 2 ? "collapsed" : "") @(_section2Complete ? "" : "text-danger")"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseCompany"
-                                aria-expanded="@(_isEditMode ? "true" : "false")"
-                                aria-controls="collapseCompany"
-                                @onclick="() => ToggleSection(2)">
-                            <i class="bi bi-building me-2"></i>
-                            <strong>Datos de la Empresa</strong>
-                            @if (!_section2Complete)
-                            {
-                                <span class="badge bg-danger ms-2">Incompleto</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-                            }
-                        </button>
-                    </h2>
-                    <div id="collapseCompany"
-                         class="accordion-collapse collapse @((_isEditMode || _activeSection == 2) ? "show" : "")"
-                         aria-labelledby="headingCompany">
-                        <div class="accordion-body">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label for="CompanyName" class="form-label small fw-bold">
-                                        Nombre de la Empresa <span class="text-danger">*</span>
-                                    </label>
-                                    <InputText id="CompanyName"
-                                               class="form-control form-control-sm"
-                                               placeholder="Empresa S.A. de C.V."
-                                               @bind-Value="_clientModel.CompanyName"
-                                               @bind-Value:after="ValidateSections" />
-                                    @if (_validationErrors.ContainsKey("CompanyName"))
-                                    {
-                                        <div class="text-danger small mt-1">
-                                            <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["CompanyName"]
-                                        </div>
-                                    }
-                                </div>
+                <CompanyDataSection Model="@_clientModel"
+                                    ValidationErrors="@_validationErrors"
+                                    IsComplete="@_section2Complete"
+                                    IsExpanded="@((_isEditMode && _activeSection == 1) || _activeSection == 2)"
+                                    IsEditMode="@_isEditMode"
+                                    OnToggle="@(() => ToggleSection(2))"
+                                    OnValidate="ValidateSections" />
 
-                                <div class="col-md-6">
-                                    <label for="ContactName" class="form-label small fw-bold">
-                                        Nombre del Contacto <span class="text-danger">*</span>
-                                    </label>
-                                    <InputText id="ContactName"
-                                               class="form-control form-control-sm"
-                                               placeholder="Juan Pérez"
-                                               @bind-Value="_clientModel.ContactName"
-                                               @bind-Value:after="ValidateSections" />
-                                    @if (_validationErrors.ContainsKey("ContactName"))
-                                    {
-                                        <div class="text-danger small mt-1">
-                                            <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["ContactName"]
-                                        </div>
-                                    }
-                                </div>
+                <ContactInfoSection Model="@_clientModel"
+                                    ValidationErrors="@_validationErrors"
+                                    IsComplete="@_section3Complete"
+                                    IsExpanded="@(_activeSection == 3)"
+                                    OnToggle="@(() => ToggleSection(3))"
+                                    OnValidate="ValidateSections" />
 
-                                @if (_isEditMode)
-                                {
-                                    <div class="col-md-6">
-                                        <label for="EmailEdit" class="form-label small fw-bold">
-                                            Email <span class="text-danger">*</span>
-                                        </label>
-                                        <InputText id="EmailEdit"
-                                                   type="email"
-                                                   class="form-control form-control-sm"
-                                                   placeholder="correo@empresa.com"
-                                                   @bind-Value="_clientModel.Email"
-                                                   disabled="true" />
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @* ========== SECCIÓN 3: INFORMACIÓN DE CONTACTO ========== *@
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingContact">
-                        <button class="accordion-button collapsed @(_section3Complete ? "" : "text-danger")"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseContact"
-                                aria-expanded="false"
-                                aria-controls="collapseContact"
-                                @onclick="() => ToggleSection(3)">
-                            <i class="bi bi-telephone me-2"></i>
-                            <strong>Información de Contacto</strong>
-                            @if (!_section3Complete)
-                            {
-                                <span class="badge bg-danger ms-2">Incompleto</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-                            }
-                        </button>
-                    </h2>
-                    <div id="collapseContact"
-                         class="accordion-collapse collapse @(_activeSection == 3 ? "show" : "")"
-                         aria-labelledby="headingContact">
-                        <div class="accordion-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="Phone" class="form-label small fw-bold">
-                                        Teléfono <span class="text-danger">*</span>
-                                    </label>
-                                    <InputText id="Phone"
-                                               class="form-control form-control-sm"
-                                               placeholder="+52 1234567890"
-                                               @bind-Value="_clientModel.Phone"
-                                               @bind-Value:after="ValidateSections" />
-                                    @if (_validationErrors.ContainsKey("Phone"))
-                                    {
-                                        <div class="text-danger small mt-1">
-                                            <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["Phone"]
-                                        </div>
-                                    }
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label for="RFC" class="form-label small fw-bold">
-                                        RFC <span class="text-danger">*</span>
-                                    </label>
-                                    <InputText id="RFC"
-                                               class="form-control form-control-sm"
-                                               placeholder="ABCDEFGHIJ12"
-                                               @bind-Value="_clientModel.RFC"
-                                               @bind-Value:after="ValidateSections"
-                                               maxlength="13" />
-                                    @if (_validationErrors.ContainsKey("RFC"))
-                                    {
-                                        <div class="text-danger small mt-1">
-                                            <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["RFC"]
-                                        </div>
-                                    }
-                                </div>
-
-                                <div class="col-12">
-                                    <label for="Address" class="form-label small fw-bold">
-                                        Dirección <span class="text-danger">*</span>
-                                    </label>
-                                    <InputText id="Address"
-                                               class="form-control form-control-sm"
-                                               placeholder="Av. Calle Azul, 123, Col. Centro"
-                                               @bind-Value="_clientModel.Address"
-                                               @bind-Value:after="ValidateSections" />
-                                    @if (_validationErrors.ContainsKey("Address"))
-                                    {
-                                        <div class="text-danger small mt-1">
-                                            <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["Address"]
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @* ========== SECCIÓN 4: CONFIGURACIÓN DE SERVICIO ========== *@
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingService">
-                        <button class="accordion-button collapsed @(_section4Complete ? "" : "text-danger")"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseService"
-                                aria-expanded="false"
-                                aria-controls="collapseService"
-                                @onclick="() => ToggleSection(4)">
-                            <i class="bi bi-gear me-2"></i>
-                            <strong>Configuración de Servicio</strong>
-                            @if (!_section4Complete)
-                            {
-                                <span class="badge bg-danger ms-2">Incompleto</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-                            }
-                        </button>
-                    </h2>
-                    <div id="collapseService"
-                         class="accordion-collapse collapse @(_activeSection == 4 ? "show" : "")"
-                         aria-labelledby="headingService">
-                        <div class="accordion-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="ServiceModality" class="form-label small fw-bold">
-                                        Modalidad de Servicio <span class="text-danger">*</span>
-                                    </label>
-                                    <InputSelect id="ServiceModality"
-                                                 class="form-select form-select-sm"
-                                                 @bind-Value="_clientModel.ServiceMode"
-                                                 @bind-Value:after="ValidateSections">
-                                        <option value="Por Evento">Por Evento</option>
-                                        <option value="Mensual">Póliza Mensual</option>
-                                    </InputSelect>
-                                </div>
-
-                                @if (_clientModel.ServiceMode == "Mensual")
-                                {
-                                    <div class="col-md-6">
-                                        <label for="MonthlyRate" class="form-label small fw-bold">
-                                            Tarifa Mensual (MXN) <span class="text-danger">*</span>
-                                        </label>
-                                        <InputNumber id="MonthlyRate"
-                                                     class="form-control form-control-sm"
-                                                     placeholder="0.00"
-                                                     @bind-Value="_clientModel.MonthlyRate"
-                                                     @bind-Value:after="ValidateSections" />
-                                        <small class="text-muted">Tarifa fija mensual para clientes con póliza</small>
-                                        @if (_validationErrors.ContainsKey("MonthlyRate"))
-                                        {
-                                            <div class="text-danger small mt-1">
-                                                <i class="bi bi-exclamation-circle me-1"></i>@_validationErrors["MonthlyRate"]
-                                            </div>
-                                        }
-                                    </div>
-                                }
-
-                                <div class="col-12">
-                                    <div class="form-check form-switch">
-                                        <InputCheckbox id="IsActive"
-                                                       class="form-check-input"
-                                                       @bind-Value="_clientModel.IsActive" />
-                                        <label class="form-check-label small fw-bold" for="IsActive">
-                                            Cliente Activo
-                                        </label>
-                                    </div>
-                                    <small class="text-muted">Determina si el cliente puede recibir nuevos servicios</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ServiceConfigSection Model="@_clientModel"
+                                      ValidationErrors="@_validationErrors"
+                                      IsComplete="@_section4Complete"
+                                      IsExpanded="@(_activeSection == 4)"
+                                      OnToggle="@(() => ToggleSection(4))"
+                                      OnValidate="ValidateSections" />
 
             </div>
 
-            @* ========== BOTONES DE ACCIÓN ========== *@
-            <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="form-actions">
                 <div>
                     @if (!_allSectionsComplete)
                     {
@@ -366,17 +75,13 @@ else
                     }
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button"
-                            class="btn btn-secondary btn-sm"
-                            @onclick="Cancel">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
                         Cancelar
                     </button>
-                    <button type="submit"
-                            class="btn btn-primary btn-sm"
-                            disabled="@_isSaving">
+                    <button type="submit" class="btn btn-primary btn-sm" disabled="@_isSaving">
                         @if (_isSaving)
                         {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span class="spinner-border spinner-border-sm me-2"></span>
                         }
                         <i class="bi bi-check-lg me-1"></i>
                         @(_isEditMode ? "Actualizar Cliente" : "Guardar Cliente")
@@ -395,15 +100,13 @@ else
     private bool _isLoading = false;
     private string? _errorMessage;
     private bool _isEditMode => UserId > 0;
-    private bool _showPassword = false;
     private Dictionary<string, string> _validationErrors = new();
 
-    // Control de secciones
     private int _activeSection = 1;
-    private bool _section1Complete = false;  // Datos de Acceso
-    private bool _section2Complete = false;  // Datos de Empresa
-    private bool _section3Complete = false;  // Información de Contacto
-    private bool _section4Complete = false;  // Configuración de Servicio
+    private bool _section1Complete = false;
+    private bool _section2Complete = false;
+    private bool _section3Complete = false;
+    private bool _section4Complete = false;
     private bool _allSectionsComplete => (_isEditMode || _section1Complete) && _section2Complete && _section3Complete && _section4Complete;
 
     protected override async Task OnParametersSetAsync()
@@ -421,7 +124,7 @@ else
                 else
                 {
                     ValidateSections();
-                    _activeSection = 2; // En edición, empezar con Datos de Empresa abierto
+                    _activeSection = _isEditMode ? 1 : 1;
                 }
             }
             catch (Exception ex)
@@ -435,30 +138,17 @@ else
         }
         else
         {
-            _clientModel = new ClientDto
-            {
-                IsActive = true,
-                ServiceMode = "Por Evento"
-            };
+            _clientModel = new ClientDto { IsActive = true, ServiceMode = "Por Evento" };
         }
     }
 
-    private void ToggleSection(int section)
-    {
-        _activeSection = section;
-    }
-
-    private void TogglePasswordVisibility()
-    {
-        _showPassword = !_showPassword;
-    }
+    private void ToggleSection(int section) => _activeSection = section;
 
     private void OnPasswordInput(ChangeEventArgs e)
     {
         var password = e.Value?.ToString() ?? "";
         _clientModel.Password = password;
 
-        // Validar en tiempo real
         if (!string.IsNullOrEmpty(password) && !_isEditMode)
         {
             ValidatePasswordRealTime(password);
@@ -474,209 +164,54 @@ else
     private void ValidatePasswordRealTime(string password)
     {
         var errors = new List<string>();
-
-        if (password.Length < 8)
-        {
-            errors.Add("Faltan caracteres (mínimo 8)");
-        }
-
-        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[A-Z]"))
-        {
-            errors.Add("Falta una mayúscula");
-        }
-
-        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[a-z]"))
-        {
-            errors.Add("Falta una minúscula");
-        }
-
-        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[0-9]"))
-        {
-            errors.Add("Falta un número");
-        }
-
-        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[!@#$%^&*(),.?\"":{}|<>]"))
-        {
-            errors.Add("Falta un carácter especial");
-        }
+        if (password.Length < 8) errors.Add("Faltan caracteres (mínimo 8)");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[A-Z]")) errors.Add("Falta una mayúscula");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[a-z]")) errors.Add("Falta una minúscula");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[0-9]")) errors.Add("Falta un número");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[!@#$%^&*(),.?\"":{}|<>]")) errors.Add("Falta un carácter especial");
 
         if (errors.Any())
-        {
             _validationErrors["Password"] = string.Join(" • ", errors);
-        }
         else
-        {
             _validationErrors.Remove("Password");
-        }
     }
 
     private void ValidateSections()
     {
         _validationErrors.Clear();
 
-        // Sección 1: Datos de Acceso (solo en modo creación)
         if (!_isEditMode)
         {
             bool emailValid = !string.IsNullOrWhiteSpace(_clientModel.Email) &&
                              System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-
             bool passwordValid = !string.IsNullOrWhiteSpace(_clientModel.Password) &&
                                 _clientModel.Password.Length >= 8 &&
                                 System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[A-Z]") &&
                                 System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[a-z]") &&
                                 System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[0-9]") &&
                                 System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[!@#$%^&*(),.?\"":{}|<>]");
-
             _section1Complete = emailValid && passwordValid;
         }
         else
         {
-            _section1Complete = true; // En edición no se valida esta sección
+            _section1Complete = true;
         }
 
-        // Sección 2: Datos de la Empresa
         _section2Complete = !string.IsNullOrWhiteSpace(_clientModel.CompanyName) &&
                            !string.IsNullOrWhiteSpace(_clientModel.ContactName);
 
-        // Sección 3: Información de Contacto
         var phoneDigits = System.Text.RegularExpressions.Regex.Replace(_clientModel.Phone ?? "", @"\D", "");
         bool phoneValid = phoneDigits.Length >= 10 && phoneDigits.Length <= 15;
-
         bool rfcValid = !string.IsNullOrWhiteSpace(_clientModel.RFC) &&
                        (_clientModel.RFC.Length == 12 || _clientModel.RFC.Length == 13);
+        _section3Complete = phoneValid && rfcValid && !string.IsNullOrWhiteSpace(_clientModel.Address);
 
-        _section3Complete = phoneValid &&
-                           rfcValid &&
-                           !string.IsNullOrWhiteSpace(_clientModel.Address);
-
-        // Sección 4: Configuración de Servicio
         bool serviceModeValid = !string.IsNullOrWhiteSpace(_clientModel.ServiceMode);
         bool monthlyRateValid = _clientModel.ServiceMode != "Mensual" ||
                                (_clientModel.MonthlyRate.HasValue && _clientModel.MonthlyRate.Value > 0);
-
         _section4Complete = serviceModeValid && monthlyRateValid;
 
         StateHasChanged();
-    }
-
-    private bool ValidateForm()
-    {
-        _validationErrors.Clear();
-        bool isValid = true;
-
-        // Validar Email
-        if (string.IsNullOrWhiteSpace(_clientModel.Email))
-        {
-            _validationErrors["Email"] = "El email es obligatorio";
-            isValid = false;
-        }
-        else if (!System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-        {
-            _validationErrors["Email"] = "Formato de email inválido";
-            isValid = false;
-        }
-
-        // Validar Contraseña (solo en modo creación)
-        if (!_isEditMode)
-        {
-            if (string.IsNullOrWhiteSpace(_clientModel.Password))
-            {
-                _validationErrors["Password"] = "La contraseña es obligatoria";
-                isValid = false;
-            }
-            else
-            {
-                var passwordErrors = new List<string>();
-
-                if (_clientModel.Password.Length < 8)
-                    passwordErrors.Add("Faltan caracteres (mínimo 8)");
-                if (!System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[A-Z]"))
-                    passwordErrors.Add("Falta una mayúscula");
-                if (!System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[a-z]"))
-                    passwordErrors.Add("Falta una minúscula");
-                if (!System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[0-9]"))
-                    passwordErrors.Add("Falta un número");
-                if (!System.Text.RegularExpressions.Regex.IsMatch(_clientModel.Password, @"[!@#$%^&*(),.?\"":{}|<>]"))
-                    passwordErrors.Add("Falta un carácter especial");
-
-                if (passwordErrors.Any())
-                {
-                    _validationErrors["Password"] = string.Join(" • ", passwordErrors);
-                    isValid = false;
-                }
-            }
-        }
-
-        // Validar Nombre de la Empresa
-        if (string.IsNullOrWhiteSpace(_clientModel.CompanyName))
-        {
-            _validationErrors["CompanyName"] = "El nombre de la empresa es obligatorio";
-            isValid = false;
-        }
-
-        // Validar Nombre del Contacto
-        if (string.IsNullOrWhiteSpace(_clientModel.ContactName))
-        {
-            _validationErrors["ContactName"] = "El nombre del contacto es obligatorio";
-            isValid = false;
-        }
-
-        // Validar Teléfono
-        if (string.IsNullOrWhiteSpace(_clientModel.Phone))
-        {
-            _validationErrors["Phone"] = "El teléfono es obligatorio";
-            isValid = false;
-        }
-        else
-        {
-            var phoneDigits = System.Text.RegularExpressions.Regex.Replace(_clientModel.Phone, @"\D", "");
-            if (phoneDigits.Length < 10)
-            {
-                _validationErrors["Phone"] = "El teléfono debe tener al menos 10 dígitos";
-                isValid = false;
-            }
-            else if (phoneDigits.Length > 15)
-            {
-                _validationErrors["Phone"] = "El teléfono no puede tener más de 15 dígitos";
-                isValid = false;
-            }
-        }
-
-        // Validar RFC
-        if (string.IsNullOrWhiteSpace(_clientModel.RFC))
-        {
-            _validationErrors["RFC"] = "El RFC es obligatorio";
-            isValid = false;
-        }
-        else if (_clientModel.RFC.Length < 12)
-        {
-            _validationErrors["RFC"] = "El RFC debe tener al menos 12 caracteres";
-            isValid = false;
-        }
-        else if (_clientModel.RFC.Length > 13)
-        {
-            _validationErrors["RFC"] = "El RFC no puede tener más de 13 caracteres";
-            isValid = false;
-        }
-
-        // Validar Dirección
-        if (string.IsNullOrWhiteSpace(_clientModel.Address))
-        {
-            _validationErrors["Address"] = "La dirección es obligatoria";
-            isValid = false;
-        }
-
-        // Validar Tarifa Mensual (si aplica)
-        if (_clientModel.ServiceMode == "Mensual")
-        {
-            if (!_clientModel.MonthlyRate.HasValue || _clientModel.MonthlyRate.Value <= 0)
-            {
-                _validationErrors["MonthlyRate"] = "La tarifa mensual debe ser mayor a $0.00";
-                isValid = false;
-            }
-        }
-
-        return isValid;
     }
 
     private async Task HandleSubmit()
@@ -687,16 +222,8 @@ else
 
         try
         {
-            // Validar formulario con mensajes personalizados
-            if (!ValidateForm())
-            {
-                _isSaving = false;
-                StateHasChanged();
-                return;
-            }
-
-            bool success = false;
-            string? errorMessage = null;
+            bool success;
+            string? errorMessage;
 
             if (_isEditMode)
             {
@@ -732,10 +259,7 @@ else
         }
     }
 
-    private void Cancel()
-    {
-        DialogService.Close(false);
-    }
+    private void Cancel() => DialogService.Close(false);
 
     private void ShowNotification(string title, string message, NotificationSeverity severity)
     {
