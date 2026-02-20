@@ -1164,3 +1164,38 @@ code {
     border-top: 1px solid #2d2d4e !important;
     color: #f1f1f1 !important;
 }
+
+/* App shell ocupa toda la pantalla */
+.fs-appshell{
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar fija arriba */
+.fs-topbar{
+  position: sticky; /* o fixed, pero sticky suele ser suficiente */
+  top: 0;
+  z-index: 1030;
+}
+
+/* Área debajo del topbar: sidebar + main */
+.fs-content{
+  flex: 1;
+  display: flex;
+  min-height: 0; /* CLAVE para que el overflow funcione bien */
+}
+
+/* Sidebar fijo (no se mueve porque NO scrollea el body) */
+.fs-sidebar{
+  height: 100%;
+  overflow-y: auto; /* para que el menú pueda scrollear si es largo */
+}
+
+/* Main scrollea */
+.fs-main{
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;     /* CLAVE: aquí vive el scroll */
+  height: 100%;
+}
