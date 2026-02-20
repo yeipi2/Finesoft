@@ -35,4 +35,7 @@ public class Invoice
     public string? CancellationReason { get; set; }
     public DateTime? CancelledDate { get; set; }
 
+    public string PaymentType { get; set; } = "PPD"; // PUE | PPD
+
+
 }

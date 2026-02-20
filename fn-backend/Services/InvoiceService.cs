@@ -95,6 +95,21 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("La factura debe tener al menos un elemento");
         }
 
+        // ✅ Normalizar PaymentType
+        invoiceDto.PaymentType = string.IsNullOrWhiteSpace(invoiceDto.PaymentType)
+            ? "PPD"
+            : invoiceDto.PaymentType.Trim().ToUpperInvariant();
+
+        if (invoiceDto.PaymentType is not ("PUE" or "PPD"))
+            return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
+
+        // ✅ Reglas: PUE requiere método. PPD lo define en pagos
+        if (invoiceDto.PaymentType == "PUE" && string.IsNullOrWhiteSpace(invoiceDto.PaymentMethod))
+            return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+
+        if (invoiceDto.PaymentType == "PPD")
+            invoiceDto.PaymentMethod = string.Empty;
+
         var invoiceNumber = await GenerateInvoiceNumber();
 
         var invoice = new Invoice
@@ -106,7 +121,8 @@ public class InvoiceService : IInvoiceService
             DueDate = invoiceDto.DueDate,
             InvoiceType = invoiceDto.InvoiceType,
             Status = invoiceDto.Status,
-            PaymentMethod = invoiceDto.PaymentMethod,
+            PaymentType = invoiceDto.PaymentType,
+            PaymentMethod = invoiceDto.PaymentMethod ?? string.Empty,
             CreatedByUserId = createdByUserId,
             Notes = invoiceDto.Notes
         };
@@ -197,7 +213,10 @@ public class InvoiceService : IInvoiceService
             DueDate = dto.DueDate,
             InvoiceType = "Event",
             Status = "Pendiente",
-            PaymentMethod = dto.PaymentMethod ?? string.Empty,
+            PaymentType = string.IsNullOrWhiteSpace(dto.PaymentType) ? "PPD" : dto.PaymentType.Trim().ToUpperInvariant(),
+            PaymentMethod = (dto.PaymentType?.Trim().ToUpperInvariant() == "PUE")
+                ? (dto.PaymentMethod ?? string.Empty)
+                : string.Empty,
             CreatedByUserId = createdByUserId,
             Subtotal = quote.Subtotal,
             Tax = quote.Tax,
@@ -272,12 +291,28 @@ public class InvoiceService : IInvoiceService
         }
 
 
+        // ✅ Normalizar PaymentType
+        invoiceDto.PaymentType = string.IsNullOrWhiteSpace(invoiceDto.PaymentType)
+            ? "PPD"
+            : invoiceDto.PaymentType.Trim().ToUpperInvariant();
+
+        if (invoiceDto.PaymentType is not ("PUE" or "PPD"))
+            return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
+
+        // ✅ Reglas: PUE requiere método. PPD lo define en pagos
+        if (invoiceDto.PaymentType == "PUE" && string.IsNullOrWhiteSpace(invoiceDto.PaymentMethod))
+            return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+
+        if (invoiceDto.PaymentType == "PPD")
+            invoiceDto.PaymentMethod = string.Empty;
+
         invoice.ClientId = invoiceDto.ClientId;
         invoice.InvoiceDate = invoiceDto.InvoiceDate ?? invoice.InvoiceDate;
         invoice.DueDate = invoiceDto.DueDate;
         invoice.InvoiceType = invoiceDto.InvoiceType;
         invoice.Status = invoiceDto.Status;
-        invoice.PaymentMethod = invoiceDto.PaymentMethod;
+        invoice.PaymentType = invoiceDto.PaymentType;
+        invoice.PaymentMethod = invoiceDto.PaymentMethod ?? string.Empty;
         invoice.Notes = invoiceDto.Notes;
 
         _context.Set<InvoiceItem>().RemoveRange(invoice.Items);
@@ -1150,6 +1185,7 @@ public class InvoiceService : IInvoiceService
             InvoiceType = invoice.InvoiceType,
             Status = invoice.Status,
             PaymentMethod = invoice.PaymentMethod,
+            PaymentType = invoice.PaymentType,
 
             CreatedByUserId = invoice.CreatedByUserId,
             CreatedByUserName = user?.UserName ?? string.Empty,
@@ -1157,7 +1193,7 @@ public class InvoiceService : IInvoiceService
             Subtotal = invoice.Subtotal,
             Tax = invoice.Tax,
             Total = invoice.Total,
-            TicketCount = invoice.Items.Count(i => i.TicketId.HasValue && i.TicketId > 0),
+            TicketCount = invoice.Items?.Count(i => i.TicketId.HasValue && i.TicketId > 0) ?? 0,
 
             // Si está pagada, muestra el total como pagado; si no, lo acumulado.
             PaidAmount = invoice.Status == "Pagada" ? invoice.Total : totalPaid,

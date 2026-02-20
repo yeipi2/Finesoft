@@ -32,13 +32,28 @@
 
             <div class="col-md-6">
                 <label class="form-label">Método de pago</label>
-                <InputSelect class="form-select" @bind-Value="_model.PaymentMethod">
+                <InputSelect class="form-select" @bind-Value="_model.PaymentMethod" disabled="@LockPaymentMethod">
                     <option value="">-- Selecciona --</option>
                     @foreach (var m in _paymentMethods)
                     {
                         <option value="@m">@m</option>
                     }
                 </InputSelect>
+
+                @if (IsPUE)
+                {
+                    <small class="text-muted">
+                        PUE: el método se toma de la factura.
+                        @if (!LockPaymentMethod)
+                        {
+                            <span> (No está definido en la factura, selecciónalo aquí.)</span>
+                        }
+                    </small>
+                }
+                else
+                {
+                    <small class="text-muted">PPD: selecciona el método para este pago.</small>
+                }
                 <ValidationMessage For="@(() => _model.PaymentMethod)" />
             </div>
 
@@ -98,7 +113,38 @@
     private IBrowserFile? _receiptFile;
     private string? _fileError;
 
+    private InvoiceDetailDto? _invoice;
+    private bool IsPUE => _invoice != null &&
+        string.Equals(_invoice.PaymentType, "PUE", StringComparison.OrdinalIgnoreCase);
+
+    // Solo bloquea si es PUE y sí hay método definido en la factura
+    private bool LockPaymentMethod => IsPUE && !string.IsNullOrWhiteSpace(_invoice?.PaymentMethod);
+
     private PaymentFormModel _model = new();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar factura para saber PaymentType / PaymentMethod
+        _invoice = await InvoiceApiService.GetInvoiceByIdAsync(InvoiceId);
+
+        if (_invoice == null)
+            return;
+
+        // (opcional) Prellenar monto con saldo
+        // _model.Amount = _invoice.Balance > 0 ? _invoice.Balance : _invoice.Total;
+
+        if (IsPUE)
+        {
+            // PUE: usar método de la factura (si está definido)
+            _model.PaymentMethod = _invoice.PaymentMethod ?? string.Empty;
+        }
+        else
+        {
+            // PPD: que el usuario elija el método en el pago
+            _model.PaymentMethod = string.Empty;
+        }
+    }
 
     private class PaymentFormModel
     {
@@ -161,6 +207,11 @@
         }
 
         _saving = true;
+
+        if (IsPUE && !string.IsNullOrWhiteSpace(_invoice?.PaymentMethod))
+        {
+            _model.PaymentMethod = _invoice.PaymentMethod!;
+        }
 
         var dto = new InvoicePaymentDto
         {
