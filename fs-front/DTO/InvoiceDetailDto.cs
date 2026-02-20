@@ -18,6 +18,7 @@ public class InvoiceDetailDto
 
     public string InvoiceType { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string PaymentType { get; set; } = "PPD";
     public string PaymentMethod { get; set; } = string.Empty;
 
     public string CreatedByUserId { get; set; } = string.Empty;

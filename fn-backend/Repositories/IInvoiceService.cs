@@ -12,9 +12,13 @@ public interface IInvoiceService
     Task<ServiceResult<InvoiceDetailDto>> UpdateInvoiceAsync(int id, InvoiceDto invoiceDto);
     Task<ServiceResult<bool>> DeleteInvoiceAsync(int id);
     Task<ServiceResult<bool>> ChangeInvoiceStatusAsync(int id, string newStatus, string? reason);
-    Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, InvoicePaymentDto paymentDto, string userId);
+    Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, RegisterInvoicePaymentDto dto, string userId);
     Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId);
     Task<InvoiceStatsDto> GetInvoiceStatsAsync();
     Task<byte[]> GenerateInvoicePdfAsync(int id);
     Task<List<int>> GetTicketsInUseAsync();
+    Task<ServiceResult<InvoicePaymentDto>> AddPaymentWithReceiptAsync(
+    int invoiceId,
+    AddInvoicePaymentWithReceiptRequest request,
+    string userId);
 }

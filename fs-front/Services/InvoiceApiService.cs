@@ -1,5 +1,9 @@
 ﻿using System.Net.Http.Json;
 using fs_front.DTO;
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Components.Forms;
+using System.Globalization;
+
 
 namespace fs_front.Services;
 
@@ -195,6 +199,47 @@ public class InvoiceApiService : IInvoiceApiService
         catch (Exception e)
         {
             return (false, null, $"Error: {e.Message}");
+        }
+    }
+
+    public async Task<(bool Success, InvoicePaymentDto? AddedPayment, string? ErrorMessage)>
+    AddPaymentWithReceiptAsync(int invoiceId, InvoicePaymentDto payment, IBrowserFile receiptFile)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            // Campos (ojo: nombres deben coincidir con el DTO del backend)
+            content.Add(new StringContent(payment.Amount.ToString(CultureInfo.InvariantCulture)), "Amount");
+            content.Add(new StringContent(payment.PaymentDate.ToString("O")), "PaymentDate");
+            content.Add(new StringContent(payment.PaymentMethod ?? ""), "PaymentMethod");
+            content.Add(new StringContent(payment.Reference ?? ""), "Reference");
+            content.Add(new StringContent(payment.Notes ?? ""), "Notes");
+
+            // Archivo: debe llamarse EXACTO "Receipt"
+            var stream = receiptFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(receiptFile.ContentType);
+
+            content.Add(fileContent, "Receipt", receiptFile.Name);
+
+            var response = await _httpClient.PostAsync(
+                $"api/invoices/{invoiceId}/payments-with-receipt",
+                content
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                var added = await response.Content.ReadFromJsonAsync<InvoicePaymentDto>();
+                return (true, added, null);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, null, errorContent);
+        }
+        catch (Exception ex)
+        {
+            return (false, null, ex.Message);
         }
     }
 

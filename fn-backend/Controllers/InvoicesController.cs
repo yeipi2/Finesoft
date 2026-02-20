@@ -171,24 +171,40 @@ public class InvoicesController : ControllerBase
     /// </summary>
     [HttpPost("{id}/payments")]
     [RequirePermission("invoices.payment")]
-    public async Task<IActionResult> AddPayment(int id, InvoicePaymentDto paymentDto)
+    public async Task<IActionResult> AddPayment(int id, [FromForm] RegisterInvoicePaymentDto dto)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-        {
             return Unauthorized(new { message = "Usuario no autenticado" });
-        }
 
         _logger.LogInformation("✅ Usuario {UserId} registrando pago para factura {InvoiceId}", userId, id);
 
-        var result = await _invoiceService.AddPaymentAsync(id, paymentDto, userId);
+        var result = await _invoiceService.AddPaymentAsync(id, dto, userId);
         if (!result.Succeeded)
-        {
             return BadRequest(result.Errors);
-        }
 
         return Ok(result.Data);
     }
+
+    [HttpPost("{id}/payments-with-receipt")]
+    [RequirePermission("invoices.payment")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> AddPaymentWithReceipt(
+    int id,
+    [FromForm] AddInvoicePaymentWithReceiptRequest request)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { message = "Usuario no autenticado" });
+
+        var result = await _invoiceService.AddPaymentWithReceiptAsync(id, request, userId);
+
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
+
+        return Ok(result.Data);
+    }
+
 
     /// <summary>
     /// POST: api/invoices/generate-monthly

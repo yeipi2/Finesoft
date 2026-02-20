@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using fs_backend.Identity;
 
@@ -11,9 +12,11 @@ using fs_backend.Identity;
 namespace fs_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260219174011_AddInvoicePaymentReceiptFields")]
+    partial class AddInvoicePaymentReceiptFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -433,10 +436,6 @@ namespace fs_backend.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("PaymentMethod")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PaymentType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -1339,7 +1338,7 @@ namespace fs_backend.Migrations
             modelBuilder.Entity("fn_backend.Models.Project", b =>
                 {
                     b.HasOne("fn_backend.Models.Client", "Client")
-                        .WithMany("Projects")
+                        .WithMany()
                         .HasForeignKey("ClientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1484,11 +1483,6 @@ namespace fs_backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Ticket");
-                });
-
-            modelBuilder.Entity("fn_backend.Models.Client", b =>
-                {
-                    b.Navigation("Projects");
                 });
 
             modelBuilder.Entity("fs_backend.Models.Invoice", b =>

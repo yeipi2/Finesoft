@@ -1,0 +1,317 @@
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using fs_front.DTO
+@using fs_front.Services
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IInvoiceApiService InvoiceApiService
+
+<div class="p-3">
+    <h5 class="mb-2">
+        <i class="bi bi-cash-coin"></i> Registrar pago
+    </h5>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge bg-light text-dark border">
+            Total: <strong>@InvoiceTotal.ToString("N2")</strong>
+        </span>
+        <span class="badge bg-light text-dark border">
+            Saldo: <strong class="text-warning">@InvoiceBalance.ToString("N2")</strong>
+        </span>
+        <span class="badge @(IsPUE ? "bg-primary" : "bg-secondary")">
+            @PaymentType
+        </span>
+    </div>
+
+    <EditForm Model="_model" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Monto</label>
+
+                <div class="input-group">
+                    <InputNumber class="form-control" @bind-Value="_model.Amount" disabled="@_lockAmount" />
+                    @if (!IsPUE)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="UseBalance">
+                            Usar saldo
+                        </button>
+                    }
+                </div>
+
+                @if (!IsPUE && InvoiceBalance > 0 && _model.Amount > InvoiceBalance)
+                {
+                    <small class="text-danger">
+                        No puedes exceder el saldo pendiente (@InvoiceBalance.ToString("N2")).
+                    </small>
+                }
+
+                <ValidationMessage For="@(() => _model.Amount)" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Fecha</label>
+                <InputDate class="form-control" @bind-Value="_model.PaymentDate" />
+                <ValidationMessage For="@(() => _model.PaymentDate)" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Método de pago</label>
+                <InputSelect class="form-select" @bind-Value="_model.PaymentMethod" disabled="@LockPaymentMethod">
+                    <option value="">-- Selecciona --</option>
+                    @foreach (var m in _paymentMethods)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </InputSelect>
+
+                @if (IsPUE)
+                {
+                    <small class="text-muted">
+                        PUE: el método se toma de la factura.
+                        @if (!LockPaymentMethod)
+                        {
+                            <span> (No está definido en la factura, selecciónalo aquí.)</span>
+                        }
+                    </small>
+                }
+                else
+                {
+                    <small class="text-muted">
+                        PPD: selecciona el método para este pago.
+                    </small>
+                }
+
+                <ValidationMessage For="@(() => _model.PaymentMethod)" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Referencia</label>
+                <InputText class="form-control" @bind-Value="_model.Reference" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <InputTextArea class="form-control" rows="2" @bind-Value="_model.Notes" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Comprobante (PDF/Imagen)</label>
+                <InputFile OnChange="OnFileSelected" accept=".pdf,image/*" />
+                @if (!string.IsNullOrWhiteSpace(_fileError))
+                {
+                    <div class="text-danger small mt-1">@_fileError</div>
+                }
+                @if (_receiptFile != null)
+                {
+                    <div class="text-muted small mt-1">
+                        <i class="bi bi-paperclip"></i>
+                        @_receiptFile.Name (@(Math.Round(_receiptFile.Size / 1024.0, 1)) KB)
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-outline-secondary" @onclick="Close">
+                Cancelar
+            </button>
+
+            <button class="btn btn-success" type="submit" disabled="@_saving">
+                @if (_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Guardando&#8230;</span>
+                }
+                else
+                {
+                    <i class="bi bi-check2-circle"></i>
+                    <span class="ms-1">Guardar</span>
+                }
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public int InvoiceId { get; set; }
+
+    [Parameter] public string PaymentType { get; set; } = "PPD";
+    [Parameter] public string InvoicePaymentMethod { get; set; } = string.Empty;
+    [Parameter] public decimal InvoiceTotal { get; set; }
+    [Parameter] public decimal InvoiceBalance { get; set; }
+
+    private bool _saving;
+    private IBrowserFile? _receiptFile;
+    private string? _fileError;
+
+    private bool _lockAmount;
+    private PaymentFormModel _model = new();
+
+    private bool IsPUE => string.Equals(PaymentType, "PUE", StringComparison.OrdinalIgnoreCase);
+    private bool LockPaymentMethod => IsPUE && !string.IsNullOrWhiteSpace(InvoicePaymentMethod);
+
+    protected override void OnParametersSet()
+    {
+        if (IsPUE)
+        {
+            var amount = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
+            _model.Amount = amount;
+            _lockAmount = true;
+
+            if (!string.IsNullOrWhiteSpace(InvoicePaymentMethod))
+                _model.PaymentMethod = InvoicePaymentMethod;
+        }
+        else
+        {
+            _lockAmount = false;
+            _model.Amount = 0;
+            _model.PaymentMethod = string.Empty;
+        }
+    }
+
+    private void UseBalance()
+    {
+        var amount = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
+        _model.Amount = amount;
+    }
+
+    private class PaymentFormModel
+    {
+        [Required(ErrorMessage = "El monto es obligatorio")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a 0")]
+        public decimal Amount { get; set; }
+
+        [Required(ErrorMessage = "La fecha es obligatoria")]
+        public DateTime PaymentDate { get; set; } = DateTime.Now;
+
+        [Required(ErrorMessage = "El método de pago es obligatorio")]
+        public string PaymentMethod { get; set; } = string.Empty;
+
+        public string Reference { get; set; } = string.Empty;
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    private readonly List<string> _paymentMethods = new()
+    {
+        "Transferencia",
+        "Efectivo",
+        "Tarjeta",
+        "Depósito",
+        "Cheque",
+        "Otro"
+    };
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _fileError = null;
+        _receiptFile = null;
+
+        var file = e.File;
+        if (file is null) return;
+
+        var allowed = file.ContentType.StartsWith("image/") || file.ContentType == "application/pdf";
+        if (!allowed)
+        {
+            _fileError = "Solo se permite PDF o imagen.";
+            return;
+        }
+
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            _fileError = "El archivo excede 10MB.";
+            return;
+        }
+
+        _receiptFile = file;
+    }
+
+    private async Task Save()
+    {
+        if (_receiptFile == null)
+        {
+            _fileError = "Debes subir un comprobante.";
+            return;
+        }
+
+        // PUE: forzar método si viene en factura
+        if (IsPUE && !string.IsNullOrWhiteSpace(InvoicePaymentMethod))
+            _model.PaymentMethod = InvoicePaymentMethod;
+
+        // PUE: monto exacto
+        if (IsPUE)
+        {
+            var expected = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
+            if (_model.Amount != expected)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Aviso",
+                    Detail = $"Para PUE el monto debe ser exactamente {expected:N2}.",
+                    Duration = 4500
+                });
+                return;
+            }
+        }
+        else
+        {
+            // PPD: UX extra (backend ya valida)
+            var max = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
+            if (max > 0 && _model.Amount > max)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Aviso",
+                    Detail = $"No puedes exceder el saldo pendiente ({max:N2}).",
+                    Duration = 4500
+                });
+                return;
+            }
+        }
+
+        _saving = true;
+
+        var dto = new InvoicePaymentDto
+        {
+            Amount = _model.Amount,
+            PaymentDate = _model.PaymentDate,
+            PaymentMethod = _model.PaymentMethod,
+            Reference = _model.Reference,
+            Notes = _model.Notes
+        };
+
+        var (success, added, error) = await InvoiceApiService.AddPaymentWithReceiptAsync(InvoiceId, dto, _receiptFile);
+
+        _saving = false;
+
+        if (!success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = error ?? "No se pudo registrar el pago",
+                Duration = 4500
+            });
+            return;
+        }
+
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Éxito",
+            Detail = "Pago registrado correctamente",
+            Duration = 3500
+        });
+
+        DialogService.Close(true);
+    }
+
+    private void Close() => DialogService.Close(false);
+}
