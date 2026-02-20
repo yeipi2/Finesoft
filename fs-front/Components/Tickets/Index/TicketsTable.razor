@@ -1,0 +1,103 @@
+﻿@* Tabla de tickets con badges reutilizables, columna condicional por rol y acciones *@
+@using fs_front.DTO
+
+<FsDataTable TItem="TicketDetailDto"
+             Title="@(CanViewAll ? "Tickets" : "Mis Tickets")"
+             Subtitle="Ordena por columna y gestiona rápidamente"
+             Items="Items"
+             IsLoading="IsLoading"
+             ColSpan="@(CanViewAll ? 8 : 7)"
+             EmptyTitle="No se encontraron tickets"
+             EmptySubtitle="Prueba ajustando filtros o búsqueda.">
+
+    <Header>
+        <FsSortHeader Text="ID"        Field="id"        ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Título"    Field="title"     ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <th>Cliente / Proyecto</th>
+        <FsSortHeader Text="Prioridad" Field="priority"  ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Estado"    Field="status"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        @if (CanViewAll)
+        {
+            <th>Asignado a</th>
+        }
+        <th>Horas</th>
+        <th class="text-center">Acciones</th>
+    </Header>
+
+    <RowTemplate Context="ticket">
+        <tr>
+            <td class="fw-bold">#@ticket.Id</td>
+
+            <td>
+                <div class="fw-bold">@ticket.Title</div>
+                <small class="text-muted">
+                    @(ticket.Description?.Length > 50
+                        ? ticket.Description.Substring(0, 50) + "..."
+                        : ticket.Description)
+                </small>
+            </td>
+
+            <td>
+                <div><strong>@ticket.ClientName</strong></div>
+                <small class="text-muted">@ticket.ProjectName</small>
+            </td>
+
+            <td>
+                <TicketPriorityBadge Priority="@ticket.Priority" />
+            </td>
+
+            <td>
+                <TicketStatusBadge Status="@ticket.Status" />
+            </td>
+
+            @if (CanViewAll)
+            {
+                <td>
+                    @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
+                    {
+                        <span>@ticket.AssignedToUserName</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Sin asignar</span>
+                    }
+                </td>
+            }
+
+            <td>
+                <div><small class="text-muted">Estimadas:</small> @ticket.EstimatedHours.ToString("0.0")h</div>
+                <div><small class="text-muted">Reales:</small> <strong class="text-success">@ticket.ActualHours.ToString("0.0")h</strong></div>
+            </td>
+
+            <td class="text-center">
+                @if (CurrentRole != "Cliente")
+                {
+                    <button class="btn btn-sm btn-outline-primary me-1"
+                            @onclick="() => OnViewDetails.InvokeAsync(ticket.Id)"
+                            title="Ver detalles">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+                }
+            </td>
+        </tr>
+    </RowTemplate>
+
+</FsDataTable>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TicketDetailDto> Items { get; set; } = Enumerable.Empty<TicketDetailDto>();
+    [Parameter] public bool IsLoading  { get; set; }
+    [Parameter] public bool CanViewAll { get; set; }
+    [Parameter] public string? CurrentRole { get; set; }
+
+    // Ordenamiento
+    [Parameter] public string SortField { get; set; } = "createdAt";
+    [Parameter] public FsSortHeader.SortDirection SortDir { get; set; } = FsSortHeader.SortDirection.Desc;
+    [Parameter] public EventCallback<(string field, FsSortHeader.SortDirection dir)> SortChanged { get; set; }
+
+    // Acciones
+    [Parameter] public EventCallback<int> OnViewDetails { get; set; }
+
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+        => SortChanged.InvokeAsync(s);
+}

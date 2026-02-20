@@ -1,0 +1,90 @@
+﻿@* Formulario principal de respuesta: muestra montos, validez, comentarios y botones Aceptar/Rechazar *@
+@using fs_front.DTO
+
+<div class="fs-body">
+
+    <div class="fs-quote-num">@QuoteNumber</div>
+    <div class="fs-client">@ClientName</div>
+
+    @* Montos *@
+    <div class="fs-amounts">
+        <div class="fs-row">
+            <span class="fs-row-label">Subtotal</span>
+            <span class="fs-row-value">$@Subtotal.ToString("N2")</span>
+        </div>
+        <div class="fs-row">
+            <span class="fs-row-label">IVA 16%</span>
+            <span class="fs-row-value">$@Tax.ToString("N2")</span>
+        </div>
+        <div class="fs-row">
+            <span class="fs-row-total-label">Total</span>
+            <span class="fs-row-total-value">$@Total.ToString("N2")</span>
+        </div>
+    </div>
+
+    @* Validez *@
+    @if (ValidUntil.HasValue)
+    {
+        <p class="fs-valid">
+            Válida hasta: <strong>@ValidUntil.Value.ToString("dd/MM/yyyy")</strong>
+            @if (ValidUntil.Value < DateTime.Now)
+            {
+                <span class="fs-expired-pill">Expirada</span>
+            }
+        </p>
+    }
+
+    @* Formulario o confirmación *@
+    @if (!HasResponded)
+    {
+        <label class="fs-label">
+            Comentarios <span style="color:#d4d4d8;text-transform:none;letter-spacing:0;">(opcional)</span>
+        </label>
+        <textarea class="fs-textarea" rows="2"
+                  @bind="Comments"
+                  placeholder="Agrega una nota o pregunta..."
+                  maxlength="500"></textarea>
+
+        <div class="fs-actions">
+            <button class="fs-btn-accept"
+                    @onclick='() => OnSubmit.InvokeAsync(("Aceptada", Comments))'
+                    disabled="@IsSubmitting">
+                @if (IsSubmitting)
+                {
+                    <span class="fs-spinner"></span>
+                }
+                Aceptar cotización
+            </button>
+            <button class="fs-btn-reject"
+                    @onclick='() => OnSubmit.InvokeAsync(("Rechazada", Comments))'
+                    disabled="@IsSubmitting">
+                Rechazar
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="fs-success">
+            <div class="fs-success-icon">🎉</div>
+            <div class="fs-success-title">¡Respuesta enviada!</div>
+            <p class="fs-success-desc">Nos pondremos en contacto contigo pronto.</p>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string QuoteNumber { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ClientName { get; set; } = string.Empty;
+    [Parameter] public decimal Subtotal { get; set; }
+    [Parameter] public decimal Tax { get; set; }
+    [Parameter] public decimal Total { get; set; }
+    [Parameter] public DateTime? ValidUntil { get; set; }
+    [Parameter] public bool HasResponded { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+
+    /// <summary>Callback con (status, comments)</summary>
+    [Parameter] public EventCallback<(string status, string comments)> OnSubmit { get; set; }
+
+    private string Comments { get; set; } = string.Empty;
+}

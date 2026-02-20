@@ -1,0 +1,14 @@
+﻿@* Card de descripción del ticket en la vista de detalles *@
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Descripción</h5>
+    </div>
+    <div class="card-body">
+        <p class="mb-0">@Description</p>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Description { get; set; } = string.Empty;
+}

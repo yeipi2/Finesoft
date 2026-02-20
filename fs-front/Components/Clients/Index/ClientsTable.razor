@@ -1,4 +1,5 @@
 ﻿@* fs-front/Components/Clients/Index/ClientsTable.razor *@
+@using fs_front.Components.Clients.Shared
 @using fs_front.DTO
 
 <FsDataTable TItem="ClientDto" 
@@ -51,9 +52,7 @@
             </td>
 
             <td>
-                <span class="status-badge @(client.IsActive ? "active" : "inactive")">
-                    @(client.IsActive ? "Activo" : "Inactivo")
-                </span>
+                <ClientStatusBadge IsActive="client.IsActive" />
             </td>
 
 

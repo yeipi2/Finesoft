@@ -1,4 +1,10 @@
-﻿@using fs_front.DTO
+﻿@* Formulario simplificado para que clientes creen tickets.
+   Solo título y descripción — el equipo interno asigna el resto. *@
+@using fs_front.DTO
+
+@inject ITicketApiService TicketApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
 
 <section class="container px-0">
     <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
@@ -52,16 +58,12 @@
     </EditForm>
 </section>
 
-@inject ITicketApiService TicketApiService
-@inject DialogService DialogService
-@inject NotificationService NotificationService
-
 @code {
     private TicketDto _ticketDto = new()
     {
         Status = "Abierto",
         Priority = "Media",
-        ProjectId = null,  // ⭐ CAMBIO: null en lugar de 0
+        ProjectId = null,
         ServiceId = null
     };
 
@@ -73,7 +75,6 @@
         _isSaving = true;
         _errorMessage = null;
         StateHasChanged();
-
         try
         {
             var result = await TicketApiService.CreateTicketAsync(_ticketDto);

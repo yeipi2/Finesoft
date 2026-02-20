@@ -1,0 +1,74 @@
+﻿@* Tabla de proyectos con filas, badges de estado y botones de acción *@
+@using fs_front.Components.Projects.Shared
+@using fs_front.DTO
+
+<FsDataTable TItem="ProjectDetailDto"
+             Title="Proyectos"
+             Subtitle="Lista de todos los proyectos del sistema"
+             Items="Items"
+             IsLoading="IsLoading"
+             ColSpan="4"
+             EmptyTitle="No se encontraron proyectos"
+             EmptySubtitle="Prueba con otra búsqueda.">
+
+    <Header>
+        <FsSortHeader Text="Proyecto"  Field="name"   ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" ThClass="ps-4" />
+        <FsSortHeader Text="Cliente"   Field="client" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Estado"    Field="status" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <th class="text-center">Acciones</th>
+    </Header>
+
+    <RowTemplate Context="project">
+        <tr>
+            <td class="ps-4">
+                <div class="fw-bold text-primary">@project.Name</div>
+                <div class="text-muted small">@project.Description</div>
+            </td>
+
+            <td>
+                @if (project.Client != null)
+                {
+                    <div>
+                        <div class="fw-bold">@project.Client.CompanyName</div>
+                        <div class="text-muted small"><i class="bi bi-person"></i> @project.Client.ContactName</div>
+                        <div class="text-muted small"><i class="bi bi-envelope"></i> @project.Client.Email</div>
+                        <div class="text-muted small"><i class="bi bi-telephone"></i> @project.Client.Phone</div>
+                    </div>
+                }
+                else
+                {
+                    <span class="text-muted small">Sin cliente</span>
+                }
+            </td>
+
+            <td>
+                <ProjectStatusBadge IsActive="project.IsActive" />
+            </td>
+
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-info me-1"
+                        @onclick="() => OnViewDetails.InvokeAsync(project.Id)"
+                        title="Ver detalles">
+                    <i class="bi bi-eye-fill"></i>
+                </button>
+            </td>
+        </tr>
+    </RowTemplate>
+
+</FsDataTable>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<ProjectDetailDto> Items { get; set; } = Enumerable.Empty<ProjectDetailDto>();
+    [Parameter] public bool IsLoading { get; set; }
+
+    // Ordenamiento
+    [Parameter] public string SortField { get; set; } = "name";
+    [Parameter] public FsSortHeader.SortDirection SortDir { get; set; } = FsSortHeader.SortDirection.Desc;
+    [Parameter] public EventCallback<(string field, FsSortHeader.SortDirection dir)> SortChanged { get; set; }
+
+    // Acciones
+    [Parameter] public EventCallback<int> OnViewDetails { get; set; }
+
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+        => SortChanged.InvokeAsync(s);
+}

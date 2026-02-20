@@ -1,0 +1,57 @@
+﻿.quote-form-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* ← usa todo el espacio del dialog */
+    min-height: 0;
+    overflow: hidden;
+}
+
+.quote-form-body {
+    flex: 1;
+    min-height: 0; /* ← permite que flex encoja */
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.quote-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid #dee2e6;
+    background-color: white;
+    flex-shrink: 0; /* ← footer nunca se encoge */
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 250px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 0.25rem 0.25rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,.15);
+}
+
+.autocomplete-item {
+    padding: .5rem .75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: .875rem;
+    transition: background-color .1s ease;
+}
+
+    .autocomplete-item:hover {
+        background-color: #e7f3ff;
+    }
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+

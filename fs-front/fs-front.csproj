@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Pages\Quotes\Shared\**" />
+    <Content Remove="Pages\Quotes\Shared\**" />
+    <EmbeddedResource Remove="Pages\Quotes\Shared\**" />
+    <None Remove="Pages\Quotes\Shared\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BlazorAnimate" Version="3.0.0" />
     <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.20" />
@@ -26,7 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\Quotes\Shared\" />
     <Folder Include="wwwroot\NewFolder\" />
   </ItemGroup>
 

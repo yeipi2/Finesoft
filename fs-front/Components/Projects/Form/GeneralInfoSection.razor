@@ -1,0 +1,63 @@
+﻿@* Sección acordeón: Información General del proyecto (Nombre + Descripción) *@
+@using fs_front.DTO
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="headingGeneral">
+        <button class="accordion-button @(IsComplete ? "" : "text-danger")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseGeneral"
+                aria-expanded="true"
+                aria-controls="collapseGeneral">
+            <i class="bi bi-folder2-open me-2"></i>
+            <strong>Información General</strong>
+            @if (!IsComplete)
+            {
+                <span class="badge bg-danger ms-2">Incompleto</span>
+            }
+            else
+            {
+                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+            }
+        </button>
+    </h2>
+    <div id="collapseGeneral"
+         class="accordion-collapse collapse show"
+         aria-labelledby="headingGeneral"
+         data-bs-parent="#projectAccordion">
+        <div class="accordion-body">
+            <div class="row g-3">
+
+                <div class="col-12">
+                    <label for="Name" class="form-label small fw-bold">
+                        Nombre del Proyecto <span class="text-danger">*</span>
+                    </label>
+                    <InputText id="Name"
+                               class="form-control form-control-sm"
+                               placeholder="Sistema de Facturación"
+                               Value="@Model.Name"
+                               ValueChanged="@(v => { Model.Name = v; OnChange.InvokeAsync(); })"
+                               ValueExpression="@(() => Model.Name)" />
+                    <ValidationMessage For="@(() => Model.Name)" />
+                </div>
+
+                <div class="col-12">
+                    <label for="Description" class="form-label small fw-bold">Descripción</label>
+                    <InputTextArea id="Description"
+                                   class="form-control form-control-sm"
+                                   rows="3"
+                                   placeholder="Descripción del proyecto..."
+                                   @bind-Value="Model.Description" />
+                    <ValidationMessage For="@(() => Model.Description)" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ProjectDto Model { get; set; } = default!;
+    [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public EventCallback OnChange { get; set; }
+}

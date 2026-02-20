@@ -1,0 +1,45 @@
+﻿@* Barra de búsqueda y filtros de estado/prioridad para el índice de tickets *@
+
+<FilterBar SearchPlaceholder="Buscar tickets..."
+           SearchValue="@SearchValue"
+           SearchValueChanged="SearchValueChanged"
+           OnClear="OnClear">
+
+    <Filters>
+        <select class="form-select" value="@StatusFilter"
+                @onchange="HandleStatusChange">
+            <option value="">Todos los estados</option>
+            <option value="Abierto">Abierto</option>
+            <option value="En Progreso">En Progreso</option>
+            <option value="En Revisión">En Revisión</option>
+            <option value="Cerrado">Cerrado</option>
+        </select>
+
+        <select class="form-select" value="@PriorityFilter"
+                @onchange="HandlePriorityChange">
+            <option value="">Todas las prioridades</option>
+            <option value="Baja">Baja</option>
+            <option value="Media">Media</option>
+            <option value="Alta">Alta</option>
+            <option value="Urgente">Urgente</option>
+        </select>
+    </Filters>
+
+</FilterBar>
+
+@code {
+    [Parameter] public string SearchValue { get; set; } = string.Empty;
+    [Parameter] public string StatusFilter { get; set; } = string.Empty;
+    [Parameter] public string PriorityFilter { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<string> SearchValueChanged { get; set; }
+    [Parameter] public EventCallback<string> StatusFilterChanged { get; set; }
+    [Parameter] public EventCallback<string> PriorityFilterChanged { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    private Task HandleStatusChange(ChangeEventArgs e)
+        => StatusFilterChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+
+    private Task HandlePriorityChange(ChangeEventArgs e)
+        => PriorityFilterChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+}

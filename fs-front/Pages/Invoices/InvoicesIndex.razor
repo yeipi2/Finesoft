@@ -379,46 +379,40 @@ else
         FilterInvoices();
     }
 
+    // ── REEMPLAZA OpenNewInvoiceDialog y OpenEditDialog en Facturas.razor ──
+
     private async Task OpenNewInvoiceDialog()
     {
-        var options = new DialogOptions
-        {
-            Width = "1000px",
-            Height = "80%",
-            Resizable = true,
-            Draggable = false,
-            CloseDialogOnOverlayClick = false
-        };
-
         var result = await DialogService.OpenAsync<InvoiceForm>("Nueva Factura",
             new Dictionary<string, object>(),
-            options);
+            new DialogOptions
+            {
+                Width = "1000px",
+                Resizable = true,
+                Draggable = false,
+                CloseDialogOnOverlayClick = false
+                // ⛔ Sin Height — el dialog se adapta al contenido del form
+            });
 
         if (result == true)
-        {
             await LoadData();
-        }
     }
 
     private async Task OpenEditDialog(int invoiceId)
     {
-        var options = new DialogOptions
-        {
-            Width = "1000px",
-            Height = "80%",
-            Resizable = true,
-            Draggable = false,
-            CloseDialogOnOverlayClick = false
-        };
-
         var result = await DialogService.OpenAsync<InvoiceForm>("Editar Factura",
             new Dictionary<string, object> { { "InvoiceId", invoiceId } },
-            options);
+            new DialogOptions
+            {
+                Width = "1000px",
+                Resizable = true,
+                Draggable = false,
+                CloseDialogOnOverlayClick = false
+                // ⛔ Sin Height — el dialog se adapta al contenido del form
+            });
 
         if (result == true)
-        {
             await LoadData();
-        }
     }
 
     private void ViewInvoiceDetails(int invoiceId)

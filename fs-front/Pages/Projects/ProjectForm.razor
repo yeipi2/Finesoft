@@ -1,212 +1,124 @@
-﻿@using fs_front.DTO
+﻿@* Modal de creación/edición de proyecto.
+   Usa los subcomponentes: GeneralInfoSection, ClientSection, ConfigSection *@
+@using fs_front.DTO
 @using Radzen
 @using Radzen.Blazor
-
-<section class="container px-0">
-    <EditForm Model="_createProjectDto" OnValidSubmit="CreateProject">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="alert alert-danger" />
-
-        <div class="row">
-            <div class="col-md-12">
-                <div class="mb-3">
-                    <label for="Name" class="form-label fw-bold small">Nombre del Proyecto *</label>
-                    <InputText id="Name" class="form-control" placeholder="Sistema de Facturación"
-                               @bind-Value="_createProjectDto.Name" />
-                    <ValidationMessage For="@(() => _createProjectDto.Name)" />
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-12">
-                <div class="mb-3">
-                    <label for="Description" class="form-label fw-bold small">Descripción</label>
-                    <InputTextArea id="Description" class="form-control" rows="3" placeholder="Descripción del proyecto..."
-                                   @bind-Value="_createProjectDto.Description" />
-                    <ValidationMessage For="@(() => _createProjectDto.Description)" />
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-12">
-                <div class="mb-3">
-                    <label for="ClientSearch" class="form-label fw-bold small">Cliente *</label>
-
-                    @if (_isLoadingClients)
-                    {
-                        <div class="d-flex align-items-center">
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                            <span>Cargando clientes...</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="position-relative">
-                            <input type="text"
-                                   class="form-control"
-                                   id="ClientSearch"
-                                   placeholder="Buscar cliente por nombre..."
-                                   value="@_clientSearchText"
-                                   @oninput="OnClientSearchInput"
-                                   @onkeydown="OnKeyDown"
-                                   @onfocus="() => _showSuggestions = true"
-                                   autocomplete="off" />
-
-                            @if (_showSuggestions && _filteredClients.Any())
-                            {
-                                <div class="autocomplete-dropdown">
-                                    @foreach (var client in _filteredClients.Take(10))
-                                    {
-                                        <div class="autocomplete-item" @onclick="() => SelectClient(client)">
-                                            @client.CompanyName
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-
-                        @if (_createProjectDto.ClientId > 0 && _selectedClient != null)
-                        {
-                            <small class="text-success mt-1 d-block">
-                                ✓ Cliente seleccionado: <strong>@_selectedClient.CompanyName</strong>
-                            </small>
-                        }
-
-                        @if (_createProjectDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
-                        {
-                            <div class="form-text text-danger mt-2">
-                                <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
-                            </div>
-                        }
-                    }
-                    <ValidationMessage For="@(() => _createProjectDto.ClientId)" />
-                </div>
-            </div>
-        </div>
-
-        <div class="mb-3 border rounded p-3 bg-light">
-            <div class="form-check form-switch">
-                <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="_createProjectDto.IsActive" />
-                <label class="form-check-label fw-bold" for="IsActive">
-                    Proyecto Activo
-                </label>
-            </div>
-            <div class="form-text">
-                <i class="bi bi-info-circle"></i> Determina si el proyecto puede recibir nuevos tickets
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-secondary" @onclick="Cancel">
-                Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary" disabled="@(_isSaving || _isLoadingClients || _createProjectDto.ClientId == 0)">
-                @if (_isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                }
-                <i class="bi bi-check-lg"></i>
-                @(_isEditMode ? "Actualizar Proyecto" : "Crear Proyecto")
-            </button>
-        </div>
-
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-danger mt-3" role="alert">
-                @_errorMessage
-            </div>
-        }
-    </EditForm>
-</section>
-
-<style>
-    .autocomplete-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        max-height: 300px;
-        overflow-y: auto;
-        background-color: white;
-        border: 1px solid #ced4da;
-        border-top: none;
-        border-radius: 0 0 0.25rem 0.25rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .autocomplete-item {
-        padding: 0.75rem;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-        .autocomplete-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-</style>
+@using fs_front.Components.Projects.Index
+@using fs_front.Components.Projects.Form
+@using fs_front.Components.Projects.Shared
 
 @inject IProjectApiService ProjectApiService
 @inject IClientApiService ClientApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
-@inject NavigationManager NavigationManager
+
+<div style="max-width: 900px; margin: 0 auto;">
+    <EditForm Model="_dto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+            </div>
+        }
+
+        <div class="accordion mb-3" id="projectAccordion">
+
+            <GeneralInfoSection Model="_dto"
+                                IsComplete="_section1Complete"
+                                OnChange="ValidateSections" />
+
+            <ClientSection Model="_dto"
+                           IsComplete="_section2Complete"
+                           IsLoadingClients="_isLoadingClients"
+                           SearchText="@_clientSearchText"
+                           FilteredClients="_filteredClients"
+                           SelectedClient="_selectedClient"
+                           OnSearchInput="OnClientSearchInput"
+                           OnClientSelected="SelectClient" />
+
+            <ConfigSection Model="_dto" />
+
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                @if (!_allSectionsComplete)
+                {
+                    <small class="text-danger">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        Complete las secciones obligatorias
+                    </small>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
+                    Cancelar
+                </button>
+                <button type="submit"
+                        class="btn btn-primary btn-sm"
+                        disabled="@(_isSaving || _isLoadingClients || _dto.ClientId == 0)">
+                    @if (_isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    <i class="bi bi-check-lg me-1"></i>
+                    @(_isEditMode ? "Actualizar Proyecto" : "Guardar")
+                </button>
+            </div>
+        </div>
+
+    </EditForm>
+</div>
 
 @code {
     [Parameter] public int? ProjectId { get; set; }
 
-    private ProjectDto _createProjectDto = new();
-    private List<ClientDto> _allClients = new();
+    // ── Estado interno ────────────────────────────────────────────────────────
+    private ProjectDto _dto = new();
+    private List<ClientDto> _allClients    = new();
     private List<ClientDto> _filteredClients = new();
     private ClientDto? _selectedClient;
     private string _clientSearchText = string.Empty;
-    private bool _showSuggestions = false;
 
-    private bool _isSaving = false;
+    private bool _isSaving         = false;
     private bool _isLoadingClients = false;
     private string? _errorMessage;
-    private bool _isEditMode => ProjectId.HasValue;
 
+    private bool _isEditMode      => ProjectId.HasValue;
+    private bool _section1Complete = false;
+    private bool _section2Complete => _dto.ClientId > 0;
+    private bool _allSectionsComplete => _section1Complete && _section2Complete;
+
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadAllClients();
 
         if (_isEditMode)
-        {
             await LoadProject();
-        }
         else
-        {
-            _createProjectDto = new ProjectDto
-            {
-                IsActive = true
-            };
-        }
+            _dto = new ProjectDto { IsActive = true };
+
+        ValidateSections();
     }
 
+    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadAllClients()
     {
         _isLoadingClients = true;
         StateHasChanged();
-
         try
         {
             var clients = await ClientApiService.GetClientsAsync();
-            _allClients = clients ?? new List<ClientDto>();
+            _allClients      = clients ?? new List<ClientDto>();
             _filteredClients = _allClients;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error al cargar clientes: {ex.Message}");
-            _allClients = new List<ClientDto>();
-            _filteredClients = new List<ClientDto>();
             _errorMessage = "Error al cargar la lista de clientes.";
+            Console.WriteLine($"Error al cargar clientes: {ex.Message}");
         }
         finally
         {
@@ -220,26 +132,21 @@
         try
         {
             var project = await ProjectApiService.GetProjectByIdAsync(ProjectId!.Value);
-            if (project != null)
-            {
-                _createProjectDto = new ProjectDto
-                {
-                    Id = project.Id,
-                    Name = project.Name,
-                    Description = project.Description,
-                    ClientId = project.ClientId,
-                    IsActive = project.IsActive
-                };
+            if (project is null) { _errorMessage = "Proyecto no encontrado."; return; }
 
-                if (project.Client != null)
-                {
-                    _selectedClient = project.Client;
-                    _clientSearchText = project.Client.CompanyName;
-                }
-            }
-            else
+            _dto = new ProjectDto
             {
-                _errorMessage = "Proyecto no encontrado.";
+                Id          = project.Id,
+                Name        = project.Name,
+                Description = project.Description,
+                ClientId    = project.ClientId,
+                IsActive    = project.IsActive
+            };
+
+            if (project.Client != null)
+            {
+                _selectedClient   = project.Client;
+                _clientSearchText = project.Client.CompanyName;
             }
         }
         catch (Exception ex)
@@ -248,16 +155,16 @@
         }
     }
 
+    // ── Autocomplete de cliente ───────────────────────────────────────────────
     private void OnClientSearchInput(ChangeEventArgs e)
     {
         _clientSearchText = e.Value?.ToString() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(_clientSearchText))
         {
-            _filteredClients = _allClients;
-            _showSuggestions = false;
-            _selectedClient = null;
-            _createProjectDto.ClientId = 0;
+            _filteredClients  = _allClients;
+            _selectedClient   = null;
+            _dto.ClientId     = 0;
         }
         else
         {
@@ -265,60 +172,45 @@
                 .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(c => c.CompanyName)
                 .ToList();
-            _showSuggestions = true;
 
             var exactMatch = _allClients.FirstOrDefault(c =>
                 c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
 
-            if (exactMatch == null && _selectedClient != null)
+            if (exactMatch is null && _selectedClient is not null)
             {
                 _selectedClient = null;
-                _createProjectDto.ClientId = 0;
+                _dto.ClientId   = 0;
             }
         }
 
-        StateHasChanged();
-    }
-
-    private void OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Escape")
-        {
-            _showSuggestions = false;
-            StateHasChanged();
-        }
+        ValidateSections();
     }
 
     private void SelectClient(ClientDto client)
     {
-        _selectedClient = client;
-        _createProjectDto.ClientId = client.Id ?? 0;
+        _selectedClient   = client;
+        _dto.ClientId     = client.Id ?? 0;
         _clientSearchText = client.CompanyName;
-        _showSuggestions = false;
+        ValidateSections();
+    }
+
+    // ── Validación de secciones ───────────────────────────────────────────────
+    private void ValidateSections()
+    {
+        _section1Complete = !string.IsNullOrWhiteSpace(_dto.Name);
         StateHasChanged();
     }
 
-    private void ClearClientSelection()
+    // ── Submit ────────────────────────────────────────────────────────────────
+    private async Task HandleSubmit()
     {
-        _selectedClient = null;
-        _createProjectDto.ClientId = 0;
-        _clientSearchText = string.Empty;
-        _filteredClients = _allClients;
-        _showSuggestions = false;
-        StateHasChanged();
-    }
-
-    private async Task CreateProject()
-    {
-        _showSuggestions = false;
-
-        if (_createProjectDto.ClientId == 0)
+        if (_dto.ClientId == 0)
         {
             _errorMessage = "Debe seleccionar un cliente de la lista.";
             return;
         }
 
-        _isSaving = true;
+        _isSaving     = true;
         _errorMessage = null;
         StateHasChanged();
 
@@ -326,29 +218,23 @@
         {
             if (_isEditMode)
             {
-                var result = await ProjectApiService.UpdateProjectAsync(ProjectId!.Value, _createProjectDto);
+                var result = await ProjectApiService.UpdateProjectAsync(ProjectId!.Value, _dto);
                 if (result.Success)
                 {
-                    ShowNotification("Éxito", "Proyecto actualizado correctamente.", NotificationSeverity.Success);
+                    Notify("Éxito", "Proyecto actualizado correctamente.", NotificationSeverity.Success);
                     DialogService.Close(true);
                 }
-                else
-                {
-                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el proyecto.";
-                }
+                else _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el proyecto.";
             }
             else
             {
-                var result = await ProjectApiService.CreateProjectAsync(_createProjectDto);
+                var result = await ProjectApiService.CreateProjectAsync(_dto);
                 if (result.Success)
                 {
-                    ShowNotification("Éxito", "Proyecto creado correctamente.", NotificationSeverity.Success);
+                    Notify("Éxito", "Proyecto creado correctamente.", NotificationSeverity.Success);
                     DialogService.Close(true);
                 }
-                else
-                {
-                    _errorMessage = result.ErrorMessage ?? "No se pudo crear el proyecto.";
-                }
+                else _errorMessage = result.ErrorMessage ?? "No se pudo crear el proyecto.";
             }
         }
         catch (Exception ex)
@@ -362,19 +248,14 @@
         }
     }
 
-    private void Cancel()
-    {
-        DialogService.Close(false);
-    }
+    private void Cancel() => DialogService.Close(false);
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
             Severity = severity,
-            Summary = title,
-            Detail = message,
+            Summary  = title,
+            Detail   = message,
             Duration = 4000
         });
-    }
 }

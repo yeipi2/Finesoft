@@ -1,0 +1,49 @@
+﻿@* Barra de búsqueda + filtros estado/cliente del índice de cotizaciones *@
+@using fs_front.DTO
+
+<FilterBar SearchPlaceholder="Buscar cotizaciones..."
+           SearchValue="@SearchValue"
+           SearchValueChanged="SearchValueChanged"
+           OnClear="OnClear">
+
+    <Filters>
+        <select class="form-select" value="@StatusFilter" @onchange="HandleStatusChange">
+            <option value="">Todos los estados</option>
+            <option value="Borrador">Borrador</option>
+            <option value="Enviada">Enviada</option>
+            <option value="Aceptada">Aceptada</option>
+            <option value="Rechazada">Rechazada</option>
+            <option value="Expirada">Expirada</option>
+        </select>
+
+        <select class="form-select" value="@ClientFilter" @onchange="HandleClientChange">
+            <option value="0">Todos los clientes</option>
+            @if (Clients != null)
+            {
+                @foreach (var client in Clients)
+                {
+                    <option value="@client.Id">@client.CompanyName</option>
+                }
+            }
+        </select>
+    </Filters>
+
+</FilterBar>
+
+@code {
+    [Parameter] public string SearchValue { get; set; } = string.Empty;
+    [Parameter] public string StatusFilter { get; set; } = string.Empty;
+    [Parameter] public int ClientFilter { get; set; } = 0;
+    [Parameter] public List<ClientDto>? Clients { get; set; }
+
+    [Parameter] public EventCallback<string> SearchValueChanged { get; set; }
+    [Parameter] public EventCallback<string> StatusFilterChanged { get; set; }
+    [Parameter] public EventCallback<int> ClientFilterChanged { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    private Task HandleStatusChange(ChangeEventArgs e)
+        => StatusFilterChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+
+    private Task HandleClientChange(ChangeEventArgs e)
+        => ClientFilterChanged.InvokeAsync(int.TryParse(e.Value?.ToString(), out var v) ? v : 0);
+}

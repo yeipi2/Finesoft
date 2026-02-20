@@ -1,0 +1,18 @@
+﻿@* Reutilizable: muestra el badge de estado de un proyecto *@
+
+@if (IsActive)
+{
+    <span class="badge bg-success">
+        <i class="bi bi-check-circle"></i> Activo
+    </span>
+}
+else
+{
+    <span class="badge bg-secondary">
+        <i class="bi bi-x-circle"></i> Inactivo
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public bool IsActive { get; set; }
+}

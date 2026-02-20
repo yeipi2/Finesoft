@@ -22,210 +22,44 @@ else
 {
     <div class="p-4">
         <section class="container-fluid px-xl-5 py-4">
-            <div class="d-flex justify-content-between align-items-start mb-4">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-ticket-perforated fs-1 text-primary me-3"></i>
-                    <div>
-                        <p class="display-6 fw-bolder mb-2">
-                            @if (_canViewAll)
-                            {
-                                <span>Sistema de Tickets</span>
-                            }
-                            else
-                            {
-                                <span>Mis Tickets</span>
-                            }
-                        </p>
-                        <p class="text-muted mb-0">
-                            @if (_canViewAll)
-                            {
-                                <span>Gestión completa de solicitudes y soporte técnico</span>
-                            }
-                            else if (_currentRole == "Empleado")
-                            {
-                                <span>Tickets asignados a ti</span>
-                            }
-                            else
-                            {
-                                <span>Tus tickets creados</span>
-                            }
-                        </p>
-                    </div>
-                </div>
-
-                @if (_canCreate)
-                {
-                    <button @onclick="ShowCreateModal" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
-                        <i class="bi bi-plus-lg"></i>
-                        Nuevo Ticket
-                    </button>
-                }
-            </div>
+            <TicketsHeader CanCreate="@_canCreate"
+                           CanViewAll="@_canViewAll"
+                           CurrentRole="@_currentRole"
+                           OnCreate="ShowCreateModal" />
 
             @if (_stats != null)
             {
                 <StatGrid>
-                    <StatCard Title="Abiertos" Value="@_stats.Open.ToString()" Accent="StatCard.StatAccent.Primary"
-                              IconClass="bi bi-inbox" />
-
-                    <StatCard Title="En Progreso" Value="@_stats.InProgress.ToString()" Accent="StatCard.StatAccent.Info"
-                              IconClass="bi bi-clock-history" />
-
-                    <StatCard Title="En Revisión" Value="@_stats.InReview.ToString()" Accent="StatCard.StatAccent.Info"
-                              IconClass="bi bi-search" />
-
-                    <StatCard Title="Cerrados" Value="@_stats.Closed.ToString()" Accent="StatCard.StatAccent.Success"
-                              IconClass="bi bi-check-circle" />
+                    <StatCard Title="Abiertos"    Value="@_stats.Open.ToString()"       Accent="StatCard.StatAccent.Primary" IconClass="bi bi-inbox" />
+                    <StatCard Title="En Progreso" Value="@_stats.InProgress.ToString()" Accent="StatCard.StatAccent.Info"    IconClass="bi bi-clock-history" />
+                    <StatCard Title="En Revisión" Value="@_stats.InReview.ToString()"   Accent="StatCard.StatAccent.Info"    IconClass="bi bi-search" />
+                    <StatCard Title="Cerrados"    Value="@_stats.Closed.ToString()"     Accent="StatCard.StatAccent.Success" IconClass="bi bi-check-circle" />
                 </StatGrid>
             }
         </section>
 
         <section class="container-fluid px-xl-5 py-4">
-            <FilterBar SearchPlaceholder="Buscar tickets..." SearchValue="@_searchText"
-                       SearchValueChanged="@(v => _searchText = v)" OnClear="ClearFilters">
-
-                <Filters>
-                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange">
-                        <option value="">Todos los estados</option>
-                        <option value="Abierto">Abierto</option>
-                        <option value="En Progreso">En Progreso</option>
-                        <option value="En Revisión">En Revisión</option>
-                        <option value="Cerrado">Cerrado</option>
-                    </select>
-
-                    <select class="form-select" @bind="_priorityFilter" @bind:event="onchange">
-                        <option value="">Todas las prioridades</option>
-                        <option value="Baja">Baja</option>
-                        <option value="Media">Media</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Urgente">Urgente</option>
-                    </select>
-                </Filters>
-
-            </FilterBar>
+            <TicketsFilterBar SearchValue="@_searchText"
+                              StatusFilter="@_statusFilter"
+                              PriorityFilter="@_priorityFilter"
+                              SearchValueChanged="OnSearchChanged"
+                              StatusFilterChanged="OnStatusChanged"
+                              PriorityFilterChanged="OnPriorityChanged"
+                              OnClear="ClearFilters" />
         </section>
 
         <section class="container-fluid px-xl-5 py-4">
-            <FsDataTable TItem="TicketDetailDto" Title="@(_canViewAll ? "Tickets" : "Mis Tickets")"
-                         Subtitle="Ordena por columna y gestiona rápidamente" Items="_filteredTickets" IsLoading="_isLoading"
-                         ColSpan="@(_canViewAll ? 8 : 7)" EmptyTitle="No se encontraron tickets"
-                         EmptySubtitle="Prueba ajustando filtros o búsqueda.">
-
-                <Header>
-                    <FsSortHeader Text="ID" Field="id" ActiveField="@_sortField" Direction="_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Título" Field="title" ActiveField="@_sortField" Direction="_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <th>Cliente / Proyecto</th>
-                    <FsSortHeader Text="Prioridad" Field="priority" ActiveField="@_sortField" Direction="_sortDir"
-                                  SortChanged="OnSortChanged" />
-                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="_sortDir"
-                                  SortChanged="OnSortChanged" />
-
-                    @if (_canViewAll)
-                    {
-                        <th>Asignado a</th>
-                    }
-
-                    <th>Horas</th>
-                    <th class="text-center">Acciones</th>
-                </Header>
-
-                <RowTemplate Context="ticket">
-                    <tr>
-                        <td class="fw-bold">#@ticket.Id</td>
-
-                        <td>
-                            <div class="fw-bold">@ticket.Title</div>
-                            <small class="text-muted">
-                                @(ticket.Description?.Length > 50
-                                    ? ticket.Description.Substring(0, 50) + "..."
-                                    : ticket.Description)
-                            </small>
-                        </td>
-
-                        <td>
-                            <div><strong>@ticket.ClientName</strong></div>
-                            <small class="text-muted">@ticket.ProjectName</small>
-                        </td>
-
-                        <td>
-                            @{
-                                var priorityClass = ticket.Priority switch
-                                {
-                                    "Urgente" => "bg-danger",
-                                    "Alta" => "bg-warning",
-                                    "Media" => "bg-info",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @priorityClass">@ticket.Priority</span>
-                        </td>
-
-                        <td>
-                            @{
-                                var statusClass = ticket.Status switch
-                                {
-                                    "Abierto" => "bg-primary",
-                                    "En Progreso" => "bg-warning",
-                                    "En Revisión" => "bg-info",
-                                    "Cerrado" => "bg-success",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @statusClass">@ticket.Status</span>
-                        </td>
-
-                        @if (_canViewAll)
-                        {
-                            <td>
-                                @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
-                                {
-                                    <span>@ticket.AssignedToUserName</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Sin asignar</span>
-                                }
-                            </td>
-                        }
-
-                        <td>
-                            <div><small class="text-muted">Estimadas :</small> @ticket.EstimatedHours.ToString("0.0")h</div>
-                            <div>
-                                <small class="text-muted">Reales :</small> <strong           class="text-success">@ticket.ActualHours.ToString("0.0")h</strong></div>
-                            </td>
-
-                            <td class="text-center">
-                                @if (_currentRole != "Cliente")
-                                {
-                                    <button class="btn btn-sm btn-outline-primary me-1"
-                                            @onclick="() => ViewTicketDetails(ticket.Id)" title="Ver detalles">
-                                        <i class="bi bi-eye-fill"></i>
-                                    </button>
-                                }
-                                @* @if (_canEdit)
-                                {
-                                    <button class="btn btn-sm btn-outline-info me-1" @onclick="() => ShowEditModal(ticket.Id)"
-                                            title="Editar">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </button>
-                                }
-                                @if (_canDelete)
-                                {
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(ticket)"
-                                            title="Eliminar">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
-                                } *@
-                            </td>
-                        </tr>
-                    </RowTemplate>
-
-                </FsDataTable>
-            </section>
-        </div>
-    }
+            <TicketsTable Items="_filteredTickets"
+                          IsLoading="_isLoading"
+                          CanViewAll="@_canViewAll"
+                          CurrentRole="@_currentRole"
+                          SortField="@_sortField"
+                          SortDir="@_sortDir"
+                          SortChanged="OnSortChanged"
+                          OnViewDetails="ViewTicketDetails" />
+        </section>
+    </div>
+}
 
 @inject ITicketApiService TicketApiService
 @inject DialogService DialogService
@@ -236,88 +70,74 @@ else
 @code {
     private List<TicketDetailDto>? _tickets;
     private TicketStatsDto? _stats;
-    private string _searchText = string.Empty;
-    private string _statusFilter = string.Empty;
+    private string _searchText    = string.Empty;
+    private string _statusFilter  = string.Empty;
     private string _priorityFilter = string.Empty;
     private bool _isLoading = false;
 
     private bool _checkingAccess = true;
-    private bool _hasAccess = false;
-
+    private bool _hasAccess      = false;
     private string? _currentUserId;
     private string? _currentRole;
 
     private bool _canViewAll = false;
-    private bool _canCreate = false;
-    private bool _canEdit = false;
-    private bool _canDelete = false;
+    private bool _canCreate  = false;
+    private bool _canEdit    = false;
+    private bool _canDelete  = false;
 
     private string _sortField = "createdAt";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
-    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
-    {
-        _sortField = s.field;
-        _sortDir = s.dir;
+    // ── Filtrado + Ordenamiento ───────────────────────────────────────────────
+    private IEnumerable<TicketDetailDto> _filteredTickets =>
+        ApplySort(
+            _tickets?.Where(t =>
+                (string.IsNullOrWhiteSpace(_searchText) ||
+                 t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                 (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                 (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                 (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                && (string.IsNullOrEmpty(_statusFilter)   || t.Status   == _statusFilter)
+                && (string.IsNullOrEmpty(_priorityFilter) || t.Priority == _priorityFilter)
+            ) ?? Enumerable.Empty<TicketDetailDto>()
+        );
 
-        Console.WriteLine($"SORT -> {_sortField} {_sortDir}");
-    }
-
-
-    private IEnumerable<TicketDetailDto> _filteredTickets
-        => ApplySort(
-            _tickets?
-                .Where(t =>
-                    (string.IsNullOrWhiteSpace(_searchText) ||
-                     t.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                     (t.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                     (t.ClientName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                     (t.ProjectName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
-                    && (string.IsNullOrEmpty(_statusFilter) || t.Status == _statusFilter)
-                    && (string.IsNullOrEmpty(_priorityFilter) || t.Priority == _priorityFilter)
-                ) ?? Enumerable.Empty<TicketDetailDto>()
-          );
-
-    private IEnumerable<TicketDetailDto> ApplySort(IEnumerable<TicketDetailDto> q)
-    {
-        return (_sortField, _sortDir) switch
+    private IEnumerable<TicketDetailDto> ApplySort(IEnumerable<TicketDetailDto> q) =>
+        (_sortField, _sortDir) switch
         {
-            ("id", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Id),
-            ("id", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Id),
-
-            ("title", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Title),
-            ("title", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Title),
-
-            // ✅ Mejor: prioridad por “nivel” y no por texto (opcional pero recomendado)
-            ("priority", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => PriorityRank(x.Priority)),
-            ("priority", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => PriorityRank(x.Priority)),
-
-            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Status),
-            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
-
-            // ✅ FALTABAN ESTOS DOS:
-            ("createdAt", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CreatedAt),
+            ("id",        FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Id),
+            ("id",        FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Id),
+            ("title",     FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Title),
+            ("title",     FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Title),
+            ("priority",  FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => PriorityRank(x.Priority)),
+            ("priority",  FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => PriorityRank(x.Priority)),
+            ("status",    FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Status),
+            ("status",    FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
+            ("createdAt", FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.CreatedAt),
             ("createdAt", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedAt),
-
-            // ✅ fallback seguro (si te equivocas en Field)
-            _ => q.OrderByDescending(x => x.CreatedAt),
+            _                                              => q.OrderByDescending(x => x.CreatedAt),
         };
-    }
 
     private static int PriorityRank(string? p) => p switch
     {
-        "Urgente" => 4,
-        "Alta" => 3,
-        "Media" => 2,
-        "Baja" => 1,
-        _ => 0
+        "Urgente" => 4, "Alta" => 3, "Media" => 2, "Baja" => 1, _ => 0
     };
 
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    {
+        _sortField = s.field;
+        _sortDir   = s.dir;
+    }
 
+    // ── Handlers de filtros (métodos nombrados para evitar CS1660) ────────────
+    private void OnSearchChanged(string value)   => _searchText     = value;
+    private void OnStatusChanged(string value)   => _statusFilter   = value;
+    private void OnPriorityChanged(string value) => _priorityFilter = value;
+
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         var canView = await PermissionService.HasPermissionAsync("tickets.view");
-
         if (!canView)
         {
             _checkingAccess = false;
@@ -326,7 +146,7 @@ else
             return;
         }
 
-        _hasAccess = true;
+        _hasAccess      = true;
         _checkingAccess = false;
 
         await LoadPermissions();
@@ -336,33 +156,31 @@ else
     private async Task LoadPermissions()
     {
         _currentUserId = await PermissionService.GetUserIdAsync();
-        _currentRole = await PermissionService.GetRoleAsync();
+        _currentRole   = await PermissionService.GetRoleAsync();
 
-        _canCreate = await PermissionService.HasPermissionAsync("tickets.create");
-        _canEdit = await PermissionService.HasPermissionAsync("tickets.edit");
-        _canDelete = await PermissionService.HasPermissionAsync("tickets.delete");
-
+        _canCreate  = await PermissionService.HasPermissionAsync("tickets.create");
+        _canEdit    = await PermissionService.HasPermissionAsync("tickets.edit");
+        _canDelete  = await PermissionService.HasPermissionAsync("tickets.delete");
         _canViewAll = _currentRole is "Admin" or "Administracion" or "Empleado" or "Supervisor";
     }
 
+    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadData()
     {
         _isLoading = true;
         try
         {
-            var userId = _currentRole == "Cliente" ? _currentUserId : null;
-
+            var userId      = _currentRole == "Cliente" ? _currentUserId : null;
             var ticketsTask = TicketApiService.GetTicketsAsync(userId: userId);
-            var statsTask = TicketApiService.GetTicketStatsAsync(userId);
+            var statsTask   = TicketApiService.GetTicketStatsAsync(userId);
 
             await Task.WhenAll(ticketsTask, statsTask);
-
             _tickets = await ticketsTask;
-            _stats = await statsTask;
+            _stats   = await statsTask;
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
+            Notify("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
         }
         finally
         {
@@ -370,6 +188,7 @@ else
         }
     }
 
+    // ── Acciones ──────────────────────────────────────────────────────────────
     private async Task ShowCreateModal()
     {
         bool? result;
@@ -388,67 +207,20 @@ else
         if (result == true) await LoadData();
     }
 
-    private async Task ShowEditModal(int ticketId)
-    {
-        var parameters = new Dictionary<string, object> { { "TicketId", ticketId } };
-
-        var result = await DialogService.OpenAsync<TicketForm>("Editar Ticket",
-            parameters,
-            new DialogOptions { Width = "800px", Resizable = false, Draggable = false });
-
-        if (result == true) await LoadData();
-    }
-
-    private void ViewTicketDetails(int ticketId)
-        => NavigationManager.NavigateTo($"/tickets/{ticketId}");
-
-    private async Task ConfirmDelete(TicketDetailDto ticket)
-    {
-        var confirmed = await DialogService.Confirm(
-            $"¿Está seguro que desea eliminar el ticket #{ticket.Id} - '{ticket.Title}'?",
-            "Confirmar Eliminación",
-            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
-
-        if (confirmed == true) await DeleteTicket(ticket.Id);
-    }
-
-    private async Task DeleteTicket(int ticketId)
-    {
-        try
-        {
-            var result = await TicketApiService.DeleteTicketAsync(ticketId);
-            if (result.Success)
-            {
-                ShowNotification("Éxito", "Ticket eliminado correctamente.", NotificationSeverity.Success);
-                await LoadData();
-            }
-            else
-            {
-                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar el ticket.", NotificationSeverity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            ShowNotification("Error", $"Error al eliminar ticket: {ex.Message}", NotificationSeverity.Error);
-        }
-    }
+    private void ViewTicketDetails(int ticketId) =>
+        NavigationManager.NavigateTo($"/tickets/{ticketId}");
 
     private async Task ClearFilters()
     {
-        _searchText = string.Empty;
-        _statusFilter = string.Empty;
+        _searchText     = string.Empty;
+        _statusFilter   = string.Empty;
         _priorityFilter = string.Empty;
         await LoadData();
     }
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
-            Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
+            Severity = severity, Summary = title, Detail = message, Duration = 4000
         });
-    }
 }

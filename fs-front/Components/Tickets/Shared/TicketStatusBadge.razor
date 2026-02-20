@@ -1,0 +1,19 @@
+﻿@* Badge reutilizable de estado de ticket *@
+
+@{
+    var css = Status switch
+    {
+        "Abierto" => "bg-primary",
+        "En Progreso" => "bg-warning",
+        "En Revisión" => "bg-info",
+        "Cerrado" => "bg-success",
+        _ => "bg-secondary"
+    };
+}
+
+<span class="badge @css @Class">@Status</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

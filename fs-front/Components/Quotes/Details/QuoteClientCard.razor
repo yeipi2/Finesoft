@@ -1,0 +1,24 @@
+﻿@* Card de información del cliente en la vista de detalles *@
+@using fs_front.DTO
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-building"></i> Información del Cliente</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Cliente:</strong> @Quote.ClientName</p>
+                <p><strong>Email:</strong> @Quote.ClientEmail</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Creada por:</strong> @Quote.CreatedByUserName</p>
+                <p><strong>Fecha de creación:</strong> @Quote.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public QuoteDetailDto Quote { get; set; } = default!;
+}

@@ -1,0 +1,126 @@
+﻿@* Tabla de cotizaciones con badge de estado, conteo de tickets y acciones *@
+@using fs_front.DTO
+
+<FsDataTable TItem="QuoteDetailDto"
+             Title="Cotizaciones"
+             Subtitle="Gestión de cotizaciones y presupuestos"
+             Items="Items"
+             IsLoading="IsLoading"
+             ColSpan="9"
+             EmptyTitle="No se encontraron cotizaciones"
+             EmptySubtitle="Prueba ajustando filtros o búsqueda.">
+
+    <Header>
+        <FsSortHeader Text="Número"      Field="number"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Cliente"     Field="client"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Fecha"       Field="createdAt" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Válida Hasta" Field="validUntil" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Estado"      Field="status"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Total"       Field="total"     ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <th>Tickets</th>
+        <FsSortHeader Text="Creado Por"  Field="createdBy" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <th class="text-center">Acciones</th>
+    </Header>
+
+    <RowTemplate Context="quote">
+        <tr>
+            <td class="fw-bold">@quote.QuoteNumber</td>
+
+            <td>
+                <div class="fw-bold">@quote.ClientName</div>
+                <small class="text-muted">@quote.ClientEmail</small>
+            </td>
+
+            <td>@quote.CreatedAt.ToString("dd/MM/yyyy")</td>
+
+            <td>
+                @if (quote.ValidUntil.HasValue)
+                {
+                    <span>@quote.ValidUntil.Value.ToString("dd/MM/yyyy")</span>
+                    @if (quote.ValidUntil.Value < DateTime.Now && quote.Status != "Aceptada")
+                    {
+                        <span class="badge bg-danger ms-1">Expirada</span>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">Sin límite</span>
+                }
+            </td>
+
+            <td>
+                <QuoteStatusBadge Status="@quote.Status" />
+            </td>
+
+            <td class="fw-bold text-success">$@quote.Total.ToString("N2")</td>
+
+            <td>
+                @{
+                    var tc = GetTicketCount(quote);
+                }
+                @if (tc > 0)
+                {
+                    <span class="badge bg-info" title="@GetTicketNames(quote)">
+                        <i class="bi bi-ticket-perforated-fill"></i> @tc ticket@(tc > 1 ? "s" : "")
+                    </span>
+                }
+                else
+                {
+                    <span class="text-muted small">Sin tickets</span>
+                }
+            </td>
+
+            <td>@quote.CreatedByUserName</td>
+
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1"
+                        @onclick="() => OnViewDetails.InvokeAsync(quote.Id)"
+                        title="Ver detalles">
+                    <i class="bi bi-eye-fill"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success me-1"
+                        @onclick="() => OnDownloadPdf.InvokeAsync(quote.Id)"
+                        title="Descargar PDF">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                </button>
+                @if (quote.Status == "Aceptada" && HasInvoice(quote))
+                {
+                    <span class="badge bg-info text-white">
+                        <i class="bi bi-check-circle-fill"></i> Facturada
+                    </span>
+                }
+            </td>
+        </tr>
+    </RowTemplate>
+
+</FsDataTable>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<QuoteDetailDto> Items { get; set; } = Enumerable.Empty<QuoteDetailDto>();
+    [Parameter] public bool IsLoading { get; set; }
+
+    // Ordenamiento
+    [Parameter] public string SortField { get; set; } = "createdAt";
+    [Parameter] public FsSortHeader.SortDirection SortDir { get; set; } = FsSortHeader.SortDirection.Desc;
+    [Parameter] public EventCallback<(string field, FsSortHeader.SortDirection dir)> SortChanged { get; set; }
+
+    // Acciones
+    [Parameter] public EventCallback<int> OnViewDetails  { get; set; }
+    [Parameter] public EventCallback<int> OnDownloadPdf  { get; set; }
+
+    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+        => SortChanged.InvokeAsync(s);
+
+    private static int GetTicketCount(QuoteDetailDto q)
+        => q.Items?.Count(i => i.TicketId.HasValue && i.TicketId.Value > 0) ?? 0;
+
+    private static string GetTicketNames(QuoteDetailDto q)
+    {
+        var items = q.Items?
+            .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0 && !string.IsNullOrEmpty(i.TicketTitle))
+            .Select(i => $"#{i.TicketId}: {i.TicketTitle}").ToList();
+        return items?.Any() == true ? string.Join("\n", items) : "Sin tickets asociados";
+    }
+
+    private static bool HasInvoice(QuoteDetailDto q) => false;
+}

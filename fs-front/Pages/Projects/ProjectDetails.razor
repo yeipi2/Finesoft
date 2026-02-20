@@ -1,5 +1,10 @@
 ﻿@page "/proyectos/{ProjectId:int}"
 @using fs_front.DTO
+@using fs_front.Components.Projects.Index
+@using fs_front.Components.Projects.Form
+@using fs_front.Components.Projects.Shared
+
+<PageTitle>Finesoft - Detalle de Proyecto</PageTitle>
 
 <div class="container p-4">
     @if (_isLoading)
@@ -13,6 +18,7 @@
     }
     else if (_project != null)
     {
+        @* ── Breadcrumb + encabezado ── *@
         <div class="row mb-4">
             <div class="col">
                 <nav aria-label="breadcrumb">
@@ -30,23 +36,13 @@
                         <p class="text-muted">@_project.Description</p>
                     </div>
                     <div>
-                        @if (_project.IsActive)
-                        {
-                            <span class="badge bg-success fs-6">
-                                <i class="bi bi-check-circle"></i> Activo
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary fs-6">
-                                <i class="bi bi-x-circle"></i> Inactivo
-                            </span>
-                        }
+                        <ProjectStatusBadge IsActive="@_project.IsActive" />
                     </div>
                 </div>
             </div>
         </div>
 
+        @* ── Información del cliente ── *@
         @if (_project.Client != null)
         {
             <div class="row mb-4">
@@ -91,28 +87,25 @@
             </div>
         }
 
-        @* CÓDIGO FUTURO - Sección de servicios deshabilitada *@
-        @* Descomentar cuando se requiera reactivar la funcionalidad de servicios *@
+        @* CÓDIGO FUTURO — Sección de servicios deshabilitada.
+           Descomentar cuando se reactive la funcionalidad de servicios. *@
         @*
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="bi bi-gear"></i> Servicios Asociados
-                        </h5>
+                        <h5 class="mb-0"><i class="bi bi-gear"></i> Servicios Asociados</h5>
                         <button class="btn btn-light btn-sm" @onclick="ShowAddServiceModal">
                             <i class="bi bi-plus-lg"></i> Agregar Servicio
                         </button>
                     </div>
-                    <div class="card-body">
-                        ... (contenido de servicios)
-                    </div>
+                    <div class="card-body">... (contenido de servicios)</div>
                 </div>
             </div>
         </div>
         *@
 
+        @* ── Acciones ── *@
         <div class="row">
             <div class="col-md-12">
                 <div class="d-flex justify-content-between">
@@ -151,11 +144,10 @@
     private ProjectDetailDto? _project;
     private bool _isLoading = false;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadProject();
-    }
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync() => await LoadProject();
 
+    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadProject()
     {
         _isLoading = true;
@@ -165,7 +157,7 @@
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error al cargar el proyecto: {ex.Message}", NotificationSeverity.Error);
+            Notify("Error", $"Error al cargar el proyecto: {ex.Message}", NotificationSeverity.Error);
         }
         finally
         {
@@ -173,26 +165,14 @@
         }
     }
 
+    // ── Acciones ──────────────────────────────────────────────────────────────
     private async Task EditProject()
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "ProjectId", ProjectId }
-        };
-
         var result = await DialogService.OpenAsync<ProjectForm>("Editar Proyecto",
-            parameters,
-            new DialogOptions()
-            {
-                Width = "700px",
-                Resizable = false,
-                Draggable = false
-            });
+            new Dictionary<string, object> { { "ProjectId", ProjectId } },
+            new DialogOptions { Width = "700px", Resizable = false, Draggable = false });
 
-        if (result == true)
-        {
-            await LoadProject();
-        }
+        if (result == true) await LoadProject();
     }
 
     private async Task ConfirmDeleteProject()
@@ -200,16 +180,9 @@
         var confirmed = await DialogService.Confirm(
             $"¿Está seguro que desea eliminar el proyecto '{_project?.Name}'? Esta acción no se puede deshacer.",
             "Confirmar Eliminación",
-            new ConfirmOptions()
-            {
-                OkButtonText = "Sí, eliminar",
-                CancelButtonText = "Cancelar"
-            });
+            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
 
-        if (confirmed == true)
-        {
-            await DeleteProject();
-        }
+        if (confirmed == true) await DeleteProject();
     }
 
     private async Task DeleteProject()
@@ -219,21 +192,23 @@
             var result = await ProjectApiService.DeleteProjectAsync(ProjectId);
             if (result.Success)
             {
-                ShowNotification("Éxito", "Proyecto eliminado correctamente.", NotificationSeverity.Success);
+                Notify("Éxito", "Proyecto eliminado correctamente.", NotificationSeverity.Success);
                 NavigationManager.NavigateTo("/proyectos");
             }
             else
             {
-                ShowNotification("Error", result.ErrorMessage ?? "No se pudo eliminar el proyecto.", NotificationSeverity.Error);
+                Notify("Error", result.ErrorMessage ?? "No se pudo eliminar el proyecto.", NotificationSeverity.Error);
             }
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error al eliminar proyecto: {ex.Message}", NotificationSeverity.Error);
+            Notify("Error", $"Error al eliminar proyecto: {ex.Message}", NotificationSeverity.Error);
         }
     }
 
-    // CÓDIGO FUTURO - Métodos de servicios deshabilitados
+    private void GoBack() => NavigationManager.NavigateTo("/proyectos");
+
+    // CÓDIGO FUTURO — Métodos de servicios deshabilitados
     /*
     private async Task ShowAddServiceModal() { ... }
     private async Task EditService(int serviceId) { ... }
@@ -241,19 +216,13 @@
     private async Task DeleteService(int serviceId) { ... }
     */
 
-    private void GoBack()
-    {
-        NavigationManager.NavigateTo("/proyectos");
-    }
-
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    // ── Notificaciones ────────────────────────────────────────────────────────
+    private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
             Severity = severity,
-            Summary = title,
-            Detail = message,
+            Summary  = title,
+            Detail   = message,
             Duration = 4000
         });
-    }
 }

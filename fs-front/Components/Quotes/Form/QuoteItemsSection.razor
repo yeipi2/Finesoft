@@ -1,0 +1,254 @@
+﻿@* Sección acordeón: Artículos de la Cotización *@
+@using fs_front.DTO
+@using System.Globalization
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="headingItems">
+        <button class="accordion-button collapsed @(IsComplete ? "" : "text-danger")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseItems"
+                aria-expanded="false"
+                aria-controls="collapseItems">
+            <i class="bi bi-list-ul me-2"></i>
+            <strong>Artículos de la Cotización</strong>
+            @if (!IsComplete)
+            {
+                <span class="badge bg-danger ms-2">Incompleto</span>
+            }
+            else
+            {
+                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+            }
+        </button>
+    </h2>
+    <div id="collapseItems"
+         class="accordion-collapse collapse"
+         aria-labelledby="headingItems"
+         data-bs-parent="#quoteAccordion">
+        <div class="accordion-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="small text-muted">@(Items.Count) artículo(s) agregado(s)</span>
+                <button type="button" class="btn btn-sm btn-primary" @onclick="OnAddItem">
+                    <i class="bi bi-plus-lg me-1"></i> Agregar Artículo
+                </button>
+            </div>
+
+            @if (!Items.Any())
+            {
+                <div class="text-center text-muted py-4 border rounded bg-light">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    No hay artículos. Agregue al menos uno.
+                </div>
+            }
+            else
+            {
+                @* ── Contenedor con scroll propio para los artículos ── *@
+                <div style="max-height: 380px; overflow-y: auto; padding-right: 4px;">
+                    @foreach (var (item, index) in Items.Select((x, i) => (x, i)))
+                    {
+                        <div class="card mb-2 shadow-sm">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0 text-primary small fw-bold">
+                                        <i class="bi bi-card-list me-1"></i>Artículo #@(index + 1)
+                                    </h6>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger py-0 px-2"
+                                            @onclick="() => OnRemoveItem.InvokeAsync(index)"
+                                            title="Eliminar artículo">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label class="form-label small mb-1 fw-bold">
+                                            Descripción <span class="text-danger">*</span>
+                                        </label>
+                                        <InputText class="form-control form-control-sm"
+                                                   @bind-Value="item.Description"
+                                                   placeholder="Descripción del servicio o producto" />
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1 fw-bold">
+                                            Cantidad <span class="text-danger">*</span>
+                                        </label>
+                                        <InputNumber class="form-control form-control-sm"
+                                                     @bind-Value="item.Quantity"
+                                                     @bind-Value:after="@(() => OnRecalculate.InvokeAsync())" />
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1 fw-bold">
+                                            Precio Unitario <span class="text-danger">*</span>
+                                        </label>
+                                        <InputNumber class="form-control form-control-sm"
+                                                     @bind-Value="item.UnitPrice"
+                                                     @bind-Value:after="@(() => OnRecalculate.InvokeAsync())" />
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1 fw-bold">Subtotal</label>
+                                        <input type="text"
+                                               class="form-control form-control-sm bg-white"
+                                               value="@FormatCurrency(item.Quantity * item.UnitPrice)"
+                                               readonly />
+                                    </div>
+
+                                    @* ── Ticket autocomplete por ítem ── *@
+                                    <div class="col-12">
+                                        <label class="form-label small mb-1 fw-bold">
+                                            Ticket Asociado
+                                            <span class="text-muted fw-normal">(Opcional)</span>
+                                        </label>
+
+                                        @if (IsLoadingTickets)
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                                <span class="small">Cargando tickets...</span>
+                                            </div>
+                                        }
+                                        else if (ClosedTickets == null || !ClosedTickets.Any())
+                                        {
+                                            <input type="text" class="form-control form-control-sm"
+                                                   value="-- No hay tickets cerrados disponibles --" disabled />
+                                            <small class="text-muted">Solo se pueden asociar tickets con estado "Cerrado"</small>
+                                        }
+                                        else
+                                        {
+                                            <div class="position-relative">
+                                                <input type="text"
+                                                       class="form-control form-control-sm"
+                                                       placeholder="Buscar ticket por #ID, título o cliente..."
+                                                       value="@GetTicketSearchText(index)"
+                                                       @oninput="@(e => OnTicketSearchInput.InvokeAsync((e, index)))"
+                                                       @onfocus="@(() => OnTicketFocus.InvokeAsync(index))"
+                                                       @onblur="@(() => OnTicketBlur.InvokeAsync(index))"
+                                                       autocomplete="off" />
+
+                                                @if (IsTicketSuggestionsVisible(index) && GetFilteredTickets(index).Any())
+                                                {
+                                                    <div class="autocomplete-dropdown">
+                                                        @foreach (var ticket in GetFilteredTickets(index).Take(8))
+                                                        {
+                                                            <div class="autocomplete-item"
+                                                                 @onmousedown="@(() => OnTicketSelected.InvokeAsync((item, ticket, index)))"
+                                                                 @onmousedown:preventDefault>
+                                                                <strong class="text-primary">#@ticket.Id</strong> — @ticket.Title
+                                                                <br />
+                                                                <small class="text-muted">
+                                                                    <i class="bi bi-building me-1"></i>@ticket.ClientName
+                                                                    <i class="bi bi-clock ms-2 me-1"></i>@ticket.ActualHours.ToString("0.0")h
+                                                                </small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            @if (item.TicketId.HasValue && item.TicketId.Value > 0)
+                                            {
+                                                var sel = ClosedTickets.FirstOrDefault(t => t.Id == item.TicketId.Value);
+                                                if (sel != null)
+                                                {
+                                                    <div class="alert alert-success p-2 mt-2 mb-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <small>
+                                                                <i class="bi bi-check-circle-fill me-1"></i>
+                                                                <strong>#@sel.Id — @sel.Title</strong><br />
+                                                                Cliente: @sel.ClientName |
+                                                                Horas: @sel.ActualHours.ToString("0.0")h |
+                                                                Costo: @FormatCurrency(sel.ActualHours * sel.HourlyRate)
+                                                            </small>
+                                                            <button type="button"
+                                                                    class="btn btn-sm btn-link text-danger p-0 ms-2"
+                                                                    @onclick="() => OnClearTicket.InvokeAsync((item, index))"
+                                                                    title="Quitar ticket">
+                                                                <i class="bi bi-x-lg"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                            else if (!string.IsNullOrEmpty(GetTicketSearchText(index)))
+                                            {
+                                                <small class="text-warning d-block mt-1">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Debe seleccionar un ticket de la lista o dejar vacío
+                                                </small>
+                                            }
+                                        }
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div> @* ← cierra div scroll de artículos *@
+
+                @* Totales — siempre visibles, fuera del scroll *@
+                <div class="card border-primary mt-3">
+                    <div class="card-body p-3">
+                        <div class="row justify-content-end">
+                            <div class="col-md-5 col-lg-4">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="small">Subtotal:</span>
+                                    <strong class="small">@FormatCurrency(CalculatedSubtotal)</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="small">IVA (16%):</span>
+                                    <strong class="small">@FormatCurrency(CalculatedTax)</strong>
+                                </div>
+                                <hr class="my-1" />
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold">Total:</span>
+                                    <strong class="text-success h6 mb-0">@FormatCurrency(CalculatedTotal)</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<QuoteItemDto> Items { get; set; } = new();
+    [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public bool IsLoadingTickets { get; set; }
+
+    [Parameter] public List<TicketDetailDto>? ClosedTickets { get; set; }
+    [Parameter] public Dictionary<int, string> TicketSearchTexts { get; set; } = new();
+    [Parameter] public Dictionary<int, List<TicketDetailDto>> FilteredTicketsCache { get; set; } = new();
+    [Parameter] public HashSet<int> TicketSuggestionsVisible { get; set; } = new();
+
+    [Parameter] public decimal CalculatedSubtotal { get; set; }
+    [Parameter] public decimal CalculatedTax { get; set; }
+    [Parameter] public decimal CalculatedTotal { get; set; }
+
+    [Parameter] public EventCallback OnAddItem { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveItem { get; set; }
+    [Parameter] public EventCallback OnRecalculate { get; set; }
+    [Parameter] public EventCallback<(ChangeEventArgs e, int index)> OnTicketSearchInput { get; set; }
+    [Parameter] public EventCallback<int> OnTicketFocus { get; set; }
+    [Parameter] public EventCallback<int> OnTicketBlur { get; set; }
+    [Parameter] public EventCallback<(QuoteItemDto item, TicketDetailDto ticket, int index)> OnTicketSelected { get; set; }
+    [Parameter] public EventCallback<(QuoteItemDto item, int index)> OnClearTicket { get; set; }
+
+    private static string FormatCurrency(decimal amount) => $"$ {amount:N2}";
+
+    private string GetTicketSearchText(int index)
+        => TicketSearchTexts.TryGetValue(index, out var t) ? t : string.Empty;
+
+    private List<TicketDetailDto> GetFilteredTickets(int index)
+        => FilteredTicketsCache.TryGetValue(index, out var list) ? list : new();
+
+    private bool IsTicketSuggestionsVisible(int index)
+        => TicketSuggestionsVisible.Contains(index);
+}

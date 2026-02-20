@@ -1,367 +1,6 @@
-﻿@using fs_front.DTO
+﻿@* Modal de creación/edición de cotización. *@
+@using fs_front.DTO
 @using System.Globalization
-
-<section class="container-fluid px-3" style="min-height: 600px;">
-    <EditForm Model="_quoteDto" OnValidSubmit="HandleSubmit">
-        <DataAnnotationsValidator />
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label for="ClientSearch" class="form-label fw-bold small">Cliente *</label>
-                @if (_isLoadingClients)
-                {
-                    <div class="d-flex align-items-center">
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span>Cargando clientes...</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="position-relative">
-                        <input type="text"
-                               class="form-control"
-                               id="ClientSearch"
-                               placeholder="Buscar cliente por nombre..."
-                               value="@_clientSearchText"
-                               @oninput="OnClientSearchInput"
-                               @onkeydown="OnKeyDown"
-                               @onfocus="OnClientFocus"
-                               @onblur="OnClientBlur"
-                               autocomplete="off" />
-
-                        @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
-                        {
-                            <div class="autocomplete-dropdown">
-                                @foreach (var client in _filteredClients.Take(10))
-                                {
-                                    <div class="autocomplete-item"
-                                         @onmousedown="@(() => SelectClient(client))"
-                                         @onmousedown:preventDefault>
-                                        @client.CompanyName
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-
-                    @if (_quoteDto.ClientId > 0 && _selectedClient != null)
-                    {
-                        <small class="text-success mt-1 d-block">
-                            ✓ Cliente seleccionado: <strong>@_selectedClient.CompanyName</strong>
-                        </small>
-                    }
-
-                    @if (_quoteDto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
-                    {
-                        <div class="form-text text-danger mt-1">
-                            <i class="bi bi-exclamation-triangle"></i> Debe seleccionar un cliente de la lista
-                        </div>
-                    }
-                }
-                <ValidationMessage For="@(() => _quoteDto.ClientId)" />
-            </div>
-
-            <div class="col-md-3">
-                <label for="ValidUntil" class="form-label fw-bold small">Válida Hasta</label>
-                <InputDate id="ValidUntil" class="form-control" @bind-Value="_quoteDto.ValidUntil" />
-            </div>
-
-            @* ⭐ RESTRICCIÓN DE ESTADO: Solo "Borrador" en creación *@
-            <div class="col-md-3">
-                <label for="Status" class="form-label fw-bold small">Estado *</label>
-                @if (_isEditMode)
-                {
-                    @* En modo edición: permite todos los estados *@
-                    <select id="Status" class="form-select" @bind="_quoteDto.Status">
-                        <option value="Borrador">Borrador</option>
-                        <option value="Enviada">Enviada</option>
-                        <option value="Aceptada">Aceptada</option>
-                        <option value="Rechazada">Rechazada</option>
-                    </select>
-                }
-                else
-                {
-                    @* ⭐ En creación: SOLO Borrador *@
-                    <input type="text" class="form-control bg-light" value="Borrador" disabled />
-                    <small class="text-muted d-block mt-1">
-                        <i class="bi bi-info-circle"></i> Las cotizaciones nuevas se crean como "Borrador"
-                    </small>
-                }
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <label class="form-label fw-bold small mb-0">Artículos de la Cotización</label>
-                <button type="button" class="btn btn-sm btn-primary" @onclick="AddItem">
-                    <i class="bi bi-plus-lg"></i> Agregar Artículo
-                </button>
-            </div>
-
-            <div class="border rounded p-3 mb-3 bg-light" style="max-height: 280px; overflow-y: auto;">
-                @if (!_quoteDto.Items.Any())
-                {
-                    <div class="text-center text-muted py-3">
-                        <i class="bi bi-inbox fs-3"></i>
-                        <p class="mb-0 mt-2">No hay artículos. Agregue al menos uno.</p>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var (item, index) in _quoteDto.Items.Select((item, i) => (item, i)))
-                    {
-                        <div class="card mb-2 shadow-sm">
-                            <div class="card-body p-2">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="mb-0 text-primary small">
-                                        <i class="bi bi-card-list me-1"></i>
-                                        Artículo #@(index + 1)
-                                    </h6>
-                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
-                                            @onclick="() => RemoveItem(index)"
-                                            title="Eliminar artículo">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-
-                                <div class="row g-2">
-                                    <div class="col-md-12">
-                                        <label class="form-label small mb-1">Descripción *</label>
-                                        <InputText class="form-control form-control-sm"
-                                                   @bind-Value="item.Description"
-                                                   placeholder="Descripción del servicio o producto" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label small mb-1">Cantidad *</label>
-                                        <InputNumber class="form-control form-control-sm"
-                                                     @bind-Value="item.Quantity"
-                                                     @bind-Value:after="RecalculateTotals" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label small mb-1">Precio Unitario *</label>
-                                        <InputNumber class="form-control form-control-sm"
-                                                     @bind-Value="item.UnitPrice"
-                                                     @bind-Value:after="RecalculateTotals" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label small mb-1">Subtotal</label>
-                                        <input type="text" class="form-control form-control-sm bg-white"
-                                               value="@((item.Quantity * item.UnitPrice).ToString("C"))"
-                                               readonly />
-                                    </div>
-
-                                    @* ⭐ BUSCADOR DE TICKETS CON AUTOCOMPLETADO *@
-                                    <div class="col-md-12">
-                                        <label class="form-label small mb-1">
-                                            Ticket Asociado (Opcional)
-                                            <i class="bi bi-info-circle text-muted"
-                                               title="Buscar por #ID, título o cliente"></i>
-                                        </label>
-
-                                        @if (_isLoadingTickets)
-                                        {
-                                            <div class="d-flex align-items-center">
-                                                <span class="spinner-border spinner-border-sm me-2"></span>
-                                                <span class="small">Cargando tickets...</span>
-                                            </div>
-                                        }
-                                        else if (_closedTickets == null || !_closedTickets.Any())
-                                        {
-                                            <input type="text" class="form-control form-control-sm"
-                                                   value="-- No hay tickets cerrados disponibles --"
-                                                   disabled />
-                                            <small class="text-muted">
-                                                <i class="bi bi-exclamation-circle"></i>
-                                                Solo se pueden asociar tickets con estado "Cerrado"
-                                            </small>
-                                        }
-                                        else
-                                        {
-                                            <div class="position-relative">
-                                                <input type="text"
-                                                       class="form-control form-control-sm"
-                                                       placeholder="Buscar ticket por #ID, título o cliente..."
-                                                       value="@GetTicketSearchText(item)"
-                                                       @oninput="@(e => OnTicketSearchInput(e, item, index))"
-                                                       @onfocus="@(() => OnTicketFocus(index))"
-                                                       @onblur="@(() => OnTicketBlur(index))"
-                                                       @onkeydown="OnKeyDown"
-                                                       autocomplete="off" />
-
-                                                @if (IsTicketSuggestionsVisible(index) && GetFilteredTickets(item, index).Any())
-                                                {
-                                                    <div class="autocomplete-dropdown">
-                                                        @foreach (var ticket in GetFilteredTickets(item, index).Take(8))
-                                                        {
-                                                            <div class="autocomplete-item"
-                                                                 @onmousedown="@(() => SelectTicket(item, ticket, index))"
-                                                                 @onmousedown:preventDefault>
-                                                                <div class="d-flex justify-content-between align-items-start">
-                                                                    <div class="flex-grow-1">
-                                                                        <strong class="text-primary">#@ticket.Id</strong> - @ticket.Title
-                                                                        <br />
-                                                                        <small class="text-muted">
-                                                                            <i class="bi bi-building"></i> @ticket.ClientName |
-                                                                            <i class="bi bi-clock"></i> @ticket.ActualHours.ToString("0.0")h
-                                                                        </small>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-
-                                            @* Mostrar ticket seleccionado *@
-                                            @if (item.TicketId.HasValue && item.TicketId.Value > 0)
-                                            {
-                                                var selectedTicket = _closedTickets.FirstOrDefault(t => t.Id == item.TicketId.Value);
-                                                if (selectedTicket != null)
-                                                {
-                                                    <div class="alert alert-success p-2 mt-2 mb-0">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <small>
-                                                                <i class="bi bi-check-circle-fill"></i>
-                                                                <strong>#@selectedTicket.Id - @selectedTicket.Title</strong><br />
-                                                                Cliente: @selectedTicket.ClientName |
-                                                                Horas: @selectedTicket.ActualHours.ToString("0.0")h |
-                                                                Costo: $@((selectedTicket.ActualHours * selectedTicket.HourlyRate).ToString("N2"))
-                                                            </small>
-                                                            <button type="button"
-                                                                    class="btn btn-sm btn-link text-danger p-0"
-                                                                    @onclick="() => ClearTicket(item, index)"
-                                                                    title="Quitar ticket">
-                                                                <i class="bi bi-x-lg"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            }
-                                            else if (!string.IsNullOrEmpty(GetTicketSearchText(item)))
-                                            {
-                                                <small class="text-warning d-block mt-1">
-                                                    <i class="bi bi-exclamation-triangle"></i>
-                                                    Debe seleccionar un ticket de la lista o dejar vacío
-                                                </small>
-                                            }
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label for="Notes" class="form-label fw-bold small">Notas Adicionales</label>
-            <InputTextArea id="Notes" class="form-control" rows="2"
-                           placeholder="Condiciones, términos adicionales..."
-                           @bind-Value="_quoteDto.Notes" />
-        </div>
-
-        <div class="card bg-light border-primary mb-3">
-            <div class="card-body p-2">
-                <div class="row justify-content-end">
-                    <div class="col-md-5 col-lg-4">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">Subtotal:</span>
-                            <strong class="small">@FormatCurrency(_calculatedSubtotal)</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">IVA (16%):</span>
-                            <strong class="small">@FormatCurrency(_calculatedTax)</strong>
-                        </div>
-                        <hr class="my-1" />
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold">Total:</span>
-                            <strong class="text-success h5 mb-0">@FormatCurrency(_calculatedTotal)</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-secondary" @onclick="Cancel">
-                <i class="bi bi-x-lg me-1"></i>
-                Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary"
-                    disabled="@(_isSaving || !_quoteDto.Items.Any() || _quoteDto.ClientId == 0)">
-                @if (_isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                }
-                <i class="bi bi-check-lg me-1"></i>
-                @(_isEditMode ? "Actualizar" : "Crear") Cotización
-            </button>
-        </div>
-
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-danger mt-2 py-2">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                @_errorMessage
-            </div>
-        }
-    </EditForm>
-</section>
-
-<style>
-    .autocomplete-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        max-height: 250px;
-        overflow-y: auto;
-        background-color: white;
-        border: 1px solid #ced4da;
-        border-top: none;
-        border-radius: 0 0 0.375rem 0.375rem;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-        margin-top: 2px;
-    }
-
-    .autocomplete-item {
-        padding: 0.625rem 0.75rem;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background-color 0.15s ease;
-    }
-
-        .autocomplete-item:hover {
-            background-color: #e7f3ff;
-        }
-
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-
-    .bg-light::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .bg-light::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-
-    .bg-light::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 4px;
-    }
-
-        .bg-light::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-</style>
 
 @inject IQuoteApiService QuoteApiService
 @inject IClientApiService ClientApiService
@@ -370,93 +9,187 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
+<div class="quote-form-wrapper">
+    <EditForm Model="_quoteDto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="quote-form-body">
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mb-3" role="alert">
+                    <div class="fw-bold mb-1">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Por favor corrige los siguientes errores:
+                    </div>
+                    @foreach (var line in _errorMessage.Split('\n'))
+                    {
+                        <div>@line</div>
+                    }
+                </div>
+            }
+
+            <div class="accordion mb-3" id="quoteAccordion">
+
+                <QuoteGeneralSection Model="_quoteDto"
+                                     IsComplete="_section1Complete"
+                                     IsEditMode="_isEditMode"
+                                     IsLoadingClients="_isLoadingClients"
+                                     FilteredClients="_filteredClients"
+                                     SelectedClient="_selectedClient"
+                                     ClientSearchText="@_clientSearchText"
+                                     ShowClientSuggestions="_showSuggestions"
+                                     OnClientSearchInput="OnClientSearchInput"
+                                     OnClientSelected="SelectClient"
+                                     OnClientFocus="HandleClientFocus"
+                                     OnClientBlur="HandleClientBlur" />
+
+                <QuoteItemsSection Items="_quoteDto.Items"
+                                   IsComplete="_section2Complete"
+                                   IsLoadingTickets="_isLoadingTickets"
+                                   ClosedTickets="_closedTickets"
+                                   TicketSearchTexts="_ticketSearchTexts"
+                                   FilteredTicketsCache="_filteredTicketsCache"
+                                   TicketSuggestionsVisible="_ticketSuggestionsVisible"
+                                   CalculatedSubtotal="_calculatedSubtotal"
+                                   CalculatedTax="_calculatedTax"
+                                   CalculatedTotal="_calculatedTotal"
+                                   OnAddItem="AddItem"
+                                   OnRemoveItem="RemoveItem"
+                                   OnRecalculate="RecalculateTotals"
+                                   OnTicketSearchInput="OnTicketSearchInput"
+                                   OnTicketFocus="OnTicketFocus"
+                                   OnTicketBlur="OnTicketBlur"
+                                   OnTicketSelected="SelectTicket"
+                                   OnClearTicket="ClearTicket" />
+
+                <QuoteNotesSection Model="_quoteDto" />
+
+            </div>
+        </div>
+
+        <div class="quote-form-footer">
+            <div>
+                @if (!_allSectionsComplete)
+                {
+                    <small class="text-danger">
+                        <i class="bi bi-exclamation-circle me-1"></i>Complete las secciones obligatorias
+                    </small>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm"
+                        disabled="@(_isSaving || !_quoteDto.Items.Any() || _quoteDto.ClientId == 0)">
+                    @if (_isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    <i class="bi bi-check-lg me-1"></i>
+                    @(_isEditMode ? "Actualizar Cotización" : "Guardar")
+                </button>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
 @code {
     [Parameter] public int? QuoteId { get; set; }
 
+    // ── Estado ────────────────────────────────────────────────────────────────
     private QuoteDto _quoteDto = new();
+
+    // Cliente
     private List<ClientDto> _allClients = new();
     private List<ClientDto> _filteredClients = new();
     private ClientDto? _selectedClient;
     private string _clientSearchText = string.Empty;
     private bool _showSuggestions = false;
+    private bool _isLoadingClients = false;
 
-    private List<ServiceDetailDto>? _services;
-    private List<TicketDetailDto>? _tickets;
-    private List<TicketDetailDto>? _closedTickets;
-    private bool _isLoadingTickets = false;
-
+    // Tickets
+    private List<TicketDetailDto>? _closedTickets = new();
     private Dictionary<int, string> _ticketSearchTexts = new();
     private Dictionary<int, List<TicketDetailDto>> _filteredTicketsCache = new();
     private HashSet<int> _ticketSuggestionsVisible = new();
+    private bool _isLoadingTickets = false;
 
+    // Totales
     private decimal _calculatedSubtotal = 0;
     private decimal _calculatedTax = 0;
     private decimal _calculatedTotal = 0;
 
     private bool _isSaving = false;
-    private bool _isLoadingClients = false;
     private string? _errorMessage;
     private bool _isEditMode => QuoteId.HasValue;
 
-    private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
+    private bool _section1Complete => _quoteDto.ClientId > 0;
+    private bool _section2Complete => _quoteDto.Items.Any();
+    private bool _allSectionsComplete => _section1Complete && _section2Complete;
 
+    // ── Tickets ya usados en otros ítems del form ─────────────────────────────
+    private HashSet<int> GetUsedTicketIds(int excludeIndex) =>
+        _quoteDto.Items
+            .Select((item, i) => (item, i))
+            .Where(x => x.i != excludeIndex && x.item.TicketId.HasValue && x.item.TicketId.Value > 0)
+            .Select(x => x.item.TicketId!.Value)
+            .ToHashSet();
+
+    private List<TicketDetailDto> GetAvailableTickets(int excludeIndex)
+    {
+        var used = GetUsedTicketIds(excludeIndex);
+        return _closedTickets?.Where(t => !used.Contains(t.Id)).ToList() ?? new();
+    }
+
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadInitialData();
 
-        if (_isEditMode)
-        {
-            await LoadQuote();
-        }
+        if (_isEditMode) await LoadQuote();
         else
-        {
-            _quoteDto = new QuoteDto
-            {
-                Status = "Borrador", // ⭐ SIEMPRE Borrador en creación
-                ValidUntil = DateTime.Now.AddDays(30)
-            };
-        }
+            _quoteDto = new QuoteDto { Status = "Borrador", ValidUntil = DateTime.Now.AddDays(30) };
 
         RecalculateTotals();
     }
 
-    private string FormatCurrency(decimal amount)
-    {
-        return string.Format("$ {0:N2}", amount);
-    }
-
+    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadInitialData()
     {
         _isLoadingClients = true;
         _isLoadingTickets = true;
         StateHasChanged();
-
         try
         {
             var clientsTask = ClientApiService.GetClientsAsync();
-            var servicesTask = ServiceApiService.GetServicesAsync();
             var ticketsTask = TicketApiService.GetTicketsAsync();
+            var quotesTask = QuoteApiService.GetQuotesAsync(); // ← agregar
+            await Task.WhenAll(clientsTask, ticketsTask, quotesTask);
 
-            await Task.WhenAll(clientsTask, servicesTask, ticketsTask);
+            _allClients = (await clientsTask) ?? new();
+            _filteredClients = new();
 
-            _allClients = (await clientsTask) ?? new List<ClientDto>();
-            _filteredClients = new List<ClientDto>();
-            _services = await servicesTask;
-            _tickets = await ticketsTask;
+            // Tickets ya usados en otras cotizaciones
+            var allQuotes = await quotesTask;
+            var usedTicketIds = allQuotes?
+                .Where(q => q.Id != QuoteId) // excluir la cotización actual en edición
+                .SelectMany(q => q.Items)
+                .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
+                .Select(i => i.TicketId!.Value)
+                .ToHashSet() ?? new HashSet<int>();
 
-            _closedTickets = _tickets?
-                .Where(t => t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true)
+            var allTickets = await ticketsTask;
+            _closedTickets = allTickets?
+                .Where(t =>
+                    t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true
+                    && !usedTicketIds.Contains(t.Id)) // ← excluir ya usados
                 .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
-                .ToList() ?? new List<TicketDetailDto>();
-
-            Console.WriteLine($"✅ Tickets cerrados cargados: {_closedTickets.Count} de {_tickets?.Count ?? 0} totales");
+                .ToList() ?? new();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error al cargar datos: {ex.Message}");
-            _allClients = new List<ClientDto>();
-            _filteredClients = new List<ClientDto>();
-            _closedTickets = new List<TicketDetailDto>();
+            Console.WriteLine($"Error al cargar datos: {ex.Message}");
+            _allClients = new();
+            _closedTickets = new();
             _errorMessage = "Error al cargar datos iniciales.";
         }
         finally
@@ -466,7 +199,6 @@
             StateHasChanged();
         }
     }
-
     private async Task LoadQuote()
     {
         try
@@ -495,10 +227,7 @@
                 if (quote.ClientId > 0)
                 {
                     _selectedClient = _allClients.FirstOrDefault(c => c.Id == quote.ClientId);
-                    if (_selectedClient != null)
-                    {
-                        _clientSearchText = _selectedClient.CompanyName;
-                    }
+                    if (_selectedClient != null) _clientSearchText = _selectedClient.CompanyName;
                 }
 
                 for (int i = 0; i < _quoteDto.Items.Count; i++)
@@ -506,52 +235,68 @@
                     var item = _quoteDto.Items[i];
                     if (item.TicketId.HasValue && item.TicketId.Value > 0)
                     {
-                        var ticket = _closedTickets?.FirstOrDefault(t => t.Id == item.TicketId.Value);
-                        if (ticket != null)
-                        {
-                            _ticketSearchTexts[i] = $"#{ticket.Id} - {ticket.Title}";
-                        }
+                        var t = _closedTickets?.FirstOrDefault(x => x.Id == item.TicketId.Value);
+                        _ticketSearchTexts[i] = t != null ? $"#{t.Id} - {t.Title}" : string.Empty;
                     }
-                    else
-                    {
-                        _ticketSearchTexts[i] = string.Empty;
-                    }
+                    else _ticketSearchTexts[i] = string.Empty;
                     _filteredTicketsCache[i] = new List<TicketDetailDto>();
                 }
-
                 RecalculateTotals();
             }
         }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error al cargar cotización: {ex.Message}";
-        }
+        catch (Exception ex) { _errorMessage = $"Error al cargar cotización: {ex.Message}"; }
     }
 
-    private string GetTicketSearchText(QuoteItemDto item)
+    // ── Autocomplete cliente ──────────────────────────────────────────────────
+    private void OnClientSearchInput(ChangeEventArgs e)
     {
-        var itemIndex = _quoteDto.Items.IndexOf(item);
-        if (itemIndex < 0) return string.Empty;
-
-        if (_ticketSearchTexts.ContainsKey(itemIndex))
+        _clientSearchText = e.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(_clientSearchText))
         {
-            return _ticketSearchTexts[itemIndex];
+            _filteredClients = new List<ClientDto>();
+            _showSuggestions = false;
+            _selectedClient = null;
+            _quoteDto.ClientId = 0;
         }
-
-        if (item.TicketId.HasValue && item.TicketId.Value > 0)
+        else
         {
-            var ticket = _closedTickets?.FirstOrDefault(t => t.Id == item.TicketId.Value);
-            if (ticket != null)
-            {
-                return $"#{ticket.Id} - {ticket.Title}";
-            }
-        }
+            _filteredClients = _allClients
+                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.CompanyName).ToList();
+            _showSuggestions = true;
 
-        return string.Empty;
+            var exact = _allClients.FirstOrDefault(c =>
+                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
+            if (exact is null && _selectedClient is not null) { _selectedClient = null; _quoteDto.ClientId = 0; }
+        }
+        StateHasChanged();
     }
 
-    private void OnTicketSearchInput(ChangeEventArgs e, QuoteItemDto item, int index)
+    private void SelectClient(ClientDto client)
     {
+        _selectedClient = client;
+        _quoteDto.ClientId = client.Id ?? 0;
+        _clientSearchText = client.CompanyName;
+        _showSuggestions = false;
+        StateHasChanged();
+    }
+
+    private void HandleClientFocus()
+    {
+        if (!string.IsNullOrWhiteSpace(_clientSearchText)) _showSuggestions = true;
+    }
+
+    private async Task HandleClientBlur()
+    {
+        await Task.Delay(200);
+        _showSuggestions = false;
+        StateHasChanged();
+    }
+
+    // ── Autocomplete ticket por ítem ─────────────────────────────────────────
+    private void OnTicketSearchInput((ChangeEventArgs e, int index) args)
+    {
+        var (e, index) = args;
         var searchText = e.Value?.ToString() ?? string.Empty;
         _ticketSearchTexts[index] = searchText;
 
@@ -559,44 +304,36 @@
         {
             _filteredTicketsCache[index] = new List<TicketDetailDto>();
             _ticketSuggestionsVisible.Remove(index);
-            item.TicketId = null;
+            _quoteDto.Items[index].TicketId = null;
         }
         else
         {
-            var filtered = _closedTickets?
+            // ── FIX: excluir tickets ya usados en otros ítems ──
+            var available = GetAvailableTickets(index);
+            _filteredTicketsCache[index] = available
                 .Where(t =>
                     t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                     t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                     t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(t => t.Id)
-                .ToList() ?? new List<TicketDetailDto>();
-
-            _filteredTicketsCache[index] = filtered;
+                .OrderBy(t => t.Id).ToList();
             _ticketSuggestionsVisible.Add(index);
         }
-
         StateHasChanged();
-    }
-
-    private List<TicketDetailDto> GetFilteredTickets(QuoteItemDto item, int index)
-    {
-        if (_filteredTicketsCache.ContainsKey(index))
-        {
-            return _filteredTicketsCache[index];
-        }
-        return new List<TicketDetailDto>();
-    }
-
-    private bool IsTicketSuggestionsVisible(int index)
-    {
-        return _ticketSuggestionsVisible.Contains(index);
     }
 
     private void OnTicketFocus(int index)
     {
-        var searchText = _ticketSearchTexts.ContainsKey(index) ? _ticketSearchTexts[index] : string.Empty;
-        if (!string.IsNullOrWhiteSpace(searchText))
+        var text = _ticketSearchTexts.TryGetValue(index, out var t) ? t : string.Empty;
+        if (!string.IsNullOrWhiteSpace(text))
         {
+            // ── FIX: excluir tickets ya usados al mostrar sugerencias ──
+            var available = GetAvailableTickets(index);
+            _filteredTicketsCache[index] = available
+                .Where(tk =>
+                    tk.Id.ToString().Contains(text, StringComparison.OrdinalIgnoreCase) ||
+                    tk.Title.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+                    tk.ClientName.Contains(text, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(tk => tk.Id).ToList();
             _ticketSuggestionsVisible.Add(index);
             StateHasChanged();
         }
@@ -609,134 +346,52 @@
         StateHasChanged();
     }
 
-    private void SelectTicket(QuoteItemDto item, TicketDetailDto ticket, int index)
+    private void SelectTicket((QuoteItemDto item, TicketDetailDto ticket, int index) args)
     {
+        var (item, ticket, index) = args;
         item.TicketId = ticket.Id;
         _ticketSearchTexts[index] = $"#{ticket.Id} - {ticket.Title}";
         _ticketSuggestionsVisible.Remove(index);
         _filteredTicketsCache[index] = new List<TicketDetailDto>();
-
-        Console.WriteLine($"✅ Ticket seleccionado: #{ticket.Id} - {ticket.Title}");
         StateHasChanged();
     }
 
-    private void ClearTicket(QuoteItemDto item, int index)
+    private void ClearTicket((QuoteItemDto item, int index) args)
     {
+        var (item, index) = args;
         item.TicketId = null;
         _ticketSearchTexts[index] = string.Empty;
         _filteredTicketsCache[index] = new List<TicketDetailDto>();
         StateHasChanged();
     }
 
-    private void OnClientFocus()
-    {
-        if (!string.IsNullOrWhiteSpace(_clientSearchText))
-        {
-            _showSuggestions = true;
-        }
-    }
-
-    private async Task OnClientBlur()
-    {
-        await Task.Delay(200);
-        _showSuggestions = false;
-        StateHasChanged();
-    }
-
-    private void OnClientSearchInput(ChangeEventArgs e)
-    {
-        _clientSearchText = e.Value?.ToString() ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(_clientSearchText))
-        {
-            _filteredClients = new List<ClientDto>();
-            _showSuggestions = false;
-            _selectedClient = null;
-            _quoteDto.ClientId = 0;
-        }
-        else
-        {
-            _filteredClients = _allClients
-                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(c => c.CompanyName)
-                .ToList();
-            _showSuggestions = true;
-
-            var exactMatch = _allClients.FirstOrDefault(c =>
-                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
-
-            if (exactMatch == null && _selectedClient != null)
-            {
-                _selectedClient = null;
-                _quoteDto.ClientId = 0;
-            }
-        }
-
-        StateHasChanged();
-    }
-
-    private void OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Escape")
-        {
-            _showSuggestions = false;
-            StateHasChanged();
-        }
-    }
-
-    private void SelectClient(ClientDto client)
-    {
-        _selectedClient = client;
-        _quoteDto.ClientId = client.Id ?? 0;
-        _clientSearchText = client.CompanyName;
-        _showSuggestions = false;
-        StateHasChanged();
-    }
-
+    // ── Gestión de ítems ──────────────────────────────────────────────────────
     private void AddItem()
     {
-        var newItem = new QuoteItemDto
-        {
-            Quantity = 1,
-            UnitPrice = 0
-        };
-        _quoteDto.Items.Add(newItem);
-
-        var index = _quoteDto.Items.Count - 1;
-        _ticketSearchTexts[index] = string.Empty;
-        _filteredTicketsCache[index] = new List<TicketDetailDto>();
-
+        _quoteDto.Items.Add(new QuoteItemDto { Quantity = 1, UnitPrice = 0 });
+        var idx = _quoteDto.Items.Count - 1;
+        _ticketSearchTexts[idx] = string.Empty;
+        _filteredTicketsCache[idx] = new List<TicketDetailDto>();
         RecalculateTotals();
     }
 
     private void RemoveItem(int index)
     {
         _quoteDto.Items.RemoveAt(index);
-
-        var newSearchTexts = new Dictionary<int, string>();
-        var newFilteredCache = new Dictionary<int, List<TicketDetailDto>>();
-        var newVisibleSet = new HashSet<int>();
+        var newTexts = new Dictionary<int, string>();
+        var newCache = new Dictionary<int, List<TicketDetailDto>>();
+        var newVisible = new HashSet<int>();
 
         for (int i = 0; i < _quoteDto.Items.Count; i++)
         {
-            if (_ticketSearchTexts.ContainsKey(i < index ? i : i + 1))
-            {
-                newSearchTexts[i] = _ticketSearchTexts[i < index ? i : i + 1];
-            }
-            if (_filteredTicketsCache.ContainsKey(i < index ? i : i + 1))
-            {
-                newFilteredCache[i] = _filteredTicketsCache[i < index ? i : i + 1];
-            }
-            if (_ticketSuggestionsVisible.Contains(i < index ? i : i + 1))
-            {
-                newVisibleSet.Add(i);
-            }
+            var old = i < index ? i : i + 1;
+            if (_ticketSearchTexts.TryGetValue(old, out var t)) newTexts[i] = t;
+            if (_filteredTicketsCache.TryGetValue(old, out var c)) newCache[i] = c;
+            if (_ticketSuggestionsVisible.Contains(old)) newVisible.Add(i);
         }
-
-        _ticketSearchTexts = newSearchTexts;
-        _filteredTicketsCache = newFilteredCache;
-        _ticketSuggestionsVisible = newVisibleSet;
-
+        _ticketSearchTexts = newTexts;
+        _filteredTicketsCache = newCache;
+        _ticketSuggestionsVisible = newVisible;
         RecalculateTotals();
     }
 
@@ -748,82 +403,94 @@
         StateHasChanged();
     }
 
+    // ── Submit ────────────────────────────────────────────────────────────────
+    // ── Submit ────────────────────────────────────────────────────────────────
     private async Task HandleSubmit()
     {
         _showSuggestions = false;
-
-        if (_quoteDto.ClientId == 0)
-        {
-            _errorMessage = "Debe seleccionar un cliente de la lista.";
-            return;
-        }
+        if (_quoteDto.ClientId == 0) { _errorMessage = "Debe seleccionar un cliente de la lista."; return; }
 
         foreach (var item in _quoteDto.Items)
-        {
-            if (!item.TicketId.HasValue || item.TicketId.Value == 0)
-            {
-                item.TicketId = null;
-            }
-            Console.WriteLine($"Item: {item.Description}, TicketId: {item.TicketId?.ToString() ?? "null"}");
-        }
+            if (!item.TicketId.HasValue || item.TicketId.Value == 0) item.TicketId = null;
 
-        _isSaving = true;
-        _errorMessage = null;
-        StateHasChanged();
-
+        _isSaving = true; _errorMessage = null; StateHasChanged();
         try
         {
             if (_isEditMode)
             {
-                var result = await QuoteApiService.UpdateQuoteAsync(QuoteId!.Value, _quoteDto);
-                if (result.Success)
-                {
-                    ShowNotification("Éxito", "Cotización actualizada correctamente.", NotificationSeverity.Success);
-                    DialogService.Close(true);
-                }
-                else
-                {
-                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar la cotización.";
-                }
+                var r = await QuoteApiService.UpdateQuoteAsync(QuoteId!.Value, _quoteDto);
+                if (r.Success) { Notify("Éxito", "Cotización actualizada.", NotificationSeverity.Success); DialogService.Close(true); }
+                else _errorMessage = ParseApiError(r.ErrorMessage);
             }
             else
             {
-                var result = await QuoteApiService.CreateQuoteAsync(_quoteDto);
-                if (result.Success)
-                {
-                    ShowNotification("Éxito", "Cotización creada correctamente.", NotificationSeverity.Success);
-                    DialogService.Close(true);
-                }
-                else
-                {
-                    _errorMessage = result.ErrorMessage ?? "No se pudo crear la cotización.";
-                }
+                var r = await QuoteApiService.CreateQuoteAsync(_quoteDto);
+                if (r.Success) { Notify("Éxito", "Cotización creada.", NotificationSeverity.Success); DialogService.Close(true); }
+                else _errorMessage = ParseApiError(r.ErrorMessage);
             }
         }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error al {(_isEditMode ? "actualizar" : "crear")} la cotización: {ex.Message}";
-        }
-        finally
-        {
-            _isSaving = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { _errorMessage = $"Error inesperado: {ex.Message}"; }
+        finally { _isSaving = false; StateHasChanged(); }
     }
 
-    private void Cancel()
+    // Convierte el JSON de error del backend en un mensaje legible
+    private static string ParseApiError(string? raw)
     {
-        DialogService.Close(false);
+        if (string.IsNullOrWhiteSpace(raw)) return "Error desconocido.";
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(
+                raw.Contains("{") ? raw[raw.IndexOf('{')..] : raw);
+
+            var root = doc.RootElement;
+
+            // Caso 1: tiene campo "errors" con validaciones por campo
+            if (root.TryGetProperty("errors", out var errors))
+            {
+                var msgs = new List<string>();
+                foreach (var field in errors.EnumerateObject())
+                {
+                    // Nombre amigable del campo
+                    var friendlyField = field.Name switch
+                    {
+                        var f when f.StartsWith("Items[") =>
+                            $"Artículo #{int.Parse(f[6..f.IndexOf(']')]) + 1} — {GetFieldLabel(f[(f.IndexOf('.') + 1)..])}",
+                        "ClientId" => "Cliente",
+                        "ValidUntil" => "Válida Hasta",
+                        "Status" => "Estado",
+                        "Notes" => "Notas",
+                        _ => field.Name
+                    };
+
+                    foreach (var msg in field.Value.EnumerateArray())
+                        msgs.Add($"• {friendlyField}: {msg.GetString()}");
+                }
+                return msgs.Any() ? string.Join("\n", msgs) : "Error de validación.";
+            }
+
+            // Caso 2: tiene campo "title" genérico
+            if (root.TryGetProperty("title", out var title))
+                return title.GetString() ?? "Error del servidor.";
+        }
+        catch { /* Si no es JSON válido, devolver el raw */ }
+
+        // Caso 3: mensaje plano
+        return raw.Length > 300 ? raw[..300] + "..." : raw;
     }
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
+    private static string GetFieldLabel(string fieldName) => fieldName switch
     {
-        NotificationService.Notify(new NotificationMessage
-        {
-            Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
-        });
-    }
+        "Description" => "Descripción es obligatoria",
+        "UnitPrice" => "Precio unitario debe ser mayor a 0",
+        "Quantity" => "Cantidad debe ser mayor a 0",
+        "ServiceId" => "Servicio",
+        "TicketId" => "Ticket",
+        _ => fieldName
+    };
+
+    private void Cancel() => DialogService.Close(false);
+
+    private void Notify(string t, string m, NotificationSeverity s) =>
+        NotificationService.Notify(new NotificationMessage { Severity = s, Summary = t, Detail = m, Duration = 4000 });
 }

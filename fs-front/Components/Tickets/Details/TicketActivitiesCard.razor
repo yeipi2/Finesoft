@@ -1,0 +1,173 @@
+﻿@* Card de actividades: muestra lista, botones de bloqueo/desbloqueo/revisión/cierre
+   y delega los callbacks de acción al padre (TicketDetails) *@
+@using fs_front.DTO
+
+@if (CanManage)
+{
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-task"></i> Actividades a Realizar
+                    </h5>
+                    <small class="text-muted">
+                        @(Activities?.Count(a => !a.IsCompleted) ?? 0) pendientes •
+                        @(Activities?.Count(a => a.IsCompleted) ?? 0) completadas
+                    </small>
+                </div>
+                <div class="d-flex gap-2">
+                    @if (!ActivitiesAreLocked && Status != "Cerrado")
+                    {
+                        <button class="btn btn-sm btn-dark" @onclick="OnAddActivity">
+                            <i class="bi bi-plus-lg"></i> Agregar Actividad
+                        </button>
+                    }
+
+                    @if (Activities != null && Activities.Any())
+                    {
+                        @if (Status == "Abierto")
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="OnLock"
+                                    title="Bloquear actividades y comenzar trabajo">
+                                <i class="bi bi-lock"></i> Bloquear y Comenzar
+                            </button>
+                        }
+                        else if (Status == "En Progreso")
+                        {
+                            var allCompleted = Activities.Any() && Activities.All(a => a.IsCompleted);
+
+                            <button class="btn btn-sm btn-secondary" @onclick="OnUnlock"
+                                    title="Desbloquear actividades para editar">
+                                <i class="bi bi-unlock"></i> Desbloquear Actividades
+                            </button>
+
+                            @if (allCompleted)
+                            {
+                                <button class="btn btn-sm btn-info" @onclick="OnPassToReview"
+                                        title="Pasar ticket a revisión">
+                                    <i class="bi bi-eye-fill"></i> Pasar a Revisión
+                                </button>
+                            }
+                        }
+                        else if (Status == "En Revisión")
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="OnClose"
+                                    title="Marcar ticket como completado">
+                                <i class="bi bi-check-circle-fill"></i> Cerrar Ticket
+                            </button>
+                            <button class="btn btn-sm btn-warning" @onclick="OnUnlock"
+                                    title="Regresar a edición">
+                                <i class="bi bi-arrow-counterclockwise"></i> Regresar a Edición
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (Activities != null && Activities.Any())
+            {
+                <div class="list-group">
+                    @foreach (var activity in Activities.OrderBy(a => a.IsCompleted).ThenBy(a => a.CreatedAt))
+                    {
+                        <div class="list-group-item @(activity.IsCompleted ? "bg-light" : "")">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        @if (activity.IsCompleted)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                            <span class="text-decoration-line-through text-muted">@activity.Description</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-circle text-muted"></i>
+                                            <strong>@activity.Description</strong>
+                                        }
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> @activity.HoursSpent.ToString("0.00")h
+                                        | <i class="bi bi-person"></i> @activity.CreatedByUserName
+                                        @if (activity.IsCompleted && activity.CompletedAt.HasValue)
+                                        {
+                                            <span> | Completada: @activity.CompletedAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                        }
+                                    </small>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    @if (!activity.IsCompleted && ActivitiesAreLocked)
+                                    {
+                                        <button class="btn btn-sm btn-success"
+                                                @onclick="() => OnCompleteActivity.InvokeAsync(activity.Id)"
+                                                title="Marcar como completada">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    }
+                                    @if (!activity.IsCompleted && !ActivitiesAreLocked && Status != "Cerrado")
+                                    {
+                                        <button class="btn btn-sm btn-primary"
+                                                @onclick="() => OnEditActivity.InvokeAsync(activity)"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger"
+                                                @onclick="() => OnDeleteActivity.InvokeAsync(activity)"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (ActivitiesAreLocked)
+                {
+                    @if (Status == "En Progreso")
+                    {
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Las actividades están bloqueadas. Marca todas como completadas para pasar a revisión.
+                        </div>
+                    }
+                    else if (Status == "En Revisión")
+                    {
+                        <div class="alert alert-success mt-3 mb-0">
+                            <i class="bi bi-check-circle"></i>
+                            Ticket en revisión. Todas las actividades han sido completadas.
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2 mb-1">No hay actividades registradas.</p>
+                    <p class="text-muted small">Comienza agregando las tareas que necesitas realizar para completar este ticket.</p>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<TicketActivityDto>? Activities { get; set; }
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter] public bool CanManage { get; set; }
+
+    /// <summary>true cuando Status es "En Progreso" o "En Revisión"</summary>
+    [Parameter] public bool ActivitiesAreLocked { get; set; }
+
+    // Callbacks de acción → el padre ejecuta la lógica real
+    [Parameter] public EventCallback OnAddActivity { get; set; }
+    [Parameter] public EventCallback OnLock { get; set; }
+    [Parameter] public EventCallback OnUnlock { get; set; }
+    [Parameter] public EventCallback OnPassToReview { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<int> OnCompleteActivity { get; set; }
+    [Parameter] public EventCallback<TicketActivityDto> OnEditActivity { get; set; }
+    [Parameter] public EventCallback<TicketActivityDto> OnDeleteActivity { get; set; }
+}

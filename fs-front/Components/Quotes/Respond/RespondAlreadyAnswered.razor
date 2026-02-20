@@ -1,0 +1,20 @@
+﻿@* Estado: cotización ya respondida (Aceptada o Rechazada) *@
+@using fs_front.DTO
+
+<div class="fs-state-body">
+    <div class="fs-state-icon">@(Status == "Aceptada" ? "✅" : "❌")</div>
+    <div class="fs-state-title">Cotización ya respondida</div>
+    <p class="fs-state-desc">
+        Esta cotización fue <strong>@Status.ToLower()</strong>
+        @if (UpdatedAt.HasValue)
+        {
+            <span> el @UpdatedAt.Value.ToString("dd/MM/yyyy")</span>
+        }
+    </p>
+    <span class="fs-status-pill">@Status</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter] public DateTime? UpdatedAt { get; set; }
+}

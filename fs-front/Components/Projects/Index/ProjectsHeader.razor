@@ -1,0 +1,27 @@
+﻿@* Encabezado de la página de proyectos: título, subtítulo y botón "Nuevo Proyecto" *@
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-folder fs-1 text-primary me-3"></i>
+        <div>
+            <p class="display-6 fw-bolder mb-2">Proyectos Registrados</p>
+            <p class="text-muted mb-0">Lista de todos los proyectos del sistema</p>
+        </div>
+    </div>
+
+    @if (CanCreate)
+    {
+        <button @onclick="OnCreate" class="btn btn-primary d-flex align-items-center gap-2 fw-bold small">
+            <i class="bi bi-plus-lg"></i>
+            Nuevo Proyecto
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>Muestra el botón "Nuevo Proyecto" solo si el usuario tiene permiso projects.create</summary>
+    [Parameter] public bool CanCreate { get; set; }
+
+    /// <summary>Callback que dispara ShowCreateModal en el padre</summary>
+    [Parameter] public EventCallback OnCreate { get; set; }
+}

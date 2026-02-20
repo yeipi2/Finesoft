@@ -1142,3 +1142,25 @@ code {
 [data-theme="dark"] .card .bg-dark {
     background-color: #252545 !important;
 }
+
+[data-theme="dark"] .quote-form-footer {
+    background: #1e1e35 !important;
+    color: #f1f1f1 !important;
+    border-top: 1px solid #2d2d4e !important;
+}
+
+[data-theme="dark"] .invoice-form-footer {
+    background: #1e1e35 !important;
+    color: #f1f1f1 !important;
+    border-top: 1px solid #2d2d4e !important;
+}
+
+[data-theme="dark"] .table-light {
+    background-color: #1e1e35 !important;
+}
+
+[data-theme="dark"] .form-footer-sticky {
+    background: #1e1e35 !important;
+    border-top: 1px solid #2d2d4e !important;
+    color: #f1f1f1 !important;
+}

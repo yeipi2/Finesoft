@@ -1,0 +1,20 @@
+﻿@* Badge reutilizable de estado de cotización *@
+
+@{
+    var css = Status switch
+    {
+        "Borrador" => "bg-secondary",
+        "Enviada" => "bg-primary",
+        "Aceptada" => "bg-success",
+        "Rechazada" => "bg-danger",
+        "Expirada" => "bg-warning",
+        _ => "bg-secondary"
+    };
+}
+
+<span class="badge @css @Class">@Status</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

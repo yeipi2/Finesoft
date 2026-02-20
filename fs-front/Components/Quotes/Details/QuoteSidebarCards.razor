@@ -1,0 +1,128 @@
+﻿@* Sidebar de la vista de detalles: card Detalles + Resumen Financiero + Acción Factura *@
+@using fs_front.DTO
+
+@{
+    var statusClass = Status switch
+    {
+        "Borrador" => "bg-secondary",
+        "Enviada" => "bg-primary",
+        "Aceptada" => "bg-success",
+        "Rechazada" => "bg-danger",
+        "Expirada" => "bg-warning",
+        _ => "bg-secondary"
+    };
+}
+
+@* ── Card: Detalles ── *@
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Detalles</h6>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <small class="text-muted">Número de Cotización</small>
+            <div class="fw-bold">@QuoteNumber</div>
+        </div>
+        <div class="mb-3">
+            <small class="text-muted">Fecha de Creación</small>
+            <div>@CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+        </div>
+        @if (ValidUntil.HasValue)
+        {
+            <div class="mb-3">
+                <small class="text-muted">Válida Hasta</small>
+                <div>@ValidUntil.Value.ToString("dd/MM/yyyy")</div>
+                @if (ValidUntil.Value < DateTime.Now)
+                {
+                    <small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Expirada</small>
+                }
+            </div>
+        }
+        <div class="mb-3">
+            <small class="text-muted">Estado</small>
+            <div><span class="badge @statusClass">@Status</span></div>
+        </div>
+        <div>
+            <small class="text-muted">Creado Por</small>
+            <div>@CreatedByUserName</div>
+        </div>
+    </div>
+</div>
+
+@* ── Card: Resumen Financiero ── *@
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h6 class="mb-0"><i class="bi bi-calculator"></i> Resumen Financiero</h6>
+    </div>
+    <div class="card-body">
+        <div class="mb-2">
+            <small class="text-muted">Número de Artículos</small>
+            <div class="fw-bold">@ItemCount</div>
+        </div>
+        @if (TicketCount > 0)
+        {
+            <div class="mb-2">
+                <small class="text-muted">Tickets Asociados</small>
+                <div class="fw-bold text-info">@TicketCount</div>
+            </div>
+        }
+        <div class="mb-2">
+            <small class="text-muted">Subtotal</small>
+            <div class="fw-bold">$@Subtotal.ToString("N2")</div>
+        </div>
+        <div class="mb-2">
+            <small class="text-muted">IVA</small>
+            <div class="fw-bold">$@Tax.ToString("N2")</div>
+        </div>
+        <hr />
+        <div>
+            <small class="text-muted">Total</small>
+            <div class="h4 text-success mb-0">$@Total.ToString("N2")</div>
+        </div>
+    </div>
+</div>
+
+@* ── Card: Acción factura ── *@
+@if (Status == "Aceptada" && !HasInvoice)
+{
+    <div class="card border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0"><i class="bi bi-lightning-fill"></i> Acción Disponible</h6>
+        </div>
+        <div class="card-body text-center">
+            <i class="bi bi-file-earmark-arrow-up fs-1 text-warning mb-3"></i>
+            <p class="mb-3">Esta cotización ha sido aceptada y puede convertirse en factura.</p>
+            <button class="btn btn-warning w-100" @onclick="OnConvertToInvoice">
+                <i class="bi bi-file-earmark-arrow-up-fill"></i> Convertir a Factura
+            </button>
+        </div>
+    </div>
+}
+else if (Status == "Aceptada" && HasInvoice)
+{
+    <div class="card border-info">
+        <div class="card-header bg-info text-white">
+            <h6 class="mb-0"><i class="bi bi-check-circle-fill"></i> Facturada</h6>
+        </div>
+        <div class="card-body text-center">
+            <i class="bi bi-receipt-cutoff fs-1 text-info mb-3"></i>
+            <p class="mb-0">Esta cotización ya ha sido convertida en factura.</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string QuoteNumber { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public DateTime CreatedAt { get; set; }
+    [Parameter] public DateTime? ValidUntil { get; set; }
+    [Parameter] public string? CreatedByUserName { get; set; }
+    [Parameter] public int ItemCount { get; set; }
+    [Parameter] public int TicketCount { get; set; }
+    [Parameter] public decimal Subtotal { get; set; }
+    [Parameter] public decimal Tax { get; set; }
+    [Parameter] public decimal Total { get; set; }
+    [Parameter] public bool HasInvoice { get; set; }
+
+    [Parameter] public EventCallback OnConvertToInvoice { get; set; }
+}

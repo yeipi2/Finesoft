@@ -1,0 +1,69 @@
+﻿@* Card de comentarios: lista + formulario para agregar nuevo comentario *@
+@using fs_front.DTO
+
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-chat-dots"></i> Comentarios (@(Comments?.Count ?? 0))
+        </h5>
+    </div>
+    <div class="card-body">
+        @if (Comments != null && Comments.Any())
+        {
+            @foreach (var comment in Comments.OrderBy(c => c.CreatedAt))
+            {
+                <div class="border-start border-3 @(comment.IsInternal ? "border-warning" : "border-primary") ps-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <div>
+                            <strong>@comment.UserName</strong>
+                            @if (comment.IsInternal)
+                            {
+                                <span class="badge bg-warning text-dark ms-2">Interno</span>
+                            }
+                        </div>
+                        <small class="text-muted">@comment.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                    </div>
+                    <p class="mb-0">@comment.Comment</p>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-muted text-center py-3">No hay comentarios aún.</p>
+        }
+
+        @if (CanComment)
+        {
+            <div class="mt-4">
+                <EditForm Model="NewComment" OnValidSubmit="OnAddComment">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Agregar Comentario</label>
+                        <InputTextArea class="form-control" rows="3"
+                                       @bind-Value="NewComment.Comment"
+                                       placeholder="Escribe tu comentario aquí..." />
+                        <ValidationMessage For="@(() => NewComment.Comment)" />
+                    </div>
+                    <button type="submit" class="btn btn-primary" disabled="@IsSaving">
+                        @if (IsSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-send"></i> Agregar Comentario
+                    </button>
+                </EditForm>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<TicketCommentDto>? Comments { get; set; }
+    [Parameter] public bool CanComment { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+
+    /// <summary>El padre debe exponer el modelo del nuevo comentario para que el form lo use</summary>
+    [Parameter, EditorRequired] public TicketCommentDto NewComment { get; set; } = default!;
+
+    [Parameter] public EventCallback OnAddComment { get; set; }
+}

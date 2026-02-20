@@ -1,0 +1,18 @@
+﻿@* Badge reutilizable de prioridad de ticket *@
+
+@{
+    var css = Priority switch
+    {
+        "Urgente" => "bg-danger",
+        "Alta" => "bg-warning",
+        "Media" => "bg-info",
+        _ => "bg-secondary"
+    };
+}
+
+<span class="badge @css @Class">@Priority</span>
+
+@code {
+    [Parameter, EditorRequired] public string Priority { get; set; } = string.Empty;
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

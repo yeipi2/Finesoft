@@ -1,0 +1,154 @@
+﻿@* Sección acordeón: Información General (Cliente + Válida Hasta + Estado) *@
+@using fs_front.DTO
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="headingGeneral">
+        <button class="accordion-button @(IsComplete ? "" : "text-danger")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseGeneral"
+                aria-expanded="true"
+                aria-controls="collapseGeneral">
+            <i class="bi bi-file-earmark-text me-2"></i>
+            <strong>Información General</strong>
+            @if (!IsComplete)
+            {
+                <span class="badge bg-danger ms-2">Incompleto</span>
+            }
+            else
+            {
+                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+            }
+        </button>
+    </h2>
+    <div id="collapseGeneral"
+         class="accordion-collapse collapse show"
+         aria-labelledby="headingGeneral"
+         data-bs-parent="#quoteAccordion">
+        <div class="accordion-body">
+            <div class="row g-3">
+
+                @* ── Cliente autocomplete ── *@
+                <div class="col-md-6">
+                    <label for="ClientSearch" class="form-label small fw-bold">
+                        Cliente <span class="text-danger">*</span>
+                    </label>
+                    @if (IsLoadingClients)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Cargando clientes...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="position-relative">
+                            <input type="text"
+                                   class="form-control form-control-sm"
+                                   id="ClientSearch"
+                                   placeholder="Buscar cliente por nombre..."
+                                   value="@ClientSearchText"
+                                   @oninput="e => OnClientSearchInput.InvokeAsync(e)"
+                                   @onkeydown="HandleKeyDown"
+                                   @onfocus="HandleClientFocus"
+                                   @onblur="HandleClientBlur"
+                                   autocomplete="off" />
+
+                            @if (ShowClientSuggestions && FilteredClients.Any())
+                            {
+                                <div class="autocomplete-dropdown">
+                                    @foreach (var client in FilteredClients.Take(10))
+                                    {
+                                        <div class="autocomplete-item"
+                                             @onmousedown="() => HandleSelectClient(client)"
+                                             @onmousedown:preventDefault>
+                                            @client.CompanyName
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        @if (Model.ClientId > 0 && SelectedClient != null)
+                        {
+                            <small class="text-success mt-1 d-block">
+                                <i class="bi bi-check-circle-fill me-1"></i>
+                                Cliente seleccionado: <strong>@SelectedClient.CompanyName</strong>
+                            </small>
+                        }
+
+                        @if (Model.ClientId == 0 && !string.IsNullOrEmpty(ClientSearchText))
+                        {
+                            <small class="text-danger mt-1 d-block">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Debe seleccionar un cliente de la lista
+                            </small>
+                        }
+                    }
+                    <ValidationMessage For="@(() => Model.ClientId)" />
+                </div>
+
+                @* ── Válida Hasta ── *@
+                <div class="col-md-3">
+                    <label for="ValidUntil" class="form-label small fw-bold">Válida Hasta</label>
+                    <InputDate id="ValidUntil" class="form-control form-control-sm"
+                               @bind-Value="Model.ValidUntil" />
+                </div>
+
+                @* ── Estado ── *@
+                <div class="col-md-3">
+                    <label for="Status" class="form-label small fw-bold">
+                        Estado <span class="text-danger">*</span>
+                    </label>
+                    @if (IsEditMode)
+                    {
+                        <select id="Status" class="form-select form-select-sm" @bind="Model.Status">
+                            <option value="Borrador">Borrador</option>
+                            <option value="Enviada">Enviada</option>
+                            <option value="Aceptada">Aceptada</option>
+                            <option value="Rechazada">Rechazada</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="text" class="form-control form-control-sm bg-light"
+                               value="Borrador" disabled />
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Las cotizaciones nuevas se crean como "Borrador"
+                        </small>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public QuoteDto Model { get; set; } = default!;
+    [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public bool IsLoadingClients { get; set; }
+
+    [Parameter] public List<ClientDto> FilteredClients { get; set; } = new();
+    [Parameter] public ClientDto? SelectedClient { get; set; }
+    [Parameter] public string ClientSearchText { get; set; } = string.Empty;
+    [Parameter] public bool ShowClientSuggestions { get; set; }
+
+    [Parameter] public EventCallback<ChangeEventArgs> OnClientSearchInput { get; set; }
+    [Parameter] public EventCallback<ClientDto> OnClientSelected { get; set; }
+    [Parameter] public EventCallback OnClientFocus { get; set; }
+    [Parameter] public EventCallback OnClientBlur { get; set; }
+
+    private async Task HandleSelectClient(ClientDto client)
+        => await OnClientSelected.InvokeAsync(client);
+
+    private async Task HandleClientFocus()
+        => await OnClientFocus.InvokeAsync();
+
+    private async Task HandleClientBlur()
+        => await OnClientBlur.InvokeAsync();
+
+    private void HandleKeyDown(KeyboardEventArgs e) { /* Escape handled in parent */ }
+}

@@ -1,199 +1,8 @@
-﻿@using fs_front.DTO
-
-<section class="container px-0">
-    <EditForm Model="_ticketDto" OnValidSubmit="HandleSubmit">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="alert alert-danger" />
-
-        <div class="row">
-            <div class="col-md-12">
-                <div class="mb-3">
-                    <label for="Title" class="form-label fw-bold small">Título *</label>
-                    <InputText id="Title" class="form-control" placeholder="Problema con el sistema de facturación"
-                               @bind-Value="_ticketDto.Title" />
-                    <ValidationMessage For="@(() => _ticketDto.Title)" />
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-12">
-                <div class="mb-3">
-                    <label for="Description" class="form-label fw-bold small">Descripción *</label>
-                    <InputTextArea id="Description" class="form-control" rows="4"
-                                   placeholder="Describe detalladamente el problema o solicitud..."
-                                   @bind-Value="_ticketDto.Description" />
-                    <ValidationMessage For="@(() => _ticketDto.Description)" />
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-12">
-                <div class="mb-3">
-                    <label for="ProjectId" class="form-label fw-bold small">Proyecto *</label>
-                    @if (_isLoadingProjects)
-                    {
-                        <div class="d-flex align-items-center">
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                            <span>Cargando proyectos...</span>
-                        </div>
-                    }
-                    else if (_projects == null || !_projects.Any())
-                    {
-                        <div class="alert alert-warning mb-0">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            No se pudieron cargar los proyectos. Contacta a un administrador.
-                        </div>
-                    }
-                    else
-                    {
-                        <RadzenAutoComplete @bind-Value="_selectedProjectName"
-                                            Data="_projects"
-                                            TextProperty="Name"
-                                            Placeholder="Escribe para buscar un proyecto..."
-                                            Change="@OnProjectSelected"
-                                            Style="width: 100%; display: block;"
-                                            Class="form-control"
-                                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                                            FilterOperator="StringFilterOperator.Contains"
-                                            AllowClear="true">
-                            <Template Context="project">
-                                @{
-                                    var proj = project as ProjectDetailDto;
-                                    <div>
-                                        <strong>@proj?.Name</strong>
-                                        @if (!string.IsNullOrEmpty(proj?.Client?.CompanyName))
-                                        {
-                                            <span class="text-muted"> - @proj.Client.CompanyName</span>
-                                        }
-                                    </div>
-                                }
-                            </Template>
-                        </RadzenAutoComplete>
-
-                        @* ⭐ CAMBIO: Validación manual de proyecto *@
-                        @if (_showProjectError)
-                        {
-                            <div class="text-danger small mt-1">
-                                <i class="bi bi-exclamation-circle"></i> Debe seleccionar un proyecto válido
-                            </div>
-                        }
-
-                        @if (_ticketDto.ProjectId.HasValue && _ticketDto.ProjectId.Value > 0 && _selectedProject != null)
-                        {
-                            <small class="text-success mt-1 d-block">
-                                ✓ Proyecto seleccionado: <strong>@_selectedProject.Name</strong>
-                                @if (!string.IsNullOrEmpty(_selectedProject.Client?.CompanyName))
-                                {
-                                    <span> (@_selectedProject.Client.CompanyName)</span>
-                                }
-                            </small>
-                        }
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-4">
-                <div class="mb-3">
-                    <label for="Priority" class="form-label fw-bold small">Prioridad *</label>
-                    <select id="Priority" class="form-select" @bind="_ticketDto.Priority">
-                        <option value="Baja">Baja</option>
-                        <option value="Media">Media</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Urgente">Urgente</option>
-                    </select>
-                    <ValidationMessage For="@(() => _ticketDto.Priority)" />
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="mb-3">
-                    <label for="Status" class="form-label fw-bold small">Estado *</label>
-                    <select id="Status" class="form-select" @bind="_ticketDto.Status">
-                        <option value="Abierto">Abierto</option>
-                        <option value="En Progreso">En Progreso</option>
-                        <option value="En Revisión">En Revisión</option>
-                        <option value="Cerrado">Cerrado</option>
-                    </select>
-                    <ValidationMessage For="@(() => _ticketDto.Status)" />
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="mb-3">
-                    <label for="AssignedTo" class="form-label fw-bold small">Asignar a</label>
-                    @if (_isLoadingUsers)
-                    {
-                        <div class="d-flex align-items-center">
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                            <span>Cargando usuarios...</span>
-                        </div>
-                    }
-                    else if (_employees == null || !_employees.Any())
-                    {
-                        <select id="AssignedTo" class="form-select" disabled>
-                            <option value="">-- Sin asignar --</option>
-                        </select>
-                        <small class="text-muted">No hay empleados disponibles</small>
-                    }
-                    else
-                    {
-                        <select id="AssignedTo" class="form-select" @bind="_ticketDto.AssignedToUserId">
-                            <option value="">-- Sin asignar --</option>
-                            @foreach (var employee in _employees)
-                            {
-                                <option value="@employee.Id">@employee.UserName</option>
-                            }
-                        </select>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label for="EstimatedHours" class="form-label fw-bold small">Horas Estimadas</label>
-                    <InputNumber id="EstimatedHours" class="form-control" placeholder="0.00"
-                                 @bind-Value="_ticketDto.EstimatedHours" />
-                    <ValidationMessage For="@(() => _ticketDto.EstimatedHours)" />
-                </div>
-            </div>
-            @if (_isEditMode)
-            {
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="ActualHours" class="form-label fw-bold small">Horas Reales</label>
-                        <InputNumber id="ActualHours" class="form-control" placeholder="0.00"
-                                     @bind-Value="_ticketDto.ActualHours" />
-                        <ValidationMessage For="@(() => _ticketDto.ActualHours)" />
-                    </div>
-                </div>
-            }
-        </div>
-
-        <div class="d-flex justify-content-end gap-2 mt-4">
-            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary"
-                    disabled="@(_isSaving || _isLoadingProjects)">
-                @if (_isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                }
-                <i class="bi bi-check-lg"></i>
-                @(_isEditMode ? "Actualizar Ticket" : "Crear Ticket")
-            </button>
-        </div>
-
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-danger mt-3">@_errorMessage</div>
-        }
-    </EditForm>
-</section>
+﻿@* Modal de creación/edición de ticket.
+   Usa: TicketInfoSection + TicketDetailsSection *@
+@using fs_front.DTO
+@using Radzen
+@using Radzen.Blazor
 
 @inject ITicketApiService TicketApiService
 @inject IProjectApiService ProjectApiService
@@ -201,84 +10,135 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
+<div style="max-width: 900px; margin: 0 auto;">
+    <EditForm Model="_ticketDto" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+            </div>
+        }
+
+        <div class="accordion mb-3" id="ticketAccordion">
+
+            <TicketInfoSection Model="_ticketDto"
+                               IsComplete="_section1Complete"
+                               OnChange="ValidateSections" />
+
+            <TicketDetailsSection Model="_ticketDto"
+                                  IsComplete="_section2Complete"
+                                  IsEditMode="_isEditMode"
+                                  IsLoadingProjects="_isLoadingProjects"
+                                  IsLoadingUsers="_isLoadingUsers"
+                                  Projects="_projects"
+                                  FilteredProjects="_filteredProjects"
+                                  SelectedProject="_selectedProject"
+                                  ProjectSearchText="@_projectSearchText"
+                                  Employees="_employees"
+                                  OnProjectSearchInput="OnProjectSearchInput"
+                                  OnProjectSelected="SelectProject" />
+
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                @if (!_allSectionsComplete)
+                {
+                    <small class="text-danger">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        Complete las secciones obligatorias
+                    </small>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm"
+                        disabled="@(_isSaving || _isLoadingProjects)">
+                    @if (_isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    <i class="bi bi-check-lg me-1"></i>
+                    @(_isEditMode ? "Actualizar Ticket" : "Guardar")
+                </button>
+            </div>
+        </div>
+
+    </EditForm>
+</div>
+
 @code {
     [Parameter] public int? TicketId { get; set; }
 
+    // ── Estado interno ────────────────────────────────────────────────────────
     private TicketDto _ticketDto = new();
     private List<ProjectDetailDto>? _projects;
-    private List<UserDto>? _users;
-    private List<UserDto>? _employees;  // ⭐ NUEVA LISTA FILTRADA
-
-    private string? _selectedProjectName;
+    private List<ProjectDetailDto> _filteredProjects = new();
     private ProjectDetailDto? _selectedProject;
+    private string _projectSearchText = string.Empty;
+    private List<UserDto>? _employees;
 
-    private bool _isSaving = false;
+    private bool _isSaving          = false;
     private bool _isLoadingProjects = false;
-    private bool _isLoadingUsers = false;
+    private bool _isLoadingUsers    = false;
     private string? _errorMessage;
-    private bool _showProjectError = false;
-    private bool _isEditMode => TicketId.HasValue;
 
+    private bool _isEditMode       => TicketId.HasValue;
+    private bool _section1Complete  = false;
+    private bool _section2Complete  => _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0;
+    private bool _allSectionsComplete => _section1Complete && _section2Complete;
+
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadInitialData();
 
         if (_isEditMode)
-        {
             await LoadTicket();
-        }
         else
-        {
-            _ticketDto = new TicketDto
-            {
-                Status = "Abierto",
-                Priority = "Media",
-                ProjectId = null,
-                ServiceId = null
-            };
-        }
+            _ticketDto = new TicketDto { Status = "Abierto", Priority = "Media", ProjectId = null, ServiceId = null };
+
+        ValidateSections();
     }
 
+    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadInitialData()
     {
         _isLoadingProjects = true;
-        _isLoadingUsers = true;
+        _isLoadingUsers    = true;
         StateHasChanged();
-
         try
         {
             try
             {
-                _projects = await ProjectApiService.GetProjectsAsync();
+                _projects        = await ProjectApiService.GetProjectsAsync();
+                _filteredProjects = _projects ?? new List<ProjectDetailDto>();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error al cargar proyectos: {ex.Message}");
-                _projects = new List<ProjectDetailDto>();
+                Console.WriteLine($"Error al cargar proyectos: {ex.Message}");
+                _projects         = new List<ProjectDetailDto>();
+                _filteredProjects = new List<ProjectDetailDto>();
             }
 
             try
             {
-                _users = await UserApiService.GetUsersAsync();
-
-                // ⭐ FILTRAR SOLO EMPLEADOS
-                _employees = _users?
-                    .Where(u => u.RoleName?.Equals("Empleado", StringComparison.OrdinalIgnoreCase) == true)
-                    .ToList() ?? new List<UserDto>();
-
-                Console.WriteLine($"✅ Empleados cargados: {_employees.Count}");
+                var users  = await UserApiService.GetUsersAsync();
+                _employees = users?.Where(u => u.RoleName?.Equals("Empleado", StringComparison.OrdinalIgnoreCase) == true).ToList()
+                             ?? new List<UserDto>();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error al cargar usuarios: {ex.Message}");
-                _users = new List<UserDto>();
+                Console.WriteLine($"Error al cargar usuarios: {ex.Message}");
                 _employees = new List<UserDto>();
             }
         }
         finally
         {
             _isLoadingProjects = false;
-            _isLoadingUsers = false;
+            _isLoadingUsers    = false;
             StateHasChanged();
         }
     }
@@ -292,76 +152,87 @@
             {
                 _ticketDto = new TicketDto
                 {
-                    Id = ticket.Id,
-                    Title = ticket.Title,
-                    Description = ticket.Description,
-                    ProjectId = ticket.ProjectId > 0 ? ticket.ProjectId : null,
-                    ServiceId = ticket.ServiceId > 0 ? ticket.ServiceId : null,
-                    Status = ticket.Status,
-                    Priority = ticket.Priority,
+                    Id               = ticket.Id,
+                    Title            = ticket.Title,
+                    Description      = ticket.Description,
+                    ProjectId        = ticket.ProjectId > 0 ? ticket.ProjectId : null,
+                    ServiceId        = ticket.ServiceId > 0 ? ticket.ServiceId : null,
+                    Status           = ticket.Status,
+                    Priority         = ticket.Priority,
                     AssignedToUserId = ticket.AssignedToUserId,
-                    EstimatedHours = ticket.EstimatedHours,
-                    ActualHours = ticket.ActualHours
+                    EstimatedHours   = ticket.EstimatedHours,
+                    ActualHours      = ticket.ActualHours
                 };
 
                 if (_ticketDto.ProjectId.HasValue)
                 {
-                    _selectedProject = _projects?.FirstOrDefault(p => p.Id == _ticketDto.ProjectId.Value);
-                    _selectedProjectName = _selectedProject?.Name;
+                    _selectedProject   = _projects?.FirstOrDefault(p => p.Id == _ticketDto.ProjectId.Value);
+                    _projectSearchText = _selectedProject?.Name ?? string.Empty;
                 }
             }
         }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error al cargar ticket: {ex.Message}";
-        }
+        catch (Exception ex) { _errorMessage = $"Error al cargar ticket: {ex.Message}"; }
     }
 
-    private void OnProjectSelected(object value)
+    // ── Autocomplete de proyecto ──────────────────────────────────────────────
+    private void OnProjectSearchInput(ChangeEventArgs e)
     {
-        _showProjectError = false;
+        _projectSearchText = e.Value?.ToString() ?? string.Empty;
 
-        if (value == null)
+        if (string.IsNullOrWhiteSpace(_projectSearchText))
         {
+            _filteredProjects  = _projects ?? new List<ProjectDetailDto>();
+            _selectedProject   = null;
             _ticketDto.ProjectId = null;
-            _selectedProject = null;
-            _selectedProjectName = null;
-            return;
-        }
-
-        var projectName = value.ToString();
-        _selectedProject = _projects?.FirstOrDefault(p =>
-            p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
-
-        if (_selectedProject != null)
-        {
-            _ticketDto.ProjectId = _selectedProject.Id;
-            _selectedProjectName = _selectedProject.Name;
-            _ticketDto.ServiceId = null;
         }
         else
         {
-            _ticketDto.ProjectId = null;
-            _selectedProjectName = projectName;
-        }
+            _filteredProjects = (_projects ?? new List<ProjectDetailDto>())
+                .Where(p => p.Name.Contains(_projectSearchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p.Name)
+                .ToList();
 
+            var exact = _projects?.FirstOrDefault(p =>
+                p.Name.Equals(_projectSearchText, StringComparison.OrdinalIgnoreCase));
+
+            if (exact is null && _selectedProject is not null)
+            {
+                _selectedProject   = null;
+                _ticketDto.ProjectId = null;
+            }
+        }
+        ValidateSections();
+    }
+
+    private void SelectProject(ProjectDetailDto project)
+    {
+        _selectedProject     = project;
+        _ticketDto.ProjectId = project.Id;
+        _ticketDto.ServiceId = null;
+        _projectSearchText   = project.Name;
+        ValidateSections();
+    }
+
+    // ── Validación ────────────────────────────────────────────────────────────
+    private void ValidateSections()
+    {
+        _section1Complete = !string.IsNullOrWhiteSpace(_ticketDto.Title)
+                         && !string.IsNullOrWhiteSpace(_ticketDto.Description);
         StateHasChanged();
     }
 
+    // ── Submit ────────────────────────────────────────────────────────────────
     private async Task HandleSubmit()
     {
-        // ⭐ VALIDACIÓN: Empleado/Admin DEBE seleccionar proyecto
         if (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0)
         {
-            _showProjectError = true;
             _errorMessage = "Debe seleccionar un proyecto válido de la lista.";
             StateHasChanged();
             return;
         }
 
-        _isSaving = true;
+        _isSaving     = true;
         _errorMessage = null;
-        _showProjectError = false;
         StateHasChanged();
 
         try
@@ -369,55 +240,29 @@
             if (_isEditMode)
             {
                 var result = await TicketApiService.UpdateTicketAsync(TicketId!.Value, _ticketDto);
-                if (result.Success)
-                {
-                    ShowNotification("Éxito", "Ticket actualizado correctamente.", NotificationSeverity.Success);
-                    DialogService.Close(true);
-                }
-                else
-                {
-                    _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el ticket.";
-                }
+                if (result.Success) { Notify("Éxito", "Ticket actualizado correctamente.", NotificationSeverity.Success); DialogService.Close(true); }
+                else _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el ticket.";
             }
             else
             {
                 var result = await TicketApiService.CreateTicketAsync(_ticketDto);
-                if (result.Success)
-                {
-                    ShowNotification("Éxito", "Ticket creado correctamente.", NotificationSeverity.Success);
-                    DialogService.Close(true);
-                }
-                else
-                {
-                    _errorMessage = result.ErrorMessage ?? "No se pudo crear el ticket.";
-                }
+                if (result.Success) { Notify("Éxito", "Ticket creado correctamente.", NotificationSeverity.Success); DialogService.Close(true); }
+                else _errorMessage = result.ErrorMessage ?? "No se pudo crear el ticket.";
             }
         }
         catch (HttpRequestException httpEx) when (httpEx.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
             _errorMessage = "No tienes permisos para realizar esta acción. Contacta a un administrador.";
         }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            _isSaving = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { _errorMessage = $"Error: {ex.Message}"; }
+        finally { _isSaving = false; StateHasChanged(); }
     }
 
     private void Cancel() => DialogService.Close(false);
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
-            Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
+            Severity = severity, Summary = title, Detail = message, Duration = 4000
         });
-    }
 }

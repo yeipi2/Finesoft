@@ -1,0 +1,48 @@
+﻿@* Encabezado de la página de tickets: título dinámico por rol y botón "Nuevo Ticket" *@
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-ticket-perforated fs-1 text-primary me-3"></i>
+        <div>
+            <p class="display-6 fw-bolder mb-2">
+                @if (CanViewAll)
+                {
+                    <span>Sistema de Tickets</span>
+                }
+                else
+                {
+                    <span>Mis Tickets</span>
+                }
+            </p>
+            <p class="text-muted mb-0">
+                @if (CanViewAll)
+                {
+                    <span>Gestión completa de solicitudes y soporte técnico</span>
+                }
+                else if (CurrentRole == "Empleado")
+                {
+                    <span>Tickets asignados a ti</span>
+                }
+                else
+                {
+                    <span>Tus tickets creados</span>
+                }
+            </p>
+        </div>
+    </div>
+
+    @if (CanCreate)
+    {
+        <button @onclick="OnCreate" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
+            <i class="bi bi-plus-lg"></i>
+            Nuevo Ticket
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public bool CanCreate { get; set; }
+    [Parameter] public bool CanViewAll { get; set; }
+    [Parameter] public string? CurrentRole { get; set; }
+    [Parameter] public EventCallback OnCreate { get; set; }
+}

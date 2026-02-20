@@ -1,0 +1,87 @@
+﻿@* Card de artículos de la cotización *@
+@using fs_front.DTO
+
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Artículos de la Cotización</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Descripción</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-end">Precio Unit.</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Items)
+                    {
+                        <tr>
+                            <td>
+                                <div>@item.Description</div>
+                                @if (!string.IsNullOrEmpty(item.ServiceName))
+                                {
+                                    <small class="text-muted"><i class="bi bi-gear"></i> @item.ServiceName</small>
+                                }
+                                @if (item.TicketId.HasValue && item.TicketId.Value > 0)
+                                {
+                                    <br />
+                                    <small class="text-info">
+                                        <i class="bi bi-ticket-perforated"></i> Ticket #@item.TicketId: @item.TicketTitle
+                                    </small>
+                                }
+                            </td>
+                            <td class="text-center">@item.Quantity</td>
+                            <td class="text-end">$@item.UnitPrice.ToString("N2")</td>
+                            <td class="text-end fw-bold">$@item.Subtotal.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-8"></div>
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span><strong>$@Subtotal.ToString("N2")</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>IVA (16%):</span><strong>$@Tax.ToString("N2")</strong>
+                        </div>
+                        <hr />
+                        <div class="d-flex justify-content-between">
+                            <span class="h5">Total:</span>
+                            <strong class="h5 text-success">$@Total.ToString("N2")</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Notes))
+{
+    <div class="card">
+        <div class="card-header bg-warning">
+            <h6 class="mb-0"><i class="bi bi-sticky"></i> Notas Adicionales</h6>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">@Notes</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<QuoteItemDto> Items { get; set; } = new();
+    [Parameter] public decimal Subtotal { get; set; }
+    [Parameter] public decimal Tax { get; set; }
+    [Parameter] public decimal Total { get; set; }
+    [Parameter] public string? Notes { get; set; }
+}
