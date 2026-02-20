@@ -18,6 +18,20 @@ public class InvoiceService : IInvoiceService
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IWebHostEnvironment _environment;
+    private static decimal Round2(decimal value)
+    => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private static bool IsZero(decimal value)
+        => Math.Abs(value) < 0.01m;
+
+    private static string NormalizePayType(string? value)
+    {
+        var v = (value ?? "PPD").Trim().ToUpperInvariant();
+        return (v is "PUE" or "PPD") ? v : "PPD";
+    }
+
+    private static string NormalizePaymentMethod(string? value)
+        => (value ?? string.Empty).Trim();
 
     public InvoiceService(ApplicationDbContext context, UserManager<IdentityUser> userManager,
         IWebHostEnvironment environment)
@@ -411,7 +425,10 @@ public class InvoiceService : IInvoiceService
         return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, RegisterInvoicePaymentDto dto, string userId)
+    public async Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(
+    int invoiceId,
+    RegisterInvoicePaymentDto dto,
+    string userId)
     {
         var invoice = await _context.Invoices
             .Include(i => i.Payments)
@@ -422,6 +439,48 @@ public class InvoiceService : IInvoiceService
 
         if (invoice.Status is "Cancelada" or "Pagada")
             return ServiceResult<InvoicePaymentDto>.Failure("La factura no puede registrar pagos en este estado");
+
+        // ✅ Normaliza montos
+        var total = Round2(invoice.Total);
+        var alreadyPaid = Round2(invoice.Payments.Sum(p => p.Amount));
+        var balance = Round2(total - alreadyPaid);
+
+        if (balance <= 0)
+            return ServiceResult<InvoicePaymentDto>.Failure("Esta factura ya está saldada");
+
+        var amount = Round2(dto.Amount);
+        if (amount <= 0)
+            return ServiceResult<InvoicePaymentDto>.Failure("El monto debe ser mayor a 0");
+
+        // ✅ Reglas PUE/PPD
+        var paymentType = NormalizePayType(invoice.PaymentType);
+
+        if (paymentType == "PUE")
+        {
+            // Debe liquidar exactamente el saldo
+            if (!IsZero(balance - amount))
+                return ServiceResult<InvoicePaymentDto>.Failure($"Para PUE el monto debe ser exactamente {balance:N2}");
+
+            // Método viene de la factura (si está definido)
+            if (!string.IsNullOrWhiteSpace(invoice.PaymentMethod))
+            {
+                dto.PaymentMethod = invoice.PaymentMethod;
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.PaymentMethod))
+                return ServiceResult<InvoicePaymentDto>.Failure("Para PUE debes tener método de pago definido (en factura o en el pago)");
+        }
+        else // PPD
+        {
+            // No permitir exceder saldo
+            if (amount > balance)
+                return ServiceResult<InvoicePaymentDto>.Failure($"No puedes registrar un pago mayor al saldo pendiente ({balance:N2})");
+
+            if (string.IsNullOrWhiteSpace(dto.PaymentMethod))
+                return ServiceResult<InvoicePaymentDto>.Failure("El método de pago es obligatorio");
+        }
+
+        dto.PaymentMethod = NormalizePaymentMethod(dto.PaymentMethod);
 
         // ✅ Validar archivo (si viene)
         string? receiptPath = null;
@@ -435,7 +494,6 @@ public class InvoiceService : IInvoiceService
             if (!allowed.Contains(dto.Receipt.ContentType))
                 return ServiceResult<InvoicePaymentDto>.Failure("Tipo de archivo no permitido (solo PDF/JPG/PNG)");
 
-            // Ruta física: wwwroot/uploads/invoices/{invoiceId}/payments/
             var folderRelative = Path.Combine("uploads", "invoices", invoiceId.ToString(), "payments");
             var folderPhysical = Path.Combine(_environment.WebRootPath, folderRelative);
 
@@ -461,7 +519,7 @@ public class InvoiceService : IInvoiceService
         var payment = new InvoicePayment
         {
             InvoiceId = invoiceId,
-            Amount = dto.Amount,
+            Amount = amount,
             PaymentDate = dto.PaymentDate,
             PaymentMethod = dto.PaymentMethod,
             Reference = dto.Reference,
@@ -477,12 +535,21 @@ public class InvoiceService : IInvoiceService
 
         _context.InvoicePayments.Add(payment);
 
-        var totalPaid = invoice.Payments.Sum(p => p.Amount) + payment.Amount;
+        // ✅ Recalcular y actualizar status
+        var newPaid = Round2(alreadyPaid + amount);
+        var newBalance = Round2(total - newPaid);
 
-        if (totalPaid >= invoice.Total)
+        if (newBalance <= 0 || IsZero(newBalance))
         {
             invoice.Status = "Pagada";
-            invoice.PaidDate = DateTime.UtcNow;
+            invoice.PaidDate ??= DateTime.UtcNow;
+        }
+        else
+        {
+            // Si quieres conservar Vencida:
+            // invoice.Status = invoice.DueDate.HasValue && invoice.DueDate.Value.Date < DateTime.UtcNow.Date ? "Vencida" : "Pendiente";
+            invoice.Status = "Pendiente";
+            invoice.PaidDate = null;
         }
 
         await _context.SaveChangesAsync();
@@ -498,8 +565,12 @@ public class InvoiceService : IInvoiceService
             Reference = payment.Reference,
             Notes = payment.Notes,
             RecordedByUserId = userId,
-            RecordedByUserName = user?.UserName
-            // (si quieres mandar ReceiptPath al front, lo agregamos al dto)
+            RecordedByUserName = user?.UserName,
+
+            ReceiptPath = payment.ReceiptPath,
+            ReceiptFileName = payment.ReceiptFileName,
+            ReceiptContentType = payment.ReceiptContentType,
+            ReceiptSize = payment.ReceiptSize
         });
     }
 
@@ -519,7 +590,45 @@ public class InvoiceService : IInvoiceService
         if (invoice.Status is "Cancelada" or "Pagada")
             return ServiceResult<InvoicePaymentDto>.Failure("No se puede registrar pago en este estado");
 
-        // Validar archivo
+        var total = Round2(invoice.Total);
+        var alreadyPaid = Round2(invoice.Payments.Sum(p => p.Amount));
+        var balance = Round2(total - alreadyPaid);
+
+        if (balance <= 0)
+            return ServiceResult<InvoicePaymentDto>.Failure("Esta factura ya está saldada");
+
+        var amount = Round2(request.Amount);
+        if (amount <= 0)
+            return ServiceResult<InvoicePaymentDto>.Failure("El monto debe ser mayor a 0");
+
+        // ✅ Reglas PUE/PPD
+        var paymentType = NormalizePayType(invoice.PaymentType);
+
+        if (paymentType == "PUE")
+        {
+            if (!IsZero(balance - amount))
+                return ServiceResult<InvoicePaymentDto>.Failure($"Para PUE el monto debe ser exactamente {balance:N2}");
+
+            if (!string.IsNullOrWhiteSpace(invoice.PaymentMethod))
+            {
+                request.PaymentMethod = invoice.PaymentMethod;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.PaymentMethod))
+                return ServiceResult<InvoicePaymentDto>.Failure("Para PUE debes tener método de pago definido (en factura o en el pago)");
+        }
+        else // PPD
+        {
+            if (amount > balance)
+                return ServiceResult<InvoicePaymentDto>.Failure($"No puedes registrar un pago mayor al saldo pendiente ({balance:N2})");
+
+            if (string.IsNullOrWhiteSpace(request.PaymentMethod))
+                return ServiceResult<InvoicePaymentDto>.Failure("El método de pago es obligatorio");
+        }
+
+        request.PaymentMethod = NormalizePaymentMethod(request.PaymentMethod);
+
+        // ✅ Validar archivo (obligatorio aquí)
         var file = request.Receipt;
         if (file == null || file.Length == 0)
             return ServiceResult<InvoicePaymentDto>.Failure("Debes subir un comprobante");
@@ -547,7 +656,7 @@ public class InvoiceService : IInvoiceService
         var payment = new InvoicePayment
         {
             InvoiceId = invoiceId,
-            Amount = request.Amount,
+            Amount = amount,
             PaymentDate = request.PaymentDate,
             PaymentMethod = request.PaymentMethod,
             Reference = request.Reference,
@@ -557,16 +666,27 @@ public class InvoiceService : IInvoiceService
             ReceiptFileName = file.FileName,
             ReceiptContentType = file.ContentType,
             ReceiptSize = file.Length,
-            ReceiptPath = relativePath
+            ReceiptPath = relativePath,
+            ReceiptUploadedAt = DateTime.UtcNow
         };
 
         _context.InvoicePayments.Add(payment);
 
-        var totalPaid = invoice.Payments.Sum(p => p.Amount) + payment.Amount;
-        if (totalPaid >= invoice.Total)
+        // ✅ Recalcular y actualizar status
+        var newPaid = Round2(alreadyPaid + amount);
+        var newBalance = Round2(total - newPaid);
+
+        if (newBalance <= 0 || IsZero(newBalance))
         {
             invoice.Status = "Pagada";
-            invoice.PaidDate = DateTime.UtcNow;
+            invoice.PaidDate ??= DateTime.UtcNow;
+        }
+        else
+        {
+            // Si quieres conservar Vencida:
+            // invoice.Status = invoice.DueDate.HasValue && invoice.DueDate.Value.Date < DateTime.UtcNow.Date ? "Vencida" : "Pendiente";
+            invoice.Status = "Pendiente";
+            invoice.PaidDate = null;
         }
 
         await _context.SaveChangesAsync();
@@ -589,7 +709,6 @@ public class InvoiceService : IInvoiceService
             ReceiptContentType = payment.ReceiptContentType,
             ReceiptSize = payment.ReceiptSize
         });
-
     }
 
 

@@ -9,9 +9,21 @@
 @inject IInvoiceApiService InvoiceApiService
 
 <div class="p-3">
-    <h5 class="mb-3">
+    <h5 class="mb-2">
         <i class="bi bi-cash-coin"></i> Registrar pago
     </h5>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge bg-light text-dark border">
+            Total: <strong>@InvoiceTotal.ToString("N2")</strong>
+        </span>
+        <span class="badge bg-light text-dark border">
+            Saldo: <strong class="text-warning">@InvoiceBalance.ToString("N2")</strong>
+        </span>
+        <span class="badge @(IsPUE ? "bg-primary" : "bg-secondary")">
+            @PaymentType
+        </span>
+    </div>
 
     <EditForm Model="_model" OnValidSubmit="Save">
         <DataAnnotationsValidator />
@@ -20,7 +32,24 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Monto</label>
-                <InputNumber class="form-control" @bind-Value="_model.Amount" disabled="@_lockAmount" />
+
+                <div class="input-group">
+                    <InputNumber class="form-control" @bind-Value="_model.Amount" disabled="@_lockAmount" />
+                    @if (!IsPUE)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="UseBalance">
+                            Usar saldo
+                        </button>
+                    }
+                </div>
+
+                @if (!IsPUE && InvoiceBalance > 0 && _model.Amount > InvoiceBalance)
+                {
+                    <small class="text-danger">
+                        No puedes exceder el saldo pendiente (@InvoiceBalance.ToString("N2")).
+                    </small>
+                }
+
                 <ValidationMessage For="@(() => _model.Amount)" />
             </div>
 
@@ -52,7 +81,9 @@
                 }
                 else
                 {
-                    <small class="text-muted">PPD: selecciona el método para este pago.</small>
+                    <small class="text-muted">
+                        PPD: selecciona el método para este pago.
+                    </small>
                 }
 
                 <ValidationMessage For="@(() => _model.PaymentMethod)" />
@@ -109,7 +140,6 @@
 @code {
     [Parameter] public int InvoiceId { get; set; }
 
-    // ✅ Parámetros que ya mandas desde InvoiceDetails
     [Parameter] public string PaymentType { get; set; } = "PPD";
     [Parameter] public string InvoicePaymentMethod { get; set; } = string.Empty;
     [Parameter] public decimal InvoiceTotal { get; set; }
@@ -123,30 +153,31 @@
     private PaymentFormModel _model = new();
 
     private bool IsPUE => string.Equals(PaymentType, "PUE", StringComparison.OrdinalIgnoreCase);
-
-    // ✅ Bloquea método solo si es PUE y viene definido en la factura
     private bool LockPaymentMethod => IsPUE && !string.IsNullOrWhiteSpace(InvoicePaymentMethod);
 
     protected override void OnParametersSet()
     {
         if (IsPUE)
         {
-            // ✅ Para PUE: precarga monto (Balance si existe, si no Total) y lo bloquea
             var amount = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
             _model.Amount = amount;
             _lockAmount = true;
 
-            // ✅ Para PUE: si la factura ya trae método, precárgalo (y el select se bloquea por LockPaymentMethod)
             if (!string.IsNullOrWhiteSpace(InvoicePaymentMethod))
                 _model.PaymentMethod = InvoicePaymentMethod;
         }
         else
         {
-            // ✅ Para PPD: el usuario decide, y limpiamos por si se reusó el componente
             _lockAmount = false;
             _model.Amount = 0;
             _model.PaymentMethod = string.Empty;
         }
+    }
+
+    private void UseBalance()
+    {
+        var amount = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
+        _model.Amount = amount;
     }
 
     private class PaymentFormModel
@@ -207,11 +238,11 @@
             return;
         }
 
-        // ✅ Para PUE, si el método viene en factura, forzarlo (por seguridad)
+        // PUE: forzar método si viene en factura
         if (IsPUE && !string.IsNullOrWhiteSpace(InvoicePaymentMethod))
             _model.PaymentMethod = InvoicePaymentMethod;
 
-        // ✅ Para PUE, el monto debe ser exacto (por seguridad)
+        // PUE: monto exacto
         if (IsPUE)
         {
             var expected = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
@@ -222,6 +253,22 @@
                     Severity = NotificationSeverity.Warning,
                     Summary = "Aviso",
                     Detail = $"Para PUE el monto debe ser exactamente {expected:N2}.",
+                    Duration = 4500
+                });
+                return;
+            }
+        }
+        else
+        {
+            // PPD: UX extra (backend ya valida)
+            var max = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
+            if (max > 0 && _model.Amount > max)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Aviso",
+                    Detail = $"No puedes exceder el saldo pendiente ({max:N2}).",
                     Duration = 4500
                 });
                 return;
