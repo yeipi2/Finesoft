@@ -501,7 +501,14 @@
 
         var result = await DialogService.OpenAsync<fs_front.Components.Invoices.InvoicePaymentDialog>(
             "Registrar Pago",
-            new Dictionary<string, object> { { "InvoiceId", _invoice.Id } },
+            new Dictionary<string, object>
+            {
+                { "InvoiceId", _invoice.Id },
+                { "PaymentType", _invoice.PaymentType },
+                { "InvoicePaymentMethod", _invoice.PaymentMethod },
+                { "InvoiceTotal", _invoice.Total },
+                { "InvoiceBalance", _invoice.Balance }
+            },
             new DialogOptions
             {
                 Width = "640px",
