@@ -43,18 +43,18 @@
                         </h1>
                         <div class="d-flex gap-2 mb-2">
                             <TicketPriorityBadge Priority="@_ticket.Priority" Class="fs-6" />
-                            <TicketStatusBadge   Status="@_ticket.Status"     Class="fs-6" />
+                            <TicketStatusBadge Status="@_ticket.Status" Class="fs-6" />
                         </div>
                     </div>
 
                     <div class="d-flex gap-2">
-                        @if (_canEditTicket)
+                        @if (ShowEditButton)
                         {
                             <button class="btn btn-primary" @onclick="EditTicket">
                                 <i class="bi bi-pencil-fill"></i> Editar
                             </button>
                         }
-                        @if (_canDeleteTicket)
+                        @if (ShowDeleteButton)
                         {
                             <button class="btn btn-danger" @onclick="ConfirmDelete">
                                 <i class="bi bi-trash-fill"></i> Eliminar
@@ -128,19 +128,26 @@
 
     private TicketDetailDto? _ticket;
     private TicketCommentDto _newComment = new();
-    private bool _isLoading       = false;
+    private bool _isLoading = false;
     private bool _isAddingComment = false;
-    private bool _hasAccess       = false;
+    private bool _hasAccess = false;
     private string? _currentUserId;
     private string? _currentRole;
 
     private bool ActivitiesAreLocked =>
         _ticket?.Status == "En Progreso" || _ticket?.Status == "En Revisión";
 
-    private bool _canEditTicket        = false;
-    private bool _canDeleteTicket      = false;
-    private bool _canManageActivities  = false;
-    private bool _canComment           = false;
+    // ── Permisos base (del servidor) ─────────────────────────────────────────
+    private bool _canEditTicket = false;
+    private bool _canDeleteTicket = false;
+    private bool _canManageActivities = false;
+    private bool _canComment = false;
+
+    // ── Visibilidad de botones: permiso + estado del ticket ──────────────────
+    //   Editar  → visible en Abierto, En Progreso y En Revisión (no en Cerrado)
+    //   Eliminar → visible solo en Abierto
+    private bool ShowEditButton => _canEditTicket && _ticket?.Status != "Cerrado";
+    private bool ShowDeleteButton => _canDeleteTicket && _ticket?.Status == "Abierto";
 
     // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
@@ -151,12 +158,12 @@
 
     private async Task LoadPermissions()
     {
-        _currentUserId         = await PermissionService.GetUserIdAsync();
-        _currentRole           = await PermissionService.GetRoleAsync();
-        _canEditTicket         = await PermissionService.HasPermissionAsync("tickets.edit");
-        _canDeleteTicket       = await PermissionService.HasPermissionAsync("tickets.delete");
-        _canManageActivities   = await PermissionService.HasPermissionAsync("tickets.activity");
-        _canComment            = await PermissionService.HasPermissionAsync("tickets.comment");
+        _currentUserId = await PermissionService.GetUserIdAsync();
+        _currentRole = await PermissionService.GetRoleAsync();
+        _canEditTicket = await PermissionService.HasPermissionAsync("tickets.edit");
+        _canDeleteTicket = await PermissionService.HasPermissionAsync("tickets.delete");
+        _canManageActivities = await PermissionService.HasPermissionAsync("tickets.activity");
+        _canComment = await PermissionService.HasPermissionAsync("tickets.comment");
     }
 
     private async Task CheckAccess()
@@ -173,7 +180,7 @@
                 _hasAccess = permViewDetail
                           || roleCanViewAll
                           || ticket.AssignedToUserId == _currentUserId
-                          || ticket.CreatedByUserId  == _currentUserId;
+                          || ticket.CreatedByUserId == _currentUserId;
 
                 _ticket = ticket;
             }
@@ -191,7 +198,7 @@
     private async Task LoadTicket()
     {
         _isLoading = true;
-        try   { _ticket = await TicketApiService.GetTicketByIdAsync(TicketId); }
+        try { _ticket = await TicketApiService.GetTicketByIdAsync(TicketId); }
         catch (Exception ex) { Notify("Error", $"Error al cargar el ticket: {ex.Message}", NotificationSeverity.Error); }
         finally { _isLoading = false; }
     }
@@ -289,8 +296,10 @@
     {
         var edit = new TicketActivityDto
         {
-            Id = activity.Id, TicketId = activity.TicketId,
-            Description = activity.Description, HoursSpent = activity.HoursSpent
+            Id = activity.Id,
+            TicketId = activity.TicketId,
+            Description = activity.Description,
+            HoursSpent = activity.HoursSpent
         };
 
         var result = await DialogService.OpenAsync("Editar Actividad", ds =>
@@ -444,6 +453,9 @@
     private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
-            Severity = severity, Summary = title, Detail = message, Duration = 4000
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
         });
 }

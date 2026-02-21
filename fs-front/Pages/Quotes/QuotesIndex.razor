@@ -199,11 +199,18 @@ else
         finally { _isLoading = false; }
     }
 
-    // ── Acciones ──────────────────────────────────────────────────────────────
     private async Task ShowCreateModal()
     {
         var r = await DialogService.OpenAsync<QuoteForm>("Nueva Cotización",
-            options: new DialogOptions { Width = "1000px", Height = "auto", Resizable = true, Draggable = false, CloseDialogOnOverlayClick = false });
+            options: new DialogOptions
+            {
+                Width = "1000px",
+                Height = "auto",              // ← auto, el CSS controla el max
+                CssClass = "quote-form-dialog",
+                Resizable = true,
+                Draggable = false,
+                CloseDialogOnOverlayClick = false
+            });
         if (r == true) await LoadData();
     }
 

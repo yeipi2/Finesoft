@@ -183,7 +183,15 @@
     {
         var result = await DialogService.OpenAsync<QuoteForm>("Editar Cotización",
             new Dictionary<string, object> { { "QuoteId", QuoteId } },
-            new DialogOptions { Width = "1000px", Height = "auto", Resizable = true, Draggable = false, CloseDialogOnOverlayClick = false });
+            new DialogOptions
+            {
+                Width = "1000px",
+                Height = "auto",              // ← auto, el CSS controla el max
+                CssClass = "quote-form-dialog",
+                Resizable = true,
+                Draggable = false,
+                CloseDialogOnOverlayClick = false
+            });
         if (result == true) await LoadQuote();
     }
 

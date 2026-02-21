@@ -1,8 +1,6 @@
 ﻿@* Barra de acciones del header de QuoteDetails:
    Enviar Email, Aceptar/Rechazar, Convertir a Factura, PDF, Editar, Eliminar *@
-
 <div class="d-flex gap-2 align-items-center">
-
     @* Enviar por email (solo Borrador) *@
     @if (Status == "Borrador")
     {
@@ -18,7 +16,6 @@
             }
         </button>
     }
-
     @* Aceptar / Rechazar (solo Enviada) *@
     @if (Status == "Enviada")
     {
@@ -29,7 +26,6 @@
             <i class="bi bi-x-circle me-1"></i> Rechazar
         </button>
     }
-
     @* Convertir a factura (solo Aceptada sin factura) *@
     @if (Status == "Aceptada" && !HasInvoice)
     {
@@ -38,24 +34,33 @@
         </button>
     }
 
-    <div class="vr" style="height: 32px;"></div>
+    @* Separador solo si hay algo a la izquierda *@
+    @if (Status == "Borrador" || Status == "Enviada" || (Status == "Aceptada" && !HasInvoice))
+    {
+        <div class="vr" style="height: 32px;"></div>
+    }
 
+    @* PDF siempre visible *@
     <button class="btn btn-outline-success btn-sm" @onclick="OnDownloadPdf" title="Descargar PDF">
         <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
     </button>
-    <button class="btn btn-outline-primary btn-sm" @onclick="OnEdit" title="Editar">
-        <i class="bi bi-pencil-fill fs-5"></i>
-    </button>
-    <button class="btn btn-outline-danger btn-sm" @onclick="OnDelete" title="Eliminar">
-        <i class="bi bi-trash-fill fs-5"></i>
-    </button>
+
+    @* Editar y Eliminar solo en Borrador *@
+    @if (Status == "Borrador")
+    {
+        <button class="btn btn-outline-primary btn-sm" @onclick="OnEdit" title="Editar">
+            <i class="bi bi-pencil-fill fs-5"></i>
+        </button>
+        <button class="btn btn-outline-danger btn-sm" @onclick="OnDelete" title="Eliminar">
+            <i class="bi bi-trash-fill fs-5"></i>
+        </button>
+    }
 </div>
 
 @code {
     [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
     [Parameter] public bool HasInvoice { get; set; }
     [Parameter] public bool IsSendingEmail { get; set; }
-
     [Parameter] public EventCallback OnSendEmail { get; set; }
     [Parameter] public EventCallback OnConvertToInvoice { get; set; }
     [Parameter] public EventCallback OnDownloadPdf { get; set; }

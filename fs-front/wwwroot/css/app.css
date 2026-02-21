@@ -1165,6 +1165,7 @@ code {
     color: #f1f1f1 !important;
 }
 
+<<<<<<< Updated upstream
 /* App shell ocupa toda la pantalla */
 .fs-appshell{
   height: 100vh;
@@ -1198,4 +1199,65 @@ code {
   min-width: 0;
   overflow-y: auto;     /* CLAVE: aquí vive el scroll */
   height: 100%;
+=======
+/* ============================================================
+   DARK MODE - TABLE-LIGHT (thead con fondo blanco en tablas)
+   ============================================================ */
+
+[data-theme="dark"] .table-light,
+[data-theme="dark"] .table-light > th,
+[data-theme="dark"] .table-light > td,
+[data-theme="dark"] thead.table-light tr th {
+    background-color: #252545 !important;
+    color: #a0aec0 !important;
+    border-color: #2d2d4e !important;
+}
+
+/* Animación hover - primera fila desvanecida */
+[data-theme="dark"] .table-hover > tbody > tr:hover > td,
+[data-theme="dark"] .table-hover > tbody > tr:hover > th {
+    background-color: #252545 !important;
+    color: #f1f1f1 !important;
+}
+
+/* Fix: filas con opacidad reducida (strikethrough visual) */
+[data-theme="dark"] .table > tbody > tr > td {
+    color: #f1f1f1 !important;
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+}
+
+/* Resumen financiero card bg-light */
+[data-theme="dark"] .card.bg-light,
+[data-theme="dark"] .bg-light.card {
+    background-color: #252545 !important;
+    border-color: #2d2d4e !important;
+    color: #f1f1f1 !important;
+}
+
+
+/* Reemplazar el bloque anterior en app.css por este */
+
+/* El body del form scrollea con max-height fijo — sin depender de flex heights */
+.quote-form-body {
+    max-height: calc(90vh - 160px); /* 160px = header dialog (~55px) + footer form (~65px) + márgenes */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+.quote-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    margin-top: 0.25rem;
+    border-top: 1px solid #dee2e6;
+    background-color: white;
+}
+
+/* El dialog no crece más de 90vh */
+.quote-form-dialog.rz-dialog {
+    max-height: 90vh !important;
+>>>>>>> Stashed changes
 }
