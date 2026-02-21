@@ -1,0 +1,49 @@
+﻿@using fs_front.DTO
+
+<div class="d-flex justify-content-between align-items-start">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/facturas">Facturas</a></li>
+                <li class="breadcrumb-item active">@Invoice?.InvoiceNumber</li>
+            </ol>
+        </nav>
+        <h1 class="display-6 fw-bold mb-2">@Invoice?.InvoiceNumber</h1>
+        <div class="d-flex gap-2 mb-2">
+            <InvoiceStatusBadge Status="@(Invoice?.Status ?? "")" />
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap justify-content-end">
+        @if (Invoice is not null && Invoice.Status is not ("Cancelada" or "Pagada"))
+        {
+            @if (Invoice.Status == "Pendiente")
+            {
+                <button class="btn btn-success" @onclick="OnRegisterPayment">
+                    <i class="bi bi-cash-coin"></i> Registrar Pago
+                </button>
+            }
+            <button class="btn btn-outline-secondary" @onclick="OnChangeStatus">
+                <i class="bi bi-arrow-repeat"></i> Cambiar estado
+            </button>
+            <button class="btn btn-warning" @onclick="OnEdit">
+                <i class="bi bi-pencil-fill"></i> Editar
+            </button>
+        }
+        <button class="btn btn-primary" @onclick="OnDownloadPdf">
+            <i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF
+        </button>
+        <button class="btn btn-secondary" @onclick="OnGoBack">
+            <i class="bi bi-arrow-left"></i> Volver
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public InvoiceDetailDto? Invoice         { get; set; }
+    [Parameter] public EventCallback     OnRegisterPayment { get; set; }
+    [Parameter] public EventCallback     OnChangeStatus   { get; set; }
+    [Parameter] public EventCallback     OnEdit           { get; set; }
+    [Parameter] public EventCallback     OnDownloadPdf    { get; set; }
+    [Parameter] public EventCallback     OnGoBack         { get; set; }
+}

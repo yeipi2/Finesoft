@@ -1,0 +1,59 @@
+﻿@using fs_front.DTO
+
+@if (Payments.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Historial de Pagos</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Método</th>
+                            <th>Referencia</th>
+                            <th class="text-end">Monto</th>
+                            <th>Registrado por</th>
+                            <th>Comprobante</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var payment in Payments)
+                        {
+                            <tr>
+                                <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                <td>@payment.PaymentMethod</td>
+                                <td>@payment.Reference</td>
+                                <td class="text-end">
+                                    <strong class="text-success">@payment.Amount.ToString("C")</strong>
+                                </td>
+                                <td>@payment.RecordedByUserName</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(payment.ReceiptPath))
+                                    {
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="@($"{ApiBaseUrl}{payment.ReceiptPath}")"
+                                           target="_blank" rel="noopener">
+                                            <i class="bi bi-download"></i> Descargar
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<InvoicePaymentDto> Payments { get; set; } = new();
+    [Parameter] public string ApiBaseUrl { get; set; } = "";
+}

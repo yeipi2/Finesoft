@@ -1,0 +1,9 @@
+﻿.invoice-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.invoice-amount {
+    font-weight: 600;
+    font-size: 0.95rem;
+}

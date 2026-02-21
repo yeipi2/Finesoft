@@ -1,4 +1,6 @@
 ﻿@using fs_front.DTO
+@using fs_front.Repositories
+@using Radzen
 
 @inject IInvoiceApiService InvoiceApiService
 @inject IQuoteApiService QuoteApiService
@@ -6,10 +8,10 @@
 @inject NotificationService NotificationService
 
 <div class="invoice-form-wrapper">
-    <EditForm Model="_createInvoiceDto" OnValidSubmit="HandleSubmit">
+    <EditForm Model="_dto" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
 
-        @* ── Contenido scrolleable ── *@
+        @* ── Cuerpo scrolleable ── *@
         <div class="invoice-form-body">
 
             @if (!string.IsNullOrEmpty(_errorMessage))
@@ -21,230 +23,22 @@
 
             <div class="accordion mb-3" id="invoiceFromQuoteAccordion">
 
-                @* ── Sección 1: Cotización ── *@
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingQuote">
-                        <button class="accordion-button @(_section1Complete ? "" : "text-danger")"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseQuote"
-                                aria-expanded="true"
-                                aria-controls="collapseQuote">
-                            <i class="bi bi-file-earmark-check me-2"></i>
-                            <strong>Cotización de Origen</strong>
-                            @if (!_section1Complete)
-                            {
-                                <span class="badge bg-danger ms-2">Incompleto</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-                            }
-                        </button>
-                    </h2>
-                    <div id="collapseQuote"
-                         class="accordion-collapse collapse show"
-                         aria-labelledby="headingQuote"
-                         data-bs-parent="#invoiceFromQuoteAccordion">
-                        <div class="accordion-body">
-                            <div class="row g-3">
+                <InvoiceFromQuoteSection Dto="@_dto"
+                                         Quotes="@_quotes"
+                                         SelectedQuote="@_selectedQuote"
+                                         IsLoading="@_isLoadingQuotes"
+                                         QuotePreSelected="@_quotePreSelected"
+                                         IsComplete="@_section1Complete"
+                                         OnQuoteSelected="HandleQuoteSelected" />
 
-                                <div class="col-12">
-                                    <label for="QuoteId" class="form-label small fw-bold">
-                                        Seleccionar Cotización <span class="text-danger">*</span>
-                                    </label>
+                <InvoiceFromQuoteDateSection Dto="@_dto"
+                                             IsComplete="@_section2Complete"
+                                             OnChanged="ValidateSections" />
 
-                                    @if (_isLoadingQuotes)
-                                    {
-                                        <div class="d-flex align-items-center">
-                                            <span class="spinner-border spinner-border-sm me-2"></span>
-                                            <span>Cargando cotizaciones disponibles...</span>
-                                        </div>
-                                    }
-                                    else if (_quotes == null || !_quotes.Any())
-                                    {
-                                        <div class="alert alert-warning py-2 mb-0" role="alert">
-                                            <i class="bi bi-exclamation-triangle me-2"></i>
-                                            No hay cotizaciones aceptadas disponibles para convertir en factura.
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <select id="QuoteId" class="form-select form-select-sm"
-                                                @bind="_createInvoiceDto.QuoteId"
-                                                @bind:after="OnQuoteSelected"
-                                                disabled="@_quotePreSelected">
-                                            <option value="0">-- Seleccione una cotización --</option>
-                                            @foreach (var quote in _quotes)
-                                            {
-                                                <option value="@quote.Id">
-                                                    @quote.QuoteNumber — @quote.ClientName — @FormatCurrency(quote.Total)
-                                                </option>
-                                            }
-                                        </select>
-                                        <ValidationMessage For="@(() => _createInvoiceDto.QuoteId)" />
-                                    }
-                                </div>
-
-                                @* Detalles de cotización seleccionada *@
-                                @if (_selectedQuote != null)
-                                {
-                                    <div class="col-12">
-                                        <div class="card border-0 bg-light">
-                                            <div class="card-body p-3">
-                                                <div class="row g-2 mb-2">
-                                                    <div class="col-md-6">
-                                                        <small><strong>Cliente:</strong> @_selectedQuote.ClientName</small>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <small>
-                                                            <strong>Estado:</strong>
-                                                            <span class="badge bg-success ms-1">@_selectedQuote.Status</span>
-                                                        </small>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <small><strong>Número:</strong> @_selectedQuote.QuoteNumber</small>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <small><strong>Fecha:</strong> @_selectedQuote.CreatedAt.ToString("dd/MM/yyyy")</small>
-                                                    </div>
-                                                </div>
-
-                                                @if (_selectedQuote.Items.Any())
-                                                {
-                                                    <div class="table-responsive mt-2">
-                                                        <table class="table table-sm table-hover mb-0" style="font-size: 0.82rem;">
-                                                            <thead class="table-light">
-                                                                <tr>
-                                                                    <th>Descripción</th>
-                                                                    <th class="text-center" style="width:70px;">Cant.</th>
-                                                                    <th class="text-end" style="width:100px;">P. Unit.</th>
-                                                                    <th class="text-end" style="width:100px;">Subtotal</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach (var item in _selectedQuote.Items)
-                                                                {
-                                                                    <tr>
-                                                                        <td>@item.Description</td>
-                                                                        <td class="text-center">@item.Quantity</td>
-                                                                        <td class="text-end">@FormatCurrency(item.UnitPrice)</td>
-                                                                        <td class="text-end">@FormatCurrency(item.Subtotal)</td>
-                                                                    </tr>
-                                                                }
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-
-                                                    <hr class="my-2" />
-                                                    <div class="row g-1 text-end">
-                                                        <div class="col-md-4">
-                                                            <small><strong>Subtotal:</strong> @FormatCurrency(_selectedQuote.Subtotal)</small>
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <small><strong>IVA:</strong> @FormatCurrency(_selectedQuote.Tax)</small>
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <small class="text-success fw-bold">Total: @FormatCurrency(_selectedQuote.Total)</small>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @* ── Sección 2: Datos de la Factura ── *@
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingInvoiceData">
-                        <button class="accordion-button collapsed @(_section2Complete ? "" : "text-danger")"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseInvoiceData"
-                                aria-expanded="false"
-                                aria-controls="collapseInvoiceData">
-                            <i class="bi bi-receipt me-2"></i>
-                            <strong>Datos de la Factura</strong>
-                            @if (!_section2Complete)
-                            {
-                                <span class="badge bg-danger ms-2">Incompleto</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-                            }
-                        </button>
-                    </h2>
-                    <div id="collapseInvoiceData"
-                         class="accordion-collapse collapse"
-                         aria-labelledby="headingInvoiceData"
-                         data-bs-parent="#invoiceFromQuoteAccordion">
-                        <div class="accordion-body">
-                            <div class="row g-3">
-
-                                <div class="col-md-6">
-                                    <label for="InvoiceDate" class="form-label small fw-bold">
-                                        Fecha de Factura <span class="text-danger">*</span>
-                                    </label>
-                                    <InputDate id="InvoiceDate"
-                                               class="form-control form-control-sm"
-                                               @bind-Value="_createInvoiceDto.InvoiceDate"
-                                               @bind-Value:after="ValidateSections" />
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label for="DueDate" class="form-label small fw-bold">Fecha de Vencimiento</label>
-                                    <InputDate id="DueDate"
-                                               class="form-control form-control-sm"
-                                               @bind-Value="_createInvoiceDto.DueDate" />
-                                </div>
-
-                                <div class="col-12">
-                                    <label for="PaymentMethod" class="form-label small fw-bold">Método de Pago</label>
-                                    <InputText id="PaymentMethod"
-                                               class="form-control form-control-sm"
-                                               placeholder="Transferencia, Efectivo, Tarjeta..."
-                                               @bind-Value="_createInvoiceDto.PaymentMethod" />
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @* ── Sección 3: Notas (Opcional) ── *@
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingNotes">
-                        <button class="accordion-button collapsed"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseNotes"
-                                aria-expanded="false"
-                                aria-controls="collapseNotes">
-                            <i class="bi bi-journal-text me-2"></i>
-                            <strong>Notas Adicionales</strong>
-                            <span class="badge bg-secondary ms-2">Opcional</span>
-                        </button>
-                    </h2>
-                    <div id="collapseNotes"
-                         class="accordion-collapse collapse"
-                         aria-labelledby="headingNotes"
-                         data-bs-parent="#invoiceFromQuoteAccordion">
-                        <div class="accordion-body">
-                            <label for="Notes" class="form-label small fw-bold">Observaciones</label>
-                            <InputTextArea id="Notes"
-                                           class="form-control form-control-sm"
-                                           rows="3"
-                                           placeholder="Términos de pago, condiciones adicionales..."
-                                           @bind-Value="_createInvoiceDto.Notes" />
-                        </div>
-                    </div>
-                </div>
+                <InvoiceNotesSection Notes="@_dto.Notes"
+                                     IsActive="false"
+                                     NotesChanged="@(v => _dto.Notes = v)"
+                                     OnToggle="@(_ => { })" />
 
             </div>
         </div>
@@ -265,13 +59,12 @@
                     Cancelar
                 </button>
                 <button type="submit" class="btn btn-primary btn-sm"
-                        disabled="@(_isSaving || _createInvoiceDto.QuoteId == 0)">
+                        disabled="@(_isSaving || !_allSectionsComplete)">
                     @if (_isSaving)
                     {
                         <span class="spinner-border spinner-border-sm me-2"></span>
                     }
-                    <i class="bi bi-receipt me-1"></i>
-                    Guardar
+                    <i class="bi bi-receipt me-1"></i> Guardar Factura
                 </button>
             </div>
         </div>
@@ -283,7 +76,7 @@
     .invoice-form-wrapper {
         display: flex;
         flex-direction: column;
-        max-height: 80vh;
+        max-height: 82vh;
         overflow: hidden;
     }
 
@@ -303,74 +96,40 @@
         background-color: white;
         flex-shrink: 0;
     }
-
-    .autocomplete-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1050;
-        max-height: 250px;
-        overflow-y: auto;
-        background-color: white;
-        border: 1px solid #ced4da;
-        border-top: none;
-        border-radius: 0 0 0.25rem 0.25rem;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .autocomplete-item {
-        padding: 0.5rem 0.75rem;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 0.875rem;
-        transition: background-color 0.1s ease;
-    }
-
-        .autocomplete-item:hover {
-            background-color: #e7f3ff;
-        }
-
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
 </style>
 
 @code {
     [Parameter] public int? QuoteId { get; set; }
 
-    private CreateInvoiceFromQuoteDto _createInvoiceDto = new();
+    // ── State ──
+    private CreateInvoiceFromQuoteDto _dto = new();
     private List<QuoteDetailDto>? _quotes;
     private QuoteDetailDto? _selectedQuote;
     private bool _quotePreSelected = false;
-
-    private bool _isSaving = false;
     private bool _isLoadingQuotes = false;
+    private bool _isSaving = false;
     private string? _errorMessage;
 
-    private bool _section1Complete => _createInvoiceDto.QuoteId > 0;
-    private bool _section2Complete => _createInvoiceDto.InvoiceDate != default;
+    // ── Validation ──
+    private bool _section1Complete => _dto.QuoteId > 0;
+    private bool _section2Complete => _dto.InvoiceDate != default;
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
-
-    private string FormatCurrency(decimal amount) => string.Format("$ {0:N2}", amount);
-
-    private void ValidateSections() => StateHasChanged();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadQuotes();
-
-        _createInvoiceDto = new CreateInvoiceFromQuoteDto
+        _dto = new CreateInvoiceFromQuoteDto
         {
             InvoiceDate = DateTime.Now,
             DueDate = DateTime.Now.AddDays(30)
         };
 
+        await LoadQuotes();
+
         if (QuoteId.HasValue && QuoteId.Value > 0)
         {
-            _createInvoiceDto.QuoteId = QuoteId.Value;
+            _dto.QuoteId = QuoteId.Value;
             _quotePreSelected = true;
-            await OnQuoteSelected();
+            await FetchSelectedQuote();
         }
     }
 
@@ -380,9 +139,10 @@
         StateHasChanged();
         try
         {
-            var allQuotes = await QuoteApiService.GetQuotesAsync();
-            _quotes = allQuotes?
-                .Where(q => q.Status == "Aceptada" && !HasInvoice(q))
+            var all = await QuoteApiService.GetQuotesAsync();
+            _quotes = all?
+                .Where(q => q.Status == "Aceptada" &&
+                            !(q.InvoiceId.HasValue && q.InvoiceId.Value > 0))
                 .OrderByDescending(q => q.CreatedAt)
                 .ToList();
         }
@@ -397,28 +157,27 @@
         }
     }
 
-    private bool HasInvoice(QuoteDetailDto quote) =>
-        quote.InvoiceId.HasValue && quote.InvoiceId.Value > 0;
-
-    private async Task OnQuoteSelected()
+    private async Task HandleQuoteSelected()
     {
-        if (_createInvoiceDto.QuoteId > 0)
+        await FetchSelectedQuote();
+        ValidateSections();
+    }
+
+    private async Task FetchSelectedQuote()
+    {
+        if (_dto.QuoteId <= 0) { _selectedQuote = null; return; }
+        try
         {
-            try
-            {
-                _selectedQuote = await QuoteApiService.GetQuoteByIdAsync(_createInvoiceDto.QuoteId);
-            }
-            catch (Exception ex)
-            {
-                _errorMessage = $"Error al cargar detalles de cotización: {ex.Message}";
-            }
+            _selectedQuote = await QuoteApiService.GetQuoteByIdAsync(_dto.QuoteId);
         }
-        else
+        catch (Exception ex)
         {
-            _selectedQuote = null;
+            _errorMessage = $"Error al cargar cotización: {ex.Message}";
         }
         StateHasChanged();
     }
+
+    private void ValidateSections() => StateHasChanged();
 
     private async Task HandleSubmit()
     {
@@ -428,15 +187,21 @@
 
         try
         {
-            var result = await InvoiceApiService.CreateInvoiceFromQuoteAsync(_createInvoiceDto);
+            var result = await InvoiceApiService.CreateInvoiceFromQuoteAsync(_dto);
             if (result.Success)
             {
-                ShowNotification("Éxito", "Factura creada desde cotización correctamente.", NotificationSeverity.Success);
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Éxito",
+                    Detail = "Factura creada desde cotización.",
+                    Duration = 4000
+                });
                 DialogService.Close(true);
             }
             else
             {
-                _errorMessage = result.ErrorMessage ?? "No se pudo crear la factura desde la cotización.";
+                _errorMessage = result.ErrorMessage ?? "No se pudo crear la factura.";
             }
         }
         catch (Exception ex)
@@ -451,13 +216,4 @@
     }
 
     private void Cancel() => DialogService.Close(false);
-
-    private void ShowNotification(string title, string message, NotificationSeverity severity) =>
-        NotificationService.Notify(new NotificationMessage
-        {
-            Severity = severity,
-            Summary = title,
-            Detail = message,
-            Duration = 4000
-        });
 }

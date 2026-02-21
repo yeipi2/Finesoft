@@ -1,0 +1,27 @@
+﻿@using fs_front.DTO
+
+@if (Invoice?.Status == "Cancelada")
+{
+    <div class="card border-secondary mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h6 class="mb-0"><i class="bi bi-x-circle-fill"></i> Factura cancelada</h6>
+        </div>
+        <div class="card-body">
+            @if (Invoice.CancelledDate.HasValue)
+            {
+                <div class="mb-2">
+                    <small class="text-muted">Fecha de cancelación</small>
+                    <div class="fw-bold">@Invoice.CancelledDate.Value.ToString("dd/MM/yyyy")</div>
+                </div>
+            }
+            <div>
+                <small class="text-muted">Motivo</small>
+                <div class="fw-bold">@(Invoice.CancellationReason ?? "Sin motivo registrado")</div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public InvoiceDetailDto? Invoice { get; set; }
+}

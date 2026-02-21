@@ -1,0 +1,61 @@
+﻿@using fs_front.DTO
+
+@if (TicketsWithDetails.Any())
+{
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-ticket-perforated-fill"></i>
+                Tickets Asociados (@TicketsWithDetails.Count)
+            </h5>
+        </div>
+        <div class="card-body">
+            @foreach (var item in TicketsWithDetails)
+            {
+                <div class="card mb-2 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-2">
+                                    <span class="badge bg-info me-2">#@item.TicketId</span>
+                                    <strong>@item.TicketTitle</strong>
+                                </h6>
+                                @if (!string.IsNullOrEmpty(item.TicketDescription))
+                                {
+                                    <p class="text-muted small mb-2">
+                                        @(item.TicketDescription.Length > 150
+                                                                    ? item.TicketDescription.Substring(0, 150) + "..."
+                                                                    : item.TicketDescription)
+                                    </p>
+                                }
+                                <div class="row small">
+                                    <div class="col-md-4">
+                                        <i class="bi bi-building text-muted"></i>
+                                        <strong>Cliente:</strong> @item.TicketClientName
+                                    </div>
+                                    <div class="col-md-4">
+                                        <i class="bi bi-folder text-muted"></i>
+                                        <strong>Proyecto:</strong> @item.TicketProjectName
+                                    </div>
+                                    <div class="col-md-4">
+                                        <i class="bi bi-clock text-muted"></i>
+                                        <strong>Horas:</strong> @item.TicketActualHours?.ToString("0.0") h
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="/tickets/@item.TicketId"
+                               class="btn btn-sm btn-outline-info ms-3"
+                               target="_blank">
+                                <i class="bi bi-box-arrow-up-right"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<InvoiceItemDetailDto> TicketsWithDetails { get; set; } = new();
+}

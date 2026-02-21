@@ -1,0 +1,47 @@
+﻿@using fs_front.DTO
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="headingInvoiceNotes">
+        <button class="accordion-button collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseInvoiceNotes"
+                aria-expanded="false"
+                aria-controls="collapseInvoiceNotes"
+                @onclick="() => OnToggle.InvokeAsync(3)">
+            <i class="bi bi-sticky me-2"></i>
+            <strong>Notas Adicionales</strong>
+            <span class="badge bg-secondary ms-2">Opcional</span>
+        </button>
+    </h2>
+    <div id="collapseInvoiceNotes"
+         class="accordion-collapse collapse @(IsActive ? "show" : "")"
+         aria-labelledby="headingInvoiceNotes">
+        <div class="accordion-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label for="invoiceNotes" class="form-label small fw-bold">Notas</label>
+                    <textarea id="invoiceNotes"
+                              class="form-control"
+                              rows="3"
+                              placeholder="Términos de pago, condiciones adicionales..."
+                              value="@Notes"
+                              @oninput="HandleInput">
+                    </textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Notes { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<string?> NotesChanged { get; set; }
+    [Parameter] public EventCallback<int> OnToggle { get; set; }
+
+    private void HandleInput(ChangeEventArgs e)
+    {
+        NotesChanged.InvokeAsync(e.Value?.ToString());
+    }
+}

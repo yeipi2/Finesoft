@@ -1,227 +1,107 @@
 ﻿@page "/facturas"
 @using fs_front.DTO
-@using fs_front.Services
+@using fs_front.Repositories
+@using fs_front.Components.Invoices.Index
+@using fs_front.Components.Invoices.Shared
+@using Radzen
 @attribute [Authorize]
 
 <PageTitle>Facturación</PageTitle>
 
-@* ── ESTADO: verificando acceso ── *@
+@* ── Estado: verificando acceso ── *@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-        background:white;z-index:9999;
-        display:flex;align-items:center;justify-content:center;">
+                    background:white;z-index:9999;
+                    display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
-@* ── ESTADO: sin acceso (seguridad extra mientras redirige) ── *@
 else if (!_hasAccess)
 {
     <div></div>
 }
-@* ── ESTADO: contenido real ── *@
 else
 {
     <section class="px-xl-5 py-4">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-receipt fs-3 text-primary"></i>
-                    <h2 class="mb-0">Facturación</h2>
-                </div>
-                <p class="text-muted mb-0">Gestión de facturas y cobros</p>
-            </div>
-            <div class="d-flex gap-2">
-                @if (_canCreate)
-                {
-                    <button class="btn btn-outline-primary" @onclick="GenerateMonthlyInvoices" disabled="@_isGenerating">
-                        @if (_isGenerating)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                        }
-                        <i class="bi bi-calendar-month"></i>
-                        Generar Mensuales
-                    </button>
-                    <button class="btn btn-primary" @onclick="OpenNewInvoiceDialog">
-                        <i class="bi bi-plus-lg"></i>
-                        Nueva Factura
-                    </button>
-                }
-            </div>
-        </div>
 
-        <!-- Estadísticas -->
+        @* ── Header ── *@
+        <InvoicesHeader CanCreate="@_canCreate"
+                        IsGenerating="@_isGenerating"
+                        OnNew="OpenNewInvoiceDialog"
+                        OnGenerate="GenerateMonthlyInvoices" />
+
+        @* ── Estadísticas ── *@
         @if (_stats != null)
         {
             <StatGrid class="mb-5">
-                <StatCard Title="Pendientes" Value="@_stats.PendingInvoices.ToString()"
-                          SubValue="@_stats.TotalPending.ToString("C")" Accent="StatCard.StatAccent.Info"
+                <StatCard Title="Pendientes"
+                          Value="@_stats.PendingInvoices.ToString()"
+                          SubValue="@_stats.TotalPending.ToString("C")"
+                          Accent="StatCard.StatAccent.Info"
                           IconClass="bi bi-hourglass-split" />
 
-                <StatCard Title="Pagadas" Value="@_stats.PaidInvoices.ToString()" SubValue="@_stats.TotalPaid.ToString("C")"
-                          Accent="StatCard.StatAccent.Success" IconClass="bi bi-check-circle" />
+                <StatCard Title="Pagadas"
+                          Value="@_stats.PaidInvoices.ToString()"
+                          SubValue="@_stats.TotalPaid.ToString("C")"
+                          Accent="StatCard.StatAccent.Success"
+                          IconClass="bi bi-check-circle" />
 
-                <StatCard Title="Vencidas" Value="@_stats.OverdueInvoices.ToString()"
-                          SubValue="@_stats.TotalOverdue.ToString("C")" Accent="StatCard.StatAccent.Danger"
+                <StatCard Title="Vencidas"
+                          Value="@_stats.OverdueInvoices.ToString()"
+                          SubValue="@_stats.TotalOverdue.ToString("C")"
+                          Accent="StatCard.StatAccent.Danger"
                           IconClass="bi bi-exclamation-triangle" />
 
-                <StatCard Title="Total Facturado" Value="@_stats.TotalInvoices.ToString()"
-                          SubValue="@_stats.TotalBilled.ToString("C")" Accent="StatCard.StatAccent.Info" IconClass="bi bi-wallet2" />
+                <StatCard Title="Total Facturado"
+                          Value="@_stats.TotalInvoices.ToString()"
+                          SubValue="@_stats.TotalBilled.ToString("C")"
+                          Accent="StatCard.StatAccent.Info"
+                          IconClass="bi bi-wallet2" />
             </StatGrid>
         }
 
-        <!-- Filtros -->
-        <FilterBar Class="mb-5" SearchPlaceholder="Buscar facturas..." SearchValue="@_searchTerm"
-                   SearchValueChanged="@(v => { _searchTerm = v; FilterInvoices(); })" OnClear="ClearFilters">
-
+        @* ── Filtros ── *@
+        <FilterBar Class="mb-5"
+                   SearchPlaceholder="Buscar facturas..."
+                   SearchValue="@_searchTerm"
+                   SearchValueChanged="@(v => { _searchTerm = v; ApplyFilters(); })"
+                   OnClear="ClearFilters">
             <Filters>
-                <select class="form-select" @bind="_selectedStatus" @bind:event="onchange" @bind:after="FilterInvoices">
+                <select class="form-select"
+                        @bind="_selectedStatus"
+                        @bind:event="onchange"
+                        @bind:after="ApplyFilters">
                     <option value="">Todos los estados</option>
                     <option value="Pendiente">Pendiente</option>
                     <option value="Pagada">Pagada</option>
                     <option value="Vencida">Vencida</option>
                     <option value="Cancelada">Cancelada</option>
+                    <option value="Borrador">Borrador</option>
                 </select>
 
-                <select class="form-select" @bind="_selectedType" @bind:event="onchange" @bind:after="FilterInvoices">
+                <select class="form-select"
+                        @bind="_selectedType"
+                        @bind:event="onchange"
+                        @bind:after="ApplyFilters">
                     <option value="">Todos los tipos</option>
                     <option value="Event">Evento</option>
                     <option value="Monthly">Mensual</option>
                 </select>
-
-@*                 <select class="form-select" @bind="_selectedClientId" @bind:event="onchange" @bind:after="FilterInvoices">
-                    <option value="0">Todos los clientes</option>
-                    @if (_clients != null)
-                    {
-                        @foreach (var client in _clients)
-                        {
-                            <option value="@client.Id">@client.CompanyName</option>
-                        }
-                    }
-                </select> *@
             </Filters>
-
         </FilterBar>
 
-        <!-- Tabla de Facturas -->
+        @* ── Tabla ── *@
         <div class="card">
-                <FsDataTable TItem="InvoiceDetailDto" Title="Facturas" Subtitle="Gestiona facturas y cobros"
-                             Items="_sortedInvoices" IsLoading="_isLoading" ColSpan="9" EmptyTitle="No se encontraron facturas"
-                             EmptySubtitle="Prueba ajustando filtros o búsqueda.">
-
-                    <Header>
-                        <FsSortHeader Text="Número" Field="number" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Cliente" Field="client" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Fecha" Field="date" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Vencimiento" Field="due" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Tipo" Field="type" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Tickets" Field="tickets" ActiveField="@_sortField"
-                                      Direction="@_sortDir" SortChanged="OnSortChanged" />
-                        <FsSortHeader Text="Total" Field="total" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" ThClass="text-end" />
-                        <FsSortHeader Text="Saldo" Field="balance" ActiveField="@_sortField" Direction="@_sortDir"
-                                      SortChanged="OnSortChanged" ThClass="text-end" />
-                        <th class="text-center">Acciones</th>
-                    </Header>
-
-                    <RowTemplate Context="invoice">
-                        <tr>
-                            <td>
-                                <strong>@invoice.InvoiceNumber</strong><br />
-                                <small class="text-muted">@invoice.ClientRFC</small>
-                            </td>
-
-                            <td>@invoice.ClientName</td>
-
-                            <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
-
-                            <td>
-                                @if (invoice.DueDate.HasValue)
-                                {
-                                    @invoice.DueDate.Value.ToString("dd/MM/yyyy")
-                                }
-                                else
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                            </td>
-
-                            <td>
-                                <span class="badge @(invoice.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary")">
-                                    @(invoice.InvoiceType == "Monthly" ? "Mensual" : "Evento")
-                                </span>
-                            </td>
-
-                            <td>
-                                <span class="badge @GetStatusBadgeClass(invoice.Status)">
-                                    @GetStatusLabel(invoice.Status)
-                                </span>
-                            </td>
-
-                            <td>
-                                @if (invoice.TicketCount > 0)
-                                {
-                                    <span class="badge bg-info">
-                                        <i class="bi bi-ticket-perforated me-1"></i>@invoice.TicketCount ticket@(invoice.TicketCount > 1 ? "s" : "")
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted small">-</span>
-                                }
-                            </td>
-
-                            <td class="text-end">
-                                <strong class="fw-bold text-success">$@invoice.Total.ToString("N2")</strong>
-                            </td>
-
-                            <td class="text-end">
-                                <strong class="@(invoice.Balance > 0 ? "text-danger" : "text-success")">
-                                    $@invoice.Balance.ToString("N2")
-                                </strong>
-                            </td>
-
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-outline-primary me-1"
-                                        @onclick="() => ViewInvoiceDetails(invoice.Id)" title="Ver detalles">
-                                    <i class="bi bi-eye-fill"></i>
-                                </button>
-
-                                @* @if (_canEdit)
-                                {
-                                    <button class="btn btn-sm btn-outline-info me-1" @onclick="() => OpenEditDialog(invoice.Id)"
-                                            title="Editar">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </button>
-                                } *@
-
-                                <button class="btn btn-sm btn-outline-success me-1" @onclick="() => DownloadPdf(invoice.Id)"
-                                        title="Descargar PDF">
-                                    <i class="bi bi-file-earmark-pdf-fill"></i>
-                                </button>
-
-                                @* @if (_canDelete)
-                                {
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(invoice.Id)"
-                                            title="Eliminar">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
-                                } *@
-                            </td>
-                        </tr>
-                    </RowTemplate>
-
-                </FsDataTable>
-
+            <InvoicesTable Items="@_sortedInvoices"
+                           IsLoading="@_isLoading"
+                           SortField="@_sortField"
+                           SortDir="@_sortDir"
+                           OnView="ViewDetails"
+                           OnDownloadPdf="DownloadPdf"
+                           SortChanged="HandleSortChanged" />
         </div>
+
     </section>
 }
 
@@ -232,79 +112,39 @@ else
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject PermissionService PermissionService
+
 @code {
+    // ── Data ──
     private List<InvoiceDetailDto>? _invoices;
-    private List<InvoiceDetailDto>? _filteredInvoices;
-    private List<ClientDto>? _clients;
+    private List<InvoiceDetailDto>? _filtered;
     private InvoiceStatsDto? _stats;
 
-    private string _searchTerm = string.Empty;
-    private string _selectedStatus = string.Empty;
-    private string _selectedType = string.Empty;
-    private int _selectedClientId = 0;
+    // ── Filters ──
+    private string _searchTerm = "";
+    private string _selectedStatus = "";
+    private string _selectedType = "";
 
+    // ── Sort ──
+    private string _sortField = "date";
+    private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+    // ── UI flags ──
     private bool _isLoading = true;
     private bool _isGenerating = false;
-
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
-
     private bool _canCreate;
     private bool _canEdit;
     private bool _canDelete;
 
-    private string _sortField = "date";
-    private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
-
-    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
-    {
-        _sortField = s.field;
-        _sortDir = s.dir;
-    }
-
-    private IEnumerable<InvoiceDetailDto> _sortedInvoices
-        => ApplySort(_filteredInvoices ?? Enumerable.Empty<InvoiceDetailDto>());
-
-    private IEnumerable<InvoiceDetailDto> ApplySort(IEnumerable<InvoiceDetailDto> q)
-    {
-        return (_sortField, _sortDir) switch
-        {
-            ("number", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.InvoiceNumber),
-            ("number", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.InvoiceNumber),
-
-            ("client", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ClientName),
-            ("client", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ClientName),
-
-            ("date", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.InvoiceDate),
-            ("date", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.InvoiceDate),
-
-            ("due", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.DueDate ?? DateTime.MaxValue),
-            ("due", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.DueDate ?? DateTime.MinValue),
-
-            ("type", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.InvoiceType),
-            ("type", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.InvoiceType),
-
-            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Status),
-            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
-
-            ("total", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Total),
-            ("total", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Total),
-
-            ("balance", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Balance),
-            ("balance", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Balance),
-
-            _ => q.OrderByDescending(x => x.InvoiceDate),
-        };
-    }
-
+    // ────────────────────────────────
+    //  Lifecycle
+    // ────────────────────────────────
 
     protected override async Task OnInitializedAsync()
     {
-        var canView = await PermissionService.HasPermissionAsync("invoices.view");
-
-        if (!canView)
+        if (!await PermissionService.HasPermissionAsync("invoices.view"))
         {
-            Console.WriteLine("⛔ Sin permiso invoices.view → redirigiendo");
             _checkingAccess = false;
             _hasAccess = false;
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
@@ -328,19 +168,17 @@ else
         {
             var invoicesTask = InvoiceApiService.GetInvoicesAsync();
             var statsTask = InvoiceApiService.GetInvoiceStatsAsync();
-            var clientsTask = ClientApiService.GetClientsAsync();
 
-            await Task.WhenAll(invoicesTask, statsTask, clientsTask);
+            await Task.WhenAll(invoicesTask, statsTask);
 
             _invoices = await invoicesTask;
             _stats = await statsTask;
-            _clients = await clientsTask;
 
-            FilterInvoices();
+            ApplyFilters();
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
+            Notify("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
         }
         finally
         {
@@ -348,40 +186,76 @@ else
         }
     }
 
-    private void FilterInvoices()
-    {
-        if (_invoices == null)
-        {
-            _filteredInvoices = new List<InvoiceDetailDto>();
-            return;
-        }
+    // ────────────────────────────────
+    //  Filtering & Sorting
+    // ────────────────────────────────
 
-        _filteredInvoices = _invoices
-            .Where(i =>
-                (string.IsNullOrEmpty(_searchTerm) ||
-                 i.InvoiceNumber.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                 i.ClientName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                 i.ClientRFC.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) &&
-                (string.IsNullOrEmpty(_selectedStatus) || i.Status == _selectedStatus) &&
-                (string.IsNullOrEmpty(_selectedType) || i.InvoiceType == _selectedType) &&
-                (_selectedClientId == 0 || i.ClientId == _selectedClientId))
-            .ToList();
+    private void ApplyFilters()
+    {
+        if (_invoices == null) { _filtered = new(); return; }
+
+        _filtered = _invoices.Where(i =>
+            (string.IsNullOrEmpty(_searchTerm) ||
+             i.InvoiceNumber.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             i.ClientName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             (i.ClientRFC?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+            (string.IsNullOrEmpty(_selectedStatus) || i.Status == _selectedStatus) &&
+            (string.IsNullOrEmpty(_selectedType) || i.InvoiceType == _selectedType)
+        ).ToList();
     }
 
     private void ClearFilters()
     {
-        _searchTerm = string.Empty;
-        _selectedStatus = string.Empty;
-        _selectedType = string.Empty;
-        _selectedClientId = 0;
-        FilterInvoices();
+        _searchTerm = "";
+        _selectedStatus = "";
+        _selectedType = "";
+        ApplyFilters();
     }
 
-    // ── REEMPLAZA OpenNewInvoiceDialog y OpenEditDialog en Facturas.razor ──
+    private void HandleSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    {
+        _sortField = s.field;
+        _sortDir = s.dir;
+    }
+
+    private IEnumerable<InvoiceDetailDto> _sortedInvoices =>
+        ApplySort(_filtered ?? Enumerable.Empty<InvoiceDetailDto>());
+
+    private IEnumerable<InvoiceDetailDto> ApplySort(IEnumerable<InvoiceDetailDto> q) =>
+        (_sortField, _sortDir) switch
+        {
+            ("number", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.InvoiceNumber),
+            ("number", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.InvoiceNumber),
+            ("client", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ClientName),
+            ("client", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ClientName),
+            ("date", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.InvoiceDate),
+            ("date", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.InvoiceDate),
+            ("due", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.DueDate ?? DateTime.MaxValue),
+            ("due", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.DueDate ?? DateTime.MinValue),
+            ("type", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.InvoiceType),
+            ("type", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.InvoiceType),
+            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Status),
+            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
+            ("tickets", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.TicketCount),
+            ("tickets", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.TicketCount),
+            ("total", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Total),
+            ("total", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Total),
+            ("balance", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Balance),
+            ("balance", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Balance),
+            _ => q.OrderByDescending(x => x.InvoiceDate)
+        };
+
+    // ────────────────────────────────
+    //  Actions
+    // ────────────────────────────────
+
+    private void ViewDetails(int invoiceId) =>
+        NavigationManager.NavigateTo($"/facturas/{invoiceId}");
 
     private async Task OpenNewInvoiceDialog()
     {
-        var result = await DialogService.OpenAsync<InvoiceForm>("Nueva Factura",
+        var result = await DialogService.OpenAsync<fs_front.Pages.Invoices.InvoiceForm>(
+            "Nueva Factura",
             new Dictionary<string, object>(),
             new DialogOptions
             {
@@ -389,100 +263,57 @@ else
                 Resizable = true,
                 Draggable = false,
                 CloseDialogOnOverlayClick = false
-                // ⛔ Sin Height — el dialog se adapta al contenido del form
             });
 
-        if (result == true)
-            await LoadData();
-    }
-
-    private async Task OpenEditDialog(int invoiceId)
-    {
-        var result = await DialogService.OpenAsync<InvoiceForm>("Editar Factura",
-            new Dictionary<string, object> { { "InvoiceId", invoiceId } },
-            new DialogOptions
-            {
-                Width = "1000px",
-                Resizable = true,
-                Draggable = false,
-                CloseDialogOnOverlayClick = false
-                // ⛔ Sin Height — el dialog se adapta al contenido del form
-            });
-
-        if (result == true)
-            await LoadData();
-    }
-
-    private void ViewInvoiceDetails(int invoiceId)
-    {
-        NavigationManager.NavigateTo($"/facturas/{invoiceId}");
+        if (result == true) await LoadData();
     }
 
     private async Task GenerateMonthlyInvoices()
     {
-        // ⭐ NUEVO: Confirmación antes de generar
         var confirmed = await DialogService.Confirm(
-            "¿Desea generar las facturas mensuales automáticas para todos los clientes con póliza mensual?",
+            "¿Desea generar las facturas mensuales para todos los clientes con póliza mensual?",
             "Confirmar Generación",
-            new ConfirmOptions { OkButtonText = "Sí, generar", CancelButtonText = "Cancelar" }
-        );
+            new ConfirmOptions { OkButtonText = "Sí, generar", CancelButtonText = "Cancelar" });
 
         if (confirmed != true) return;
 
         _isGenerating = true;
+        StateHasChanged();
+
         try
         {
-            Console.WriteLine("🔄 Iniciando generación de facturas mensuales...");
-
             var (success, errorMessage) = await InvoiceApiService.GenerateMonthlyInvoicesAsync();
-
-            Console.WriteLine($"📊 Resultado: Success={success}, Error={errorMessage}");
 
             if (success)
             {
-                ShowNotification("Éxito",
-                    "Facturas mensuales generadas correctamente.",
-                    NotificationSeverity.Success);
+                Notify("Éxito", "Facturas mensuales generadas correctamente.", NotificationSeverity.Success);
                 await LoadData();
             }
             else
             {
-                // ⭐ MEJORADO: Mostrar el error específico del backend
-                var errorMsg = errorMessage ?? "Error desconocido al generar facturas";
+                var msg = errorMessage ?? "Error desconocido";
+                var isNoClients = msg.Contains("No se encontraron") ||
+                                  msg.Contains("no hay", StringComparison.OrdinalIgnoreCase) ||
+                                  msg.Contains("Sin clientes") ||
+                                  msg.Contains("No hay");
 
-                Console.WriteLine($"❌ Error del backend: {errorMsg}");
-
-                // Si el error indica que no hay clientes
-                if (errorMsg.Contains("No se encontraron") ||
-                    errorMsg.Contains("no hay") ||
-                    errorMsg.Contains("Sin clientes") ||
-                    errorMsg.Contains("No hay"))
-                {
-                    ShowNotification("Información",
-                        "No hay clientes con modalidad mensual activos o ya tienen factura generada para este mes.",
-                        NotificationSeverity.Info);
-                }
-                else
-                {
-                    ShowNotification("Error", errorMsg, NotificationSeverity.Error);
-                }
+                Notify(
+                    isNoClients ? "Información" : "Error",
+                    isNoClients
+                        ? "No hay clientes con modalidad mensual activos o ya tienen factura para este mes."
+                        : msg,
+                    isNoClients ? NotificationSeverity.Info : NotificationSeverity.Error);
             }
         }
-        catch (HttpRequestException httpEx)
+        catch (HttpRequestException)
         {
-            Console.WriteLine($"❌ Error HTTP: {httpEx.Message}");
-            Console.WriteLine($"Detalles: {httpEx.StackTrace}");
-            ShowNotification("Error de Conexión",
-                "No se pudo conectar con el servidor. Verifique que el backend esté ejecutándose.",
+            Notify("Error de Conexión",
+                "No se pudo conectar con el servidor.",
                 NotificationSeverity.Error);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error inesperado: {ex.Message}");
-            Console.WriteLine($"Detalles: {ex.StackTrace}");
-            ShowNotification("Error",
-                $"Error inesperado: {ex.Message}",
-                NotificationSeverity.Error);
+            Notify("Error", $"Error inesperado: {ex.Message}", NotificationSeverity.Error);
         }
         finally
         {
@@ -494,87 +325,26 @@ else
     {
         try
         {
-            var pdfBytes = await InvoiceApiService.GenerateInvoicePdfAsync(invoiceId);
-            if (pdfBytes != null)
+            var bytes = await InvoiceApiService.GenerateInvoicePdfAsync(invoiceId);
+            if (bytes != null)
             {
-                var base64 = Convert.ToBase64String(pdfBytes);
-                await JSRuntime.InvokeVoidAsync("downloadFile", $"Factura-{invoiceId}.pdf", base64);
-                ShowNotification("Éxito", "PDF descargado correctamente", NotificationSeverity.Success);
+                var b64 = Convert.ToBase64String(bytes);
+                await JSRuntime.InvokeVoidAsync("downloadFile", $"Factura-{invoiceId}.pdf", b64);
+                Notify("Éxito", "PDF descargado correctamente", NotificationSeverity.Success);
             }
         }
         catch (Exception ex)
         {
-            ShowNotification("Error", $"Error al descargar PDF: {ex.Message}", NotificationSeverity.Error);
+            Notify("Error", $"Error al descargar PDF: {ex.Message}", NotificationSeverity.Error);
         }
     }
 
-    private async Task ConfirmDelete(int invoiceId)
-    {
-        var confirmed = await DialogService.Confirm(
-            "¿Está seguro de que desea eliminar esta factura?",
-            "Confirmar Eliminación",
-            new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" }
-        );
-
-        if (confirmed == true)
-        {
-            await DeleteInvoice(invoiceId);
-        }
-    }
-
-    private async Task DeleteInvoice(int invoiceId)
-    {
-        try
-        {
-            var result = await InvoiceApiService.DeleteInvoiceAsync(invoiceId);
-            if (result.Success)
-            {
-                ShowNotification("Éxito", "Factura eliminada correctamente", NotificationSeverity.Success);
-                await LoadData();
-            }
-            else
-            {
-                ShowNotification("Error", result.ErrorMessage ?? "Error al eliminar", NotificationSeverity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            ShowNotification("Error", $"Error: {ex.Message}", NotificationSeverity.Error);
-        }
-    }
-
-    private string GetStatusBadgeClass(string status)
-    {
-        return status switch
-        {
-            "Pagada" => "bg-success",
-            "Pendiente" => "bg-warning text-dark",
-            "Vencida" => "bg-danger",
-            "Cancelada" => "bg-secondary",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string GetStatusLabel(string status)
-    {
-        return status switch
-        {
-            "Pagada" => "Pagada",
-            "Pendiente" => "Pendiente",
-            "Vencida" => "Vencida",
-            "Cancelada" => "Cancelada",
-            _ => status
-        };
-    }
-
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    private void Notify(string title, string msg, NotificationSeverity sev) =>
         NotificationService.Notify(new NotificationMessage
         {
-            Severity = severity,
+            Severity = sev,
             Summary = title,
-            Detail = message,
+            Detail = msg,
             Duration = 4000
         });
-    }
 }

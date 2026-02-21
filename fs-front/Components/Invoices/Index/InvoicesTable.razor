@@ -1,0 +1,102 @@
+﻿@using fs_front.DTO
+@using fs_front.Shared
+
+<FsDataTable TItem="InvoiceDetailDto"
+             Title="Facturas"
+             Subtitle="Gestiona facturas y cobros"
+             Items="Items"
+             IsLoading="IsLoading"
+             ColSpan="10"
+             EmptyTitle="No se encontraron facturas"
+             EmptySubtitle="Prueba ajustando filtros o búsqueda.">
+
+    <Header>
+        <FsSortHeader Text="Número"      Field="number"  ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Cliente"     Field="client"  ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Fecha"       Field="date"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Vencimiento" Field="due"     ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Tipo"        Field="type"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Estado"      Field="status"  ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Tickets"     Field="tickets" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Total"       Field="total"   ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" ThClass="text-end" />
+        <FsSortHeader Text="Saldo"       Field="balance" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" ThClass="text-end" />
+        <th class="text-center">Acciones</th>
+    </Header>
+
+    <RowTemplate Context="invoice">
+        <tr>
+            <td>
+                <strong>@invoice.InvoiceNumber</strong><br />
+                <small class="text-muted">@invoice.ClientRFC</small>
+            </td>
+            <td>@invoice.ClientName</td>
+            <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+            <td>
+                @if (invoice.DueDate.HasValue)
+                {
+                    @invoice.DueDate.Value.ToString("dd/MM/yyyy")
+                }
+                else
+                {
+                    <span class="text-muted">-</span>
+                }
+            </td>
+            <td>
+                <span class="badge @(invoice.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary")">
+                    @(invoice.InvoiceType == "Monthly" ? "Mensual" : "Evento")
+                </span>
+            </td>
+            <td>
+                <InvoiceStatusBadge Status="@invoice.Status" />
+            </td>
+            <td>
+                @if (invoice.TicketCount > 0)
+                {
+                    <span class="badge bg-info">
+                        <i class="bi bi-ticket-perforated me-1"></i>
+                        @invoice.TicketCount ticket@(invoice.TicketCount > 1 ? "s" : "")
+                    </span>
+                }
+                else
+                {
+                    <span class="text-muted small">-</span>
+                }
+            </td>
+            <td class="text-end">
+                <strong class="text-success">$@invoice.Total.ToString("N2")</strong>
+            </td>
+            <td class="text-end">
+                <strong class="@(invoice.Balance > 0 ? "text-danger" : "text-success")">
+                    $@invoice.Balance.ToString("N2")
+                </strong>
+            </td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1"
+                        @onclick="() => OnView.InvokeAsync(invoice.Id)"
+                        title="Ver detalles">
+                    <i class="bi bi-eye-fill"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success"
+                        @onclick="() => OnDownloadPdf.InvokeAsync(invoice.Id)"
+                        title="Descargar PDF">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                </button>
+            </td>
+        </tr>
+    </RowTemplate>
+
+</FsDataTable>
+
+@code {
+    [Parameter] public IEnumerable<InvoiceDetailDto> Items    { get; set; } = Enumerable.Empty<InvoiceDetailDto>();
+    [Parameter] public bool                          IsLoading { get; set; }
+    [Parameter] public string                        SortField { get; set; } = "date";
+    [Parameter] public FsSortHeader.SortDirection    SortDir   { get; set; } = FsSortHeader.SortDirection.Desc;
+
+    [Parameter] public EventCallback<int>                                           OnView        { get; set; }
+    [Parameter] public EventCallback<int>                                           OnDownloadPdf { get; set; }
+    [Parameter] public EventCallback<(string, FsSortHeader.SortDirection)>          SortChanged   { get; set; }
+
+    private Task OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+        => SortChanged.InvokeAsync(s);
+}

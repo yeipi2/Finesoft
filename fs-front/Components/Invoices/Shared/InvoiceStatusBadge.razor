@@ -1,0 +1,25 @@
+﻿<span class="badge @BadgeClass">@Label</span>
+
+@code {
+    [Parameter] public string Status { get; set; } = "";
+
+    private string BadgeClass => Status switch
+    {
+        "Pagada" => "bg-success",
+        "Pendiente" => "bg-warning text-dark",
+        "Vencida" => "bg-danger",
+        "Cancelada" => "bg-secondary",
+        "Borrador" => "bg-light text-dark border",
+        _ => "bg-secondary"
+    };
+
+    private string Label => Status switch
+    {
+        "Pagada" => "Pagada",
+        "Pendiente" => "Pendiente",
+        "Vencida" => "Vencida",
+        "Cancelada" => "Cancelada",
+        "Borrador" => "Borrador",
+        _ => Status
+    };
+}

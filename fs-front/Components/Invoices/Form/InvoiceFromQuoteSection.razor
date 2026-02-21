@@ -1,0 +1,153 @@
+﻿@using fs_front.DTO
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="headingFromQuote">
+        <button class="accordion-button @(IsComplete ? "" : "text-danger")"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseFromQuote"
+                aria-expanded="true"
+                aria-controls="collapseFromQuote">
+            <i class="bi bi-file-earmark-check me-2"></i>
+            <strong>Cotización de Origen</strong>
+            @if (!IsComplete)
+            {
+                <span class="badge bg-danger ms-2">Incompleto</span>
+            }
+            else
+            {
+                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+            }
+        </button>
+    </h2>
+    <div id="collapseFromQuote"
+         class="accordion-collapse collapse show"
+         aria-labelledby="headingFromQuote"
+         data-bs-parent="#invoiceFromQuoteAccordion">
+        <div class="accordion-body">
+            <div class="row g-3">
+
+                <div class="col-12">
+                    <label class="form-label small fw-bold">
+                        Seleccionar Cotización <span class="text-danger">*</span>
+                    </label>
+
+                    @if (IsLoading)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Cargando cotizaciones disponibles...</span>
+                        </div>
+                    }
+                    else if (Quotes == null || !Quotes.Any())
+                    {
+                        <div class="alert alert-warning py-2 mb-0" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No hay cotizaciones aceptadas disponibles para convertir en factura.
+                        </div>
+                    }
+                    else
+                    {
+                        <select class="form-select form-select-sm"
+                                @bind="Dto.QuoteId"
+                                @bind:after="HandleQuoteSelected"
+                                disabled="@QuotePreSelected">
+                            <option value="0">-- Seleccione una cotización --</option>
+                            @foreach (var q in Quotes)
+                            {
+                                <option value="@q.Id">
+                                    @q.QuoteNumber — @q.ClientName — @FormatCurrency(q.Total)
+                                </option>
+                            }
+                        </select>
+                    }
+                </div>
+
+                @* ── Preview de la cotización seleccionada ── *@
+                @if (SelectedQuote != null)
+                {
+                    <div class="col-12">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body p-3">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <small><strong>Cliente:</strong> @SelectedQuote.ClientName</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small>
+                                            <strong>Estado:</strong>
+                                            <span class="badge bg-success ms-1">@SelectedQuote.Status</span>
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small><strong>Número:</strong> @SelectedQuote.QuoteNumber</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small><strong>Fecha:</strong> @SelectedQuote.CreatedAt.ToString("dd/MM/yyyy")</small>
+                                    </div>
+                                </div>
+
+                                @if (SelectedQuote.Items.Any())
+                                {
+                                    <div class="table-responsive mt-2">
+                                        <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Descripción</th>
+                                                    <th class="text-center" style="width:70px;">Cant.</th>
+                                                    <th class="text-end" style="width:100px;">P. Unit.</th>
+                                                    <th class="text-end" style="width:100px;">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var item in SelectedQuote.Items)
+                                                {
+                                                    <tr>
+                                                        <td>@item.Description</td>
+                                                        <td class="text-center">@item.Quantity</td>
+                                                        <td class="text-end">@FormatCurrency(item.UnitPrice)</td>
+                                                        <td class="text-end">@FormatCurrency(item.Subtotal)</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <hr class="my-2" />
+                                    <div class="row g-1 text-end">
+                                        <div class="col-md-4">
+                                            <small><strong>Subtotal:</strong> @FormatCurrency(SelectedQuote.Subtotal)</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small><strong>IVA:</strong> @FormatCurrency(SelectedQuote.Tax)</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-success fw-bold">
+                                                Total: @FormatCurrency(SelectedQuote.Total)
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public CreateInvoiceFromQuoteDto Dto { get; set; } = new();
+    [Parameter] public List<QuoteDetailDto>? Quotes { get; set; }
+    [Parameter] public QuoteDetailDto? SelectedQuote { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool QuotePreSelected { get; set; }
+    [Parameter] public bool IsComplete { get; set; }
+
+    [Parameter] public EventCallback OnQuoteSelected { get; set; }
+
+    private Task HandleQuoteSelected() => OnQuoteSelected.InvokeAsync();
+
+    private static string FormatCurrency(decimal amount) => $"$ {amount:N2}";
+}

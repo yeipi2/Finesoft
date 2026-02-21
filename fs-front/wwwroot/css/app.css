@@ -459,6 +459,8 @@ code {
     flex-shrink: 0;
 }
 
+
+
 /* El dialog de cotización no crece más de 90vh */
 .quote-form-dialog.rz-dialog {
     max-height: 90vh !important;
@@ -868,7 +870,7 @@ code {
 
 [data-theme="dark"] .fs-main,
 [data-theme="dark"] .container-fluid {
-    background-color: #0f0f1a !important;
+    background-color: #1e1e3a !important;
 }
 
 /* ============================================================
@@ -1000,6 +1002,35 @@ code {
     color: #f1f1f1 !important;
 }
 
+/* Preservar bordes de acento en stat-cards en dark mode */
+[data-theme="dark"] .stat-card.accent-info {
+    border-left: 4px solid #06b6d4 !important;
+}
+
+[data-theme="dark"] .stat-card.accent-primary {
+    border-left: 4px solid #3b82f6 !important;
+}
+
+[data-theme="dark"] .stat-card.accent-success {
+    border-left: 4px solid #22c55e !important;
+}
+
+[data-theme="dark"] .stat-card.accent-warning {
+    border-left: 4px solid #f59e0b !important;
+}
+
+[data-theme="dark"] .stat-card.accent-danger {
+    border-left: 4px solid #ef4444 !important;
+}
+
+[data-theme="dark"] .stat-card.accent-purple {
+    border-left: 4px solid #a855f7 !important;
+}
+
+[data-theme="dark"] .text-muted {
+    background-color:  #252545 !important;
+}
+
 /* ============================================================
    17. DARK MODE — TABLAS
    ============================================================ */
@@ -1107,7 +1138,6 @@ code {
 
 [data-theme="dark"] .rz-dialog,
 [data-theme="dark"] .rz-dialog-wrapper {
-    background-color: #1e1e35 !important;
     color: #f1f1f1 !important;
 }
 
@@ -1583,3 +1613,97 @@ code {
         background: rgba(255, 255, 255, .30) !important;
         border-color: rgba(30, 30, 80, .9) !important;
     }
+
+
+/* ============================================================
+   31. INVOICE FORM DIALOG — FOOTER SIEMPRE VISIBLE
+   ============================================================ */
+
+.rz-dialog-wrapper .rz-dialog {
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.rz-dialog-wrapper .rz-dialog-titlebar {
+    flex-shrink: 0 !important;
+}
+
+.rz-dialog-wrapper .rz-dialog-content {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-bottom: 0 !important;
+}
+
+/* El wrapper y el form interno también deben ser flex */
+.invoice-form-wrapper,
+.invoice-form-wrapper > form {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Altura máxima del wrapper */
+.invoice-form-wrapper {
+    max-height: calc(90vh - 60px) !important;
+}
+
+/* Body scrolleable — crece y encoge */
+.invoice-form-body {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 6px !important;
+}
+
+/* Footer siempre pegado abajo — NO crece */
+.invoice-form-footer {
+    flex-shrink: 0 !important;
+    z-index: 10 !important;
+    background: white !important;
+}
+
+/* Dark mode */
+[data-theme="dark"] .invoice-form-wrapper,
+[data-theme="dark"] .invoice-form-wrapper > form {
+    background: #1e1e35 !important;
+}
+
+[data-theme="dark"] .invoice-form-footer {
+    background: #1e1e35 !important;
+}
+
+/* ============================================================
+   32. DARK MODE — ALERT-LIGHT EN FORMULARIOS
+   ============================================================ */
+
+[data-theme="dark"] .alert-light {
+    background-color: #252545 !important;
+    border-color: #2d2d4e !important;
+    color: #a0aec0 !important;
+}
+
+[data-theme="dark"] .alert-light small,
+[data-theme="dark"] .alert-light .text-muted {
+    color: #a0aec0 !important;
+}
+
+[data-theme="dark"] .alert-light strong {
+    color: #f1f1f1 !important;
+}
+
+/* Card detalles — texto dentro de card-body */
+[data-theme="dark"] .card-body small.text-muted {
+    color: #6b7280 !important;
+}
+
+[data-theme="dark"] .card-body .fw-bold,
+[data-theme="dark"] .card-body div {
+    color: #f1f1f1 !important;
+}

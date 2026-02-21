@@ -1,0 +1,4 @@
+﻿/* ── Index page layout ── */
+section {
+    min-height: calc(100vh - 60px);
+}

@@ -1,0 +1,23 @@
+﻿@using fs_front.DTO
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-building"></i> Información del Cliente</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Cliente:</strong> @Invoice?.ClientName</p>
+                <p><strong>Email:</strong> @Invoice?.ClientEmail</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>RFC:</strong> @Invoice?.ClientRFC</p>
+                <p><strong>Creado por:</strong> @Invoice?.CreatedByUserName</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public InvoiceDetailDto? Invoice { get; set; }
+}
