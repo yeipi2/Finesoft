@@ -139,50 +139,10 @@
                     }
                 </div>
 
-                @* ── Tipo de Pago ── *@
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold">
-                        Tipo de Pago <span class="text-danger">*</span>
-                    </label>
-                    <select class="form-select form-select-sm"
-                            @bind="Dto.PaymentType"
-                            @bind:after="HandlePaymentTypeChanged">
-                        <option value="PPD">PPD (Pago en parcialidades o diferido)</option>
-                        <option value="PUE">PUE (Pago en una sola exhibición)</option>
-                    </select>
-                </div>
-
-                @* ── Método de Pago (solo PUE) ── *@
-                @if (IsPUE)
-                {
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            Método de Pago <span class="text-danger">*</span>
-                        </label>
-                        <select class="form-select form-select-sm"
-                                @bind="Dto.PaymentMethod"
-                                @bind:after="NotifyChanged">
-                            <option value="">-- Selecciona un método --</option>
-                            @foreach (var pm in _paymentMethods)
-                            {
-                                <option value="@pm">@pm</option>
-                            }
-                        </select>
-                        <small class="text-muted">Para PUE es obligatorio elegir método</small>
-                    </div>
-                }
-                else
-                {
-                    <div class="col-12">
-                        <label class="form-label small fw-bold">Método de Pago</label>
-                        <div class="alert alert-light border mb-0 py-2">
-                            <small class="text-muted">
-                                <i class="bi bi-info-circle"></i>
-                                En <strong>PPD</strong> el método de pago se define al registrar los pagos.
-                            </small>
-                        </div>
-                    </div>
-                }
+                <InvoicePaymentTermsSection PaymentType="@Dto.PaymentType"
+                                            PaymentMethod="@Dto.PaymentMethod"
+                                            PaymentTypeChanged="HandlePaymentTypeChanged"
+                                            PaymentMethodChanged="HandlePaymentMethodChanged" />
 
             </div>
         </div>
@@ -207,13 +167,6 @@
     private List<ClientDto> _filteredClients = new();
     private bool _showSuggestions = false;
     private string _clientSearchText = "";
-
-    private bool IsPUE => string.Equals(Dto.PaymentType, "PUE", StringComparison.OrdinalIgnoreCase);
-
-    private readonly List<string> _paymentMethods = new()
-    {
-        "Transferencia", "Efectivo", "Tarjeta", "Cheque", "Depósito"
-    };
 
     protected override void OnParametersSet()
     {
@@ -281,11 +234,20 @@
         if (e.Key == "Escape") _showSuggestions = false;
     }
 
-    private void HandlePaymentTypeChanged()
+    private async Task HandlePaymentTypeChanged(string paymentType)
     {
-        if (!IsPUE) Dto.PaymentMethod = string.Empty;
-        OnPaymentTypeChange.InvokeAsync();
-        OnChanged.InvokeAsync();
+        Dto.PaymentType = paymentType;
+        if (!string.Equals(paymentType, "PUE", StringComparison.OrdinalIgnoreCase))
+            Dto.PaymentMethod = string.Empty;
+
+        await OnPaymentTypeChange.InvokeAsync();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandlePaymentMethodChanged(string paymentMethod)
+    {
+        Dto.PaymentMethod = paymentMethod;
+        await OnChanged.InvokeAsync();
     }
 
     private void NotifyChanged() => OnChanged.InvokeAsync();

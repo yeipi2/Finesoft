@@ -30,8 +30,40 @@ public class InvoiceService : IInvoiceService
         return (v is "PUE" or "PPD") ? v : "PPD";
     }
 
-    private static string NormalizePaymentMethod(string? value)
-        => (value ?? string.Empty).Trim();
+    private static readonly Dictionary<string, string> PaymentMethodMap =
+    new(StringComparer.OrdinalIgnoreCase)
+    {
+        // entradas “humanas”
+        ["transferencia"] = "Transferencia",
+        ["efectivo"] = "Efectivo",
+        ["tarjeta"] = "Tarjeta",
+        ["cheque"] = "Cheque",
+        ["deposito"] = "Depósito",
+        ["depósito"] = "Depósito",
+
+        // entradas canónicas (por si ya vienen así)
+        ["Transferencia"] = "Transferencia",
+        ["Efectivo"] = "Efectivo",
+        ["Tarjeta"] = "Tarjeta",
+        ["Cheque"] = "Cheque",
+        ["Depósito"] = "Depósito",
+        ["Deposito"] = "Depósito",
+    };
+
+    private static string NormalizePaymentMethodOrThrow(string? value)
+    {
+        var raw = (value ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(raw))
+            return string.Empty;
+
+        // Opcional: tolerar un punto al final
+        raw = raw.TrimEnd('.');
+
+        if (PaymentMethodMap.TryGetValue(raw, out var canonical))
+            return canonical;
+
+        throw new ArgumentException("PaymentMethod inválido. Usa: Transferencia, Efectivo, Tarjeta, Cheque o Depósito.");
+    }
 
     public InvoiceService(ApplicationDbContext context, UserManager<IdentityUser> userManager,
         IWebHostEnvironment environment)
@@ -216,6 +248,32 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("Esta cotización ya tiene una factura asociada");
         }
 
+        dto.PaymentType = string.IsNullOrWhiteSpace(dto.PaymentType)
+    ? "PPD"
+    : dto.PaymentType.Trim().ToUpperInvariant();
+
+        if (dto.PaymentType is not ("PUE" or "PPD"))
+            return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
+
+        if (dto.PaymentType == "PPD")
+        {
+            dto.PaymentMethod = string.Empty;
+        }
+        else // PUE
+        {
+            try
+            {
+                dto.PaymentMethod = NormalizePaymentMethodOrThrow(dto.PaymentMethod);
+            }
+            catch (ArgumentException ex)
+            {
+                return ServiceResult<InvoiceDetailDto>.Failure(ex.Message);
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.PaymentMethod))
+                return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+        }
+
         var invoiceNumber = await GenerateInvoiceNumber();
 
         var invoice = new Invoice
@@ -227,10 +285,8 @@ public class InvoiceService : IInvoiceService
             DueDate = dto.DueDate,
             InvoiceType = "Event",
             Status = "Pendiente",
-            PaymentType = string.IsNullOrWhiteSpace(dto.PaymentType) ? "PPD" : dto.PaymentType.Trim().ToUpperInvariant(),
-            PaymentMethod = (dto.PaymentType?.Trim().ToUpperInvariant() == "PUE")
-                ? (dto.PaymentMethod ?? string.Empty)
-                : string.Empty,
+            PaymentType = dto.PaymentType,
+            PaymentMethod = dto.PaymentMethod ?? string.Empty,
             CreatedByUserId = createdByUserId,
             Subtotal = quote.Subtotal,
             Tax = quote.Tax,
@@ -480,7 +536,14 @@ public class InvoiceService : IInvoiceService
                 return ServiceResult<InvoicePaymentDto>.Failure("El método de pago es obligatorio");
         }
 
-        dto.PaymentMethod = NormalizePaymentMethod(dto.PaymentMethod);
+        try
+        {
+            dto.PaymentMethod = NormalizePaymentMethodOrThrow(dto.PaymentMethod);
+        }
+        catch (ArgumentException ex)
+        {
+            return ServiceResult<InvoicePaymentDto>.Failure(ex.Message);
+        }
 
         // ✅ Validar archivo (si viene)
         string? receiptPath = null;
@@ -626,7 +689,7 @@ public class InvoiceService : IInvoiceService
                 return ServiceResult<InvoicePaymentDto>.Failure("El método de pago es obligatorio");
         }
 
-        request.PaymentMethod = NormalizePaymentMethod(request.PaymentMethod);
+        request.PaymentMethod = NormalizePaymentMethodOrThrow(request.PaymentMethod);
 
         // ✅ Validar archivo (obligatorio aquí)
         var file = request.Receipt;

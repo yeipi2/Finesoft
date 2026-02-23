@@ -112,7 +112,11 @@
 
     // ── Validation ──
     private bool _section1Complete => _dto.QuoteId > 0;
-    private bool _section2Complete => _dto.InvoiceDate != default;
+    private bool _isPUE => string.Equals(_dto.PaymentType, "PUE", StringComparison.OrdinalIgnoreCase);
+    private bool _section2Complete =>
+        _dto.InvoiceDate != default &&
+        !string.IsNullOrWhiteSpace(_dto.PaymentType) &&
+        (!_isPUE || !string.IsNullOrWhiteSpace(_dto.PaymentMethod));
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
 
     protected override async Task OnInitializedAsync()
@@ -120,7 +124,9 @@
         _dto = new CreateInvoiceFromQuoteDto
         {
             InvoiceDate = DateTime.Now,
-            DueDate = DateTime.Now.AddDays(30)
+            DueDate = DateTime.Now.AddDays(30),
+            PaymentType = "PPD",
+            PaymentMethod = string.Empty
         };
 
         await LoadQuotes();

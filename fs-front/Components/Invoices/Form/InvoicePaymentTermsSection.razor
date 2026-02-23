@@ -1,0 +1,83 @@
+<div class="col-md-6">
+    <label class="form-label small fw-bold">
+        Tipo de Pago <span class="text-danger">*</span>
+    </label>
+    <select class="form-select form-select-sm"
+            value="@PaymentType"
+            @onchange="HandlePaymentTypeChanged">
+        <option value="PPD">PPD (Pago en parcialidades o diferido)</option>
+        <option value="PUE">PUE (Pago en una sola exhibición)</option>
+    </select>
+</div>
+
+@if (IsPUE)
+{
+    <div class="col-md-6">
+        <label class="form-label small fw-bold">
+            Método de Pago <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm"
+                value="@PaymentMethod"
+                @onchange="HandlePaymentMethodChanged">
+            <option value="">-- Selecciona un método --</option>
+            @foreach (var paymentMethod in _paymentMethods)
+            {
+                <option value="@paymentMethod">@paymentMethod</option>
+            }
+        </select>
+        <small class="text-muted">Para PUE es obligatorio elegir método</small>
+    </div>
+}
+else
+{
+    <div class="col-12">
+        <label class="form-label small fw-bold">Método de Pago</label>
+        <div class="alert alert-light border mb-0 py-2">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                En <strong>PPD</strong> el método de pago se define al registrar los pagos.
+            </small>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string PaymentType { get; set; } = "PPD";
+    [Parameter] public string PaymentMethod { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> PaymentTypeChanged { get; set; }
+    [Parameter] public EventCallback<string> PaymentMethodChanged { get; set; }
+
+    private bool IsPUE => string.Equals(PaymentType, "PUE", StringComparison.OrdinalIgnoreCase);
+
+    private readonly List<string> _paymentMethods = new()
+    {
+        "Transferencia",
+        "Efectivo",
+        "Tarjeta",
+        "Cheque",
+        "Depósito"
+    };
+
+    private async Task HandlePaymentTypeChanged(ChangeEventArgs e)
+    {
+        var nextPaymentType = (e.Value?.ToString() ?? "PPD").Trim().ToUpperInvariant();
+        if (nextPaymentType is not ("PUE" or "PPD"))
+            nextPaymentType = "PPD";
+
+        PaymentType = nextPaymentType;
+        await PaymentTypeChanged.InvokeAsync(nextPaymentType);
+
+        if (!string.Equals(nextPaymentType, "PUE", StringComparison.OrdinalIgnoreCase))
+        {
+            PaymentMethod = string.Empty;
+            await PaymentMethodChanged.InvokeAsync(string.Empty);
+        }
+    }
+
+    private async Task HandlePaymentMethodChanged(ChangeEventArgs e)
+    {
+        var nextPaymentMethod = (e.Value?.ToString() ?? string.Empty).Trim();
+        PaymentMethod = nextPaymentMethod;
+        await PaymentMethodChanged.InvokeAsync(nextPaymentMethod);
+    }
+}

@@ -114,7 +114,8 @@ public class InvoiceApiService : IInvoiceApiService
             }
 
             var errorContent = await response.Content.ReadAsStringAsync();
-            return (false, null, $"Error al crear factura: {errorContent}");
+            var friendlyMessage = ExtractErrorMessage(errorContent);
+            return (false, null, friendlyMessage);
         }
         catch (Exception e)
         {
