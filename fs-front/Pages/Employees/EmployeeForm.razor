@@ -17,50 +17,46 @@
 }
 else
 {
-    <div style="max-width: 900px; margin: 0 auto;">
+    <div class="employee-form-wrapper">
         <EditForm Model="_employeeModel" OnValidSubmit="HandleSubmit">
             <DataAnnotationsValidator />
 
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <div class="alert alert-danger mb-3" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
-                </div>
-            }
-
-            <div class="accordion mb-3" id="employeeAccordion">
-
-                <AccessDataSection Employee="_employeeModel"
-                                   IsEditMode="_isEditMode"
-                                   IsExpanded="_activeSection == 1"
-                                   IsComplete="_section1Complete"
-                                   Roles="_employeeRoles"
-                                   OnChanged="ValidateSections"
-                                   OnToggle="@(() => ToggleSection(1))" />
-
-                <PersonalDataSection Employee="_employeeModel"
-                                     IsExpanded="_activeSection == 2"
-                                     IsComplete="_section2Complete"
+            <div class="employee-form-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                    </div>
+                }
+                <div class="accordion mb-3" id="employeeAccordion">
+                    <AccessDataSection Employee="_employeeModel"
+                                       IsEditMode="_isEditMode"
+                                       IsExpanded="_activeSection == 1"
+                                       IsComplete="_section1Complete"
+                                       Roles="_employeeRoles"
+                                       OnChanged="ValidateSections"
+                                       OnToggle="@(() => ToggleSection(1))" />
+                    <PersonalDataSection Employee="_employeeModel"
+                                         IsExpanded="_activeSection == 2"
+                                         IsComplete="_section2Complete"
+                                         OnChanged="ValidateSections"
+                                         OnToggle="@(() => ToggleSection(2))" />
+                    <WorkDataSection Employee="_employeeModel"
+                                     IsExpanded="_activeSection == 3"
+                                     IsComplete="_section3Complete"
                                      OnChanged="ValidateSections"
-                                     OnToggle="@(() => ToggleSection(2))" />
+                                     OnToggle="@(() => ToggleSection(3))" />
+                    <EmergencyContactSection Employee="_employeeModel"
+                                             IsExpanded="_activeSection == 4"
+                                             OnToggle="@(() => ToggleSection(4))" />
+                    <NotesSection Employee="_employeeModel"
+                                  IsExpanded="_activeSection == 5"
+                                  OnToggle="@(() => ToggleSection(5))" />
+                </div>
+            </div>  @* ← cierra employee-form-body AQUÍ *@
 
-                <WorkDataSection Employee="_employeeModel"
-                                 IsExpanded="_activeSection == 3"
-                                 IsComplete="_section3Complete"
-                                 OnChanged="ValidateSections"
-                                 OnToggle="@(() => ToggleSection(3))" />
-
-                <EmergencyContactSection Employee="_employeeModel"
-                                         IsExpanded="_activeSection == 4"
-                                         OnToggle="@(() => ToggleSection(4))" />
-
-                <NotesSection Employee="_employeeModel"
-                              IsExpanded="_activeSection == 5"
-                              OnToggle="@(() => ToggleSection(5))" />
-
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="employee-form-footer">
+                @* ← footer FUERA del body *@
                 <div>
                     @if (!_allSectionsComplete)
                     {
@@ -77,7 +73,7 @@ else
                     <button type="submit" class="btn btn-primary btn-sm" disabled="@_isSaving">
                         @if (_isSaving)
                         {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span class="spinner-border spinner-border-sm me-2"></span>
                         }
                         <i class="bi bi-check-lg me-1"></i>
                         @(_isEditMode ? "Actualizar" : "Guardar")

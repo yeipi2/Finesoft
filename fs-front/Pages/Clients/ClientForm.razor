@@ -20,6 +20,9 @@ else
         <EditForm Model="_clientModel" OnValidSubmit="HandleSubmit">
             <DataAnnotationsValidator />
 
+            <div class="client-form-body">
+
+
             @if (!string.IsNullOrEmpty(_errorMessage))
             {
                 <div class="alert alert-danger mb-3" role="alert">
@@ -86,6 +89,7 @@ else
                         <i class="bi bi-check-lg me-1"></i>
                         @(_isEditMode ? "Actualizar Cliente" : "Guardar Cliente")
                     </button>
+                    </div>
                 </div>
             </div>
         </EditForm>

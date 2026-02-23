@@ -437,33 +437,75 @@ code {
         (quote-form-body, invoice-form-body, etc.)
    ============================================================ */
 
-/* Body scrolleable — sin depender de flex heights de Radzen */
-.quote-form-body {
-    max-height: calc(90vh - 160px);
+/* ============================================================
+   11. FORMULARIOS — PATRÓN UNIVERSAL MODAL
+   ============================================================ */
+
+/* ── Wrappers — ocupan todo el espacio del dialog ── */
+.quote-form-wrapper,
+.client-form-container,
+.project-form-wrapper,
+.employee-form-wrapper,
+.ticket-form-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+    .quote-form-wrapper > form,
+    .client-form-container > form,
+    .project-form-wrapper > form,
+    .employee-form-wrapper > form,
+    .ticket-form-wrapper > form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+/* ── Body scrolleable ── */
+.quote-form-body,
+.client-form-body,
+.project-form-body,
+.employee-form-body,
+.ticket-form-body {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 4px;
 }
 
-/* Footer siempre fijo abajo del formulario */
+/* ── Footer siempre pegado abajo ── */
 .quote-form-footer,
+.client-form-footer,
+.project-form-footer,
+.employee-form-footer,
+.ticket-form-footer,
 .invoice-form-footer,
-.form-footer-sticky {
+.form-footer-sticky,
+.form-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 0;
+    padding: 0.75rem 0 1rem 0;
     margin-top: 0.25rem;
     border-top: 1px solid #dee2e6;
     background-color: white;
     flex-shrink: 0;
 }
 
-
-
-/* El dialog de cotización no crece más de 90vh */
-.quote-form-dialog.rz-dialog {
-    max-height: 90vh !important;
+/* ── Dark mode ── */
+[data-theme="dark"] .quote-form-footer,
+[data-theme="dark"] .client-form-footer,
+[data-theme="dark"] .project-form-footer,
+[data-theme="dark"] .employee-form-footer,
+[data-theme="dark"] .ticket-form-footer,
+[data-theme="dark"] .invoice-form-footer,
+[data-theme="dark"] .form-footer-sticky,
+[data-theme="dark"] .form-actions {
+    background-color: #1e1e35 !important;
+    border-top-color: #2d2d4e !important;
 }
 
 /* Autocomplete dropdown (cotizaciones / facturas) */
@@ -938,19 +980,21 @@ code {
     color: #f1f1f1 !important;
 }
 
+/* .text-muted — SOLO color, NUNCA background */
 [data-theme="dark"] .card-text,
-[data-theme="dark"] .text-muted {
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] p.text-muted,
+[data-theme="dark"] small.text-muted,
+[data-theme="dark"] span.text-muted,
+[data-theme="dark"] div.text-muted {
     color: #a0aec0 !important;
+    background-color: transparent !important;
 }
 
 [data-theme="dark"] .rounded-4,
 [data-theme="dark"] .shadow-sm {
     background-color: #1e1e35 !important;
     border-color: #2d2d4e !important;
-}
-
-[data-theme="dark"] .card .text-muted {
-    color: #a0aec0 !important;
 }
 
 [data-theme="dark"] .card .bg-dark {
@@ -1002,7 +1046,7 @@ code {
     color: #f1f1f1 !important;
 }
 
-/* Preservar bordes de acento en stat-cards en dark mode */
+/* Preservar bordes de acento en stat-cards */
 [data-theme="dark"] .stat-card.accent-info {
     border-left: 4px solid #06b6d4 !important;
 }
@@ -1025,10 +1069,6 @@ code {
 
 [data-theme="dark"] .stat-card.accent-purple {
     border-left: 4px solid #a855f7 !important;
-}
-
-[data-theme="dark"] .text-muted {
-    background-color:  #252545 !important;
 }
 
 /* ============================================================
@@ -1616,11 +1656,12 @@ code {
 
 
 /* ============================================================
-   31. INVOICE FORM DIALOG — FOOTER SIEMPRE VISIBLE
+   31. RADZEN DIALOG — LAYOUT UNIVERSAL
    ============================================================ */
 
 .rz-dialog-wrapper .rz-dialog {
     max-height: 90vh !important;
+    min-height: 320px !important; /* ← evita que encoja raro */
     display: flex !important;
     flex-direction: column !important;
 }
@@ -1635,10 +1676,16 @@ code {
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    padding-bottom: 0 !important;
+    padding: 1rem 1.25rem 0 1.25rem !important; /* ← controla TODOS los lados */
 }
 
-/* El wrapper y el form interno también deben ser flex */
+    /* Cualquier form directo dentro del dialog ocupa todo el ancho */
+    .rz-dialog-wrapper .rz-dialog-content > div,
+    .rz-dialog-wrapper .rz-dialog-content > form {
+        width: 100% !important;
+    }
+
+/* invoice-form específico */
 .invoice-form-wrapper,
 .invoice-form-wrapper > form {
     display: flex !important;
@@ -1646,14 +1693,9 @@ code {
     flex: 1 !important;
     min-height: 0 !important;
     overflow: hidden !important;
+    width: 100% !important;
 }
 
-/* Altura máxima del wrapper */
-.invoice-form-wrapper {
-    max-height: calc(90vh - 60px) !important;
-}
-
-/* Body scrolleable — crece y encoge */
 .invoice-form-body {
     flex: 1 !important;
     min-height: 0 !important;
@@ -1662,7 +1704,6 @@ code {
     padding-right: 6px !important;
 }
 
-/* Footer siempre pegado abajo — NO crece */
 .invoice-form-footer {
     flex-shrink: 0 !important;
     z-index: 10 !important;
@@ -1678,9 +1719,8 @@ code {
 [data-theme="dark"] .invoice-form-footer {
     background: #1e1e35 !important;
 }
-
 /* ============================================================
-   32. DARK MODE — ALERT-LIGHT EN FORMULARIOS
+   32. DARK MODE — ALERT-LIGHT + CARD-BODY + TABLAS
    ============================================================ */
 
 [data-theme="dark"] .alert-light {
@@ -1689,21 +1729,162 @@ code {
     color: #a0aec0 !important;
 }
 
-[data-theme="dark"] .alert-light small,
-[data-theme="dark"] .alert-light .text-muted {
+    [data-theme="dark"] .alert-light small,
+    [data-theme="dark"] .alert-light .text-muted {
+        color: #a0aec0 !important;
+        background-color: transparent !important;
+    }
+
+    [data-theme="dark"] .alert-light strong {
+        color: #f1f1f1 !important;
+    }
+
+/* Card-body — SOLO fw-bold, NO todos los div */
+[data-theme="dark"] .card-body small.text-muted {
+    color: #6b7280 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .card-body .fw-bold {
+    color: #f1f1f1 !important;
+}
+
+/* ── Tablas — fondos blancos en divs/spans dentro de td ── */
+[data-theme="dark"] table td div,
+[data-theme="dark"] table td span:not(.badge),
+[data-theme="dark"] table td small {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] table td div {
+    color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] table td small,
+[data-theme="dark"] table td .text-muted {
     color: #a0aec0 !important;
 }
 
-[data-theme="dark"] .alert-light strong {
+/* Badge bg-info text-dark en tablas */
+[data-theme="dark"] .badge.bg-info {
+    background-color: #0891b2 !important;
+    color: #fff !important;
+}
+
+[data-theme="dark"] .badge.bg-light.text-dark {
+    background-color: #252545 !important;
+    color: #a0aec0 !important;
+    border-color: #2d2d4e !important;
+}
+
+/* Dashboard card-body sin fondos */
+[data-theme="dark"] .card-body p.card-text {
+    background-color: transparent !important;
+}
+
+/* ============================================================
+   FORM ACTIONS — padding inferior universal
+   ============================================================ */
+.form-actions {
+    padding-top: 0.75rem;
+    padding-bottom: 1rem; /* ← esto resuelve el recorte en todos los modals */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #dee2e6;
+    margin-top: 0.5rem;
+}
+
+[data-theme="dark"] .form-actions {
+    border-top-color: #2d2d4e !important;
+}
+
+/* ============================================================
+   33. DARK MODE — RADZEN INPUTS (UserForm, etc.)
+   ============================================================ */
+
+/* RadzenFormField — el label flotante */
+[data-theme="dark"] .rz-form-field,
+[data-theme="dark"] .rz-form-field-outlined {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+}
+
+    [data-theme="dark"] .rz-form-field label,
+    [data-theme="dark"] .rz-form-field .rz-float-label {
+        color: #a0aec0 !important;
+        background-color: #1e1e35 !important;
+    }
+
+/* RadzenTextBox / RadzenPassword — el input en sí */
+[data-theme="dark"] .rz-textbox,
+[data-theme="dark"] .rz-password,
+[data-theme="dark"] input.rz-inputtext {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
     color: #f1f1f1 !important;
 }
 
-/* Card detalles — texto dentro de card-body */
-[data-theme="dark"] .card-body small.text-muted {
-    color: #6b7280 !important;
+    [data-theme="dark"] .rz-textbox::placeholder,
+    [data-theme="dark"] input.rz-inputtext::placeholder {
+        color: #6b7280 !important;
+    }
+
+    [data-theme="dark"] .rz-textbox:focus,
+    [data-theme="dark"] input.rz-inputtext:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 0.15rem rgba(59, 130, 246, .25) !important;
+    }
+
+/* RadzenDropDown */
+[data-theme="dark"] .rz-dropdown {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+    color: #f1f1f1 !important;
 }
 
-[data-theme="dark"] .card-body .fw-bold,
-[data-theme="dark"] .card-body div {
+    [data-theme="dark"] .rz-dropdown .rz-dropdown-label {
+        background-color: #1e1e35 !important;
+        color: #f1f1f1 !important;
+    }
+
+[data-theme="dark"] .rz-dropdown-panel .rz-dropdown-items-wrapper {
+    background-color: #1e1e35 !important;
+    border-color: #2d2d4e !important;
+}
+
+[data-theme="dark"] .rz-dropdown-panel .rz-dropdown-item {
     color: #f1f1f1 !important;
+}
+
+    [data-theme="dark"] .rz-dropdown-panel .rz-dropdown-item:hover,
+    [data-theme="dark"] .rz-dropdown-panel .rz-state-highlight {
+        background-color: #252545 !important;
+        color: #f1f1f1 !important;
+    }
+
+/* RadzenAlert dentro de dialog */
+[data-theme="dark"] .rz-messages-error,
+[data-theme="dark"] .rz-alert {
+    background-color: rgba(220, 53, 69, .15) !important;
+    border-color: #dc3545 !important;
+    color: #f1f1f1 !important;
+}
+
+/* Dashboard — badge fecha y card-text sin fondo */
+[data-theme="dark"] .badge.bg-light.text-dark {
+    background-color: #252545 !important;
+    color: #a0aec0 !important;
+    border-color: #2d2d4e !important;
+}
+
+[data-theme="dark"] .card-body p.card-text {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] p.text-muted,
+[data-theme="dark"] small.text-muted,
+[data-theme="dark"] span.text-muted {
+    background-color: transparent !important;
+    color: #a0aec0 !important;
 }

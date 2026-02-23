@@ -7,11 +7,6 @@
     align-items: center;
 }
 
-.client-form-container {
-    max-width: 900px;
-    margin: 0 auto;
-}
-
 .form-actions {
     display: flex;
     justify-content: space-between;

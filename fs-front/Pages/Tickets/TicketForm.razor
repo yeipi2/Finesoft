@@ -10,39 +10,38 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
-<div style="max-width: 900px; margin: 0 auto;">
+<div class="ticket-form-wrapper">
     <EditForm Model="_ticketDto" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
 
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-danger mb-3" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+        <div class="ticket-form-body">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                </div>
+            }
+            <div class="accordion mb-3" id="ticketAccordion">
+                <TicketInfoSection Model="_ticketDto"
+                                   IsComplete="_section1Complete"
+                                   OnChange="ValidateSections" />
+                <TicketDetailsSection Model="_ticketDto"
+                                      IsComplete="_section2Complete"
+                                      IsEditMode="_isEditMode"
+                                      IsLoadingProjects="_isLoadingProjects"
+                                      IsLoadingUsers="_isLoadingUsers"
+                                      Projects="_projects"
+                                      FilteredProjects="_filteredProjects"
+                                      SelectedProject="_selectedProject"
+                                      ProjectSearchText="@_projectSearchText"
+                                      Employees="_employees"
+                                      OnProjectSearchInput="OnProjectSearchInput"
+                                      OnProjectSelected="SelectProject" />
             </div>
-        }
+        </div>  @* ← cierra body AQUÍ *@
 
-        <div class="accordion mb-3" id="ticketAccordion">
-
-            <TicketInfoSection Model="_ticketDto"
-                               IsComplete="_section1Complete"
-                               OnChange="ValidateSections" />
-
-            <TicketDetailsSection Model="_ticketDto"
-                                  IsComplete="_section2Complete"
-                                  IsEditMode="_isEditMode"
-                                  IsLoadingProjects="_isLoadingProjects"
-                                  IsLoadingUsers="_isLoadingUsers"
-                                  Projects="_projects"
-                                  FilteredProjects="_filteredProjects"
-                                  SelectedProject="_selectedProject"
-                                  ProjectSearchText="@_projectSearchText"
-                                  Employees="_employees"
-                                  OnProjectSearchInput="OnProjectSearchInput"
-                                  OnProjectSelected="SelectProject" />
-
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="ticket-form-footer">
+            @* ← footer FUERA del body *@
             <div>
                 @if (!_allSectionsComplete)
                 {
@@ -58,7 +57,7 @@
                         disabled="@(_isSaving || _isLoadingProjects)">
                     @if (_isSaving)
                     {
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span class="spinner-border spinner-border-sm me-2"></span>
                     }
                     <i class="bi bi-check-lg me-1"></i>
                     @(_isEditMode ? "Actualizar Ticket" : "Guardar")

@@ -12,37 +12,39 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
-<div style="max-width: 900px; margin: 0 auto;">
+<div class="project-form-wrapper">
     <EditForm Model="_dto" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
 
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-danger mb-3" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+        <div class="project-form-body">
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                </div>
+            }
+
+            <div class="accordion mb-3" id="projectAccordion">
+                <GeneralInfoSection Model="_dto"
+                                    IsComplete="_section1Complete"
+                                    OnChange="ValidateSections" />
+
+                <ClientSection Model="_dto"
+                               IsComplete="_section2Complete"
+                               IsLoadingClients="_isLoadingClients"
+                               SearchText="@_clientSearchText"
+                               FilteredClients="_filteredClients"
+                               SelectedClient="_selectedClient"
+                               OnSearchInput="OnClientSearchInput"
+                               OnClientSelected="SelectClient" />
+
+                <ConfigSection Model="_dto" />
             </div>
-        }
-
-        <div class="accordion mb-3" id="projectAccordion">
-
-            <GeneralInfoSection Model="_dto"
-                                IsComplete="_section1Complete"
-                                OnChange="ValidateSections" />
-
-            <ClientSection Model="_dto"
-                           IsComplete="_section2Complete"
-                           IsLoadingClients="_isLoadingClients"
-                           SearchText="@_clientSearchText"
-                           FilteredClients="_filteredClients"
-                           SelectedClient="_selectedClient"
-                           OnSearchInput="OnClientSearchInput"
-                           OnClientSelected="SelectClient" />
-
-            <ConfigSection Model="_dto" />
 
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="project-form-footer">
             <div>
                 @if (!_allSectionsComplete)
                 {
@@ -56,12 +58,11 @@
                 <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
                     Cancelar
                 </button>
-                <button type="submit"
-                        class="btn btn-primary btn-sm"
+                <button type="submit" class="btn btn-primary btn-sm"
                         disabled="@(_isSaving || _isLoadingClients || _dto.ClientId == 0)">
                     @if (_isSaving)
                     {
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span class="spinner-border spinner-border-sm me-2"></span>
                     }
                     <i class="bi bi-check-lg me-1"></i>
                     @(_isEditMode ? "Actualizar Proyecto" : "Guardar")
