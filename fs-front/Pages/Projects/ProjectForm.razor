@@ -1,11 +1,8 @@
-﻿@* Modal de creación/edición de proyecto.
-   Usa los subcomponentes: GeneralInfoSection, ClientSection, ConfigSection *@
+﻿@* Modal de creación/edición de proyecto. *@
 @using fs_front.DTO
 @using Radzen
 @using Radzen.Blazor
-@using fs_front.Components.Projects.Index
 @using fs_front.Components.Projects.Form
-@using fs_front.Components.Projects.Shared
 
 @inject IProjectApiService ProjectApiService
 @inject IClientApiService ClientApiService
@@ -25,22 +22,20 @@
                 </div>
             }
 
-            <div class="accordion mb-3" id="projectAccordion">
-                <GeneralInfoSection Model="_dto"
-                                    IsComplete="_section1Complete"
-                                    OnChange="ValidateSections" />
+            <GeneralInfoSection Model="_dto"
+                                IsComplete="_section1Complete"
+                                OnChange="ValidateSections" />
 
-                <ClientSection Model="_dto"
-                               IsComplete="_section2Complete"
-                               IsLoadingClients="_isLoadingClients"
-                               SearchText="@_clientSearchText"
-                               FilteredClients="_filteredClients"
-                               SelectedClient="_selectedClient"
-                               OnSearchInput="OnClientSearchInput"
-                               OnClientSelected="SelectClient" />
+            <ClientSection Model="_dto"
+                           IsComplete="_section2Complete"
+                           IsLoadingClients="_isLoadingClients"
+                           SearchText="@_clientSearchText"
+                           FilteredClients="_filteredClients"
+                           SelectedClient="_selectedClient"
+                           OnSearchInput="OnClientSearchInput"
+                           OnClientSelected="SelectClient" />
 
-                <ConfigSection Model="_dto" />
-            </div>
+            <ConfigSection Model="_dto" />
 
         </div>
 
@@ -76,23 +71,21 @@
 @code {
     [Parameter] public int? ProjectId { get; set; }
 
-    // ── Estado interno ────────────────────────────────────────────────────────
     private ProjectDto _dto = new();
-    private List<ClientDto> _allClients    = new();
+    private List<ClientDto> _allClients = new();
     private List<ClientDto> _filteredClients = new();
     private ClientDto? _selectedClient;
     private string _clientSearchText = string.Empty;
 
-    private bool _isSaving         = false;
+    private bool _isSaving = false;
     private bool _isLoadingClients = false;
     private string? _errorMessage;
 
-    private bool _isEditMode      => ProjectId.HasValue;
+    private bool _isEditMode => ProjectId.HasValue;
     private bool _section1Complete = false;
     private bool _section2Complete => _dto.ClientId > 0;
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
 
-    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadAllClients();
@@ -105,7 +98,6 @@
         ValidateSections();
     }
 
-    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadAllClients()
     {
         _isLoadingClients = true;
@@ -113,7 +105,7 @@
         try
         {
             var clients = await ClientApiService.GetClientsAsync();
-            _allClients      = clients ?? new List<ClientDto>();
+            _allClients = clients ?? new List<ClientDto>();
             _filteredClients = _allClients;
         }
         catch (Exception ex)
@@ -137,16 +129,16 @@
 
             _dto = new ProjectDto
             {
-                Id          = project.Id,
-                Name        = project.Name,
+                Id = project.Id,
+                Name = project.Name,
                 Description = project.Description,
-                ClientId    = project.ClientId,
-                IsActive    = project.IsActive
+                ClientId = project.ClientId,
+                IsActive = project.IsActive
             };
 
             if (project.Client != null)
             {
-                _selectedClient   = project.Client;
+                _selectedClient = project.Client;
                 _clientSearchText = project.Client.CompanyName;
             }
         }
@@ -156,16 +148,15 @@
         }
     }
 
-    // ── Autocomplete de cliente ───────────────────────────────────────────────
     private void OnClientSearchInput(ChangeEventArgs e)
     {
         _clientSearchText = e.Value?.ToString() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(_clientSearchText))
         {
-            _filteredClients  = _allClients;
-            _selectedClient   = null;
-            _dto.ClientId     = 0;
+            _filteredClients = _allClients;
+            _selectedClient = null;
+            _dto.ClientId = 0;
         }
         else
         {
@@ -180,7 +171,7 @@
             if (exactMatch is null && _selectedClient is not null)
             {
                 _selectedClient = null;
-                _dto.ClientId   = 0;
+                _dto.ClientId = 0;
             }
         }
 
@@ -189,20 +180,18 @@
 
     private void SelectClient(ClientDto client)
     {
-        _selectedClient   = client;
-        _dto.ClientId     = client.Id ?? 0;
+        _selectedClient = client;
+        _dto.ClientId = client.Id ?? 0;
         _clientSearchText = client.CompanyName;
         ValidateSections();
     }
 
-    // ── Validación de secciones ───────────────────────────────────────────────
     private void ValidateSections()
     {
         _section1Complete = !string.IsNullOrWhiteSpace(_dto.Name);
         StateHasChanged();
     }
 
-    // ── Submit ────────────────────────────────────────────────────────────────
     private async Task HandleSubmit()
     {
         if (_dto.ClientId == 0)
@@ -211,7 +200,7 @@
             return;
         }
 
-        _isSaving     = true;
+        _isSaving = true;
         _errorMessage = null;
         StateHasChanged();
 
@@ -255,8 +244,8 @@
         NotificationService.Notify(new NotificationMessage
         {
             Severity = severity,
-            Summary  = title,
-            Detail   = message,
+            Summary = title,
+            Detail = message,
             Duration = 4000
         });
 }

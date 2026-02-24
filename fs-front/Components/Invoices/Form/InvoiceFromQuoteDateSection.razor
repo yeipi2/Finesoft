@@ -1,61 +1,40 @@
 ﻿@using fs_front.DTO
+@using fs_front.Components.Shared
 
-<div class="accordion-item">
-    <h2 class="accordion-header" id="headingFromQuoteDate">
-        <button class="accordion-button collapsed @(IsComplete ? "" : "text-danger")"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapseFromQuoteDate"
-                aria-expanded="false"
-                aria-controls="collapseFromQuoteDate">
-            <i class="bi bi-receipt me-2"></i>
-            <strong>Datos de la Factura</strong>
-            @if (!IsComplete)
-            {
-                <span class="badge bg-danger ms-2">Incompleto</span>
-            }
-            else
-            {
-                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-            }
-        </button>
-    </h2>
-    <div id="collapseFromQuoteDate"
-         class="accordion-collapse collapse"
-         aria-labelledby="headingFromQuoteDate"
-         data-bs-parent="#invoiceFromQuoteAccordion">
-        <div class="accordion-body">
-            <div class="row g-3">
+<FormSection Title="Datos de la Factura"
+             IconClass="bi-calendar3"
+             IsComplete="@IsComplete">
 
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold">
-                        Fecha de Factura <span class="text-danger">*</span>
-                    </label>
-                    <InputDate class="form-control form-control-sm"
-                               @bind-Value="Dto.InvoiceDate"
-                               @bind-Value:after="NotifyChanged" />
-                </div>
+    <div class="row g-3">
 
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold">Fecha de Vencimiento</label>
-                    <InputDate class="form-control form-control-sm"
-                               @bind-Value="Dto.DueDate" />
-                </div>
-
-                <InvoicePaymentTermsSection PaymentType="@(Dto.PaymentType ?? "PPD")"
-                                            PaymentMethod="@(Dto.PaymentMethod ?? string.Empty)"
-                                            PaymentTypeChanged="HandlePaymentTypeChanged"
-                                            PaymentMethodChanged="HandlePaymentMethodChanged" />
-
-            </div>
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">
+                Fecha de Factura <span class="text-danger">*</span>
+            </label>
+            <InputDate class="form-control form-control-sm"
+                       @bind-Value="Dto.InvoiceDate"
+                       @bind-Value:after="NotifyChanged" />
         </div>
+
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">Fecha de Vencimiento</label>
+            <InputDate class="form-control form-control-sm"
+                       @bind-Value="Dto.DueDate" />
+        </div>
+
+        <InvoicePaymentTermsSection PaymentType="@(Dto.PaymentType ?? "PPD")"
+                                    PaymentMethod="@(Dto.PaymentMethod ?? string.Empty)"
+                                    PaymentTypeChanged="HandlePaymentTypeChanged"
+                                    PaymentMethodChanged="HandlePaymentMethodChanged" />
+
     </div>
-</div>
+
+</FormSection>
 
 @code {
-    [Parameter] public CreateInvoiceFromQuoteDto Dto { get; set; } = new();
-    [Parameter] public bool IsComplete { get; set; }
-    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public CreateInvoiceFromQuoteDto Dto       { get; set; } = new();
+    [Parameter] public bool                      IsComplete { get; set; }
+    [Parameter] public EventCallback             OnChanged  { get; set; }
 
     private async Task HandlePaymentTypeChanged(string paymentType)
     {

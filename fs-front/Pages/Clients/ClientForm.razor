@@ -22,23 +22,18 @@ else
 
             <div class="client-form-body">
 
-
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <div class="alert alert-danger mb-3" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
-                </div>
-            }
-
-            <div class="accordion mb-3" id="clientAccordion">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                    </div>
+                }
 
                 @if (!_isEditMode)
                 {
                     <AccessDataSection Model="@_clientModel"
                                        ValidationErrors="@_validationErrors"
                                        IsComplete="@_section1Complete"
-                                       IsExpanded="@(_activeSection == 1)"
-                                       OnToggle="@(() => ToggleSection(1))"
                                        OnValidate="ValidateSections"
                                        OnPasswordInput="OnPasswordInput" />
                 }
@@ -46,23 +41,17 @@ else
                 <CompanyDataSection Model="@_clientModel"
                                     ValidationErrors="@_validationErrors"
                                     IsComplete="@_section2Complete"
-                                    IsExpanded="@((_isEditMode && _activeSection == 1) || _activeSection == 2)"
                                     IsEditMode="@_isEditMode"
-                                    OnToggle="@(() => ToggleSection(2))"
                                     OnValidate="ValidateSections" />
 
                 <ContactInfoSection Model="@_clientModel"
                                     ValidationErrors="@_validationErrors"
                                     IsComplete="@_section3Complete"
-                                    IsExpanded="@(_activeSection == 3)"
-                                    OnToggle="@(() => ToggleSection(3))"
                                     OnValidate="ValidateSections" />
 
                 <ServiceConfigSection Model="@_clientModel"
                                       ValidationErrors="@_validationErrors"
                                       IsComplete="@_section4Complete"
-                                      IsExpanded="@(_activeSection == 4)"
-                                      OnToggle="@(() => ToggleSection(4))"
                                       OnValidate="ValidateSections" />
 
             </div>
@@ -89,7 +78,6 @@ else
                         <i class="bi bi-check-lg me-1"></i>
                         @(_isEditMode ? "Actualizar Cliente" : "Guardar Cliente")
                     </button>
-                    </div>
                 </div>
             </div>
         </EditForm>
@@ -106,7 +94,6 @@ else
     private bool _isEditMode => UserId > 0;
     private Dictionary<string, string> _validationErrors = new();
 
-    private int _activeSection = 1;
     private bool _section1Complete = false;
     private bool _section2Complete = false;
     private bool _section3Complete = false;
@@ -122,14 +109,9 @@ else
             {
                 _clientModel = await ClientApiService.GetClientByIdAsync(UserId);
                 if (_clientModel == null)
-                {
                     _errorMessage = "No se pudo encontrar el cliente para editar.";
-                }
                 else
-                {
                     ValidateSections();
-                    _activeSection = _isEditMode ? 1 : 1;
-                }
             }
             catch (Exception ex)
             {
@@ -146,21 +128,15 @@ else
         }
     }
 
-    private void ToggleSection(int section) => _activeSection = section;
-
     private void OnPasswordInput(ChangeEventArgs e)
     {
         var password = e.Value?.ToString() ?? "";
         _clientModel.Password = password;
 
         if (!string.IsNullOrEmpty(password) && !_isEditMode)
-        {
             ValidatePasswordRealTime(password);
-        }
         else
-        {
             _validationErrors.Remove("Password");
-        }
 
         ValidateSections();
     }

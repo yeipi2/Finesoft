@@ -6,30 +6,25 @@
              Subtitle="Gestión del personal de la empresa"
              Items="Items"
              IsLoading="IsLoading"
-             ColSpan="7"
+             ColSpan="6"
              EmptyTitle="@EmptyTitle"
              EmptySubtitle="Prueba con otra búsqueda.">
-
     <Header>
         <FsSortHeader Text="Nombre" Field="name" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" ThClass="ps-4" />
-        <FsSortHeader Text="Email / RFC" Field="email" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" />
+        <FsSortHeader Text="Email" Field="email" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" />
         <FsSortHeader Text="Puesto" Field="position" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" />
         <FsSortHeader Text="Departamento" Field="department" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" />
         <FsSortHeader Text="Rol" Field="role" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" />
         <FsSortHeader Text="Estado" Field="status" ActiveField="@SortField" Direction="@SortDir" SortChanged="SortChanged" />
     <th class="text-center">Acciones</th>
     </Header>
-
     <RowTemplate Context="employee">
         <tr>
             <td class="fw-bold ps-4">
                 @employee.FullName
                 <div class="text-muted small">@employee.Phone</div>
             </td>
-            <td>
-                <div class="fw-bold">@employee.Email</div>
-                <div class="text-muted small">@employee.RFC</div>
-            </td>
+            <td>@employee.Email</td>
             <td>@employee.Position</td>
             <td>@employee.Department</td>
             <td>
@@ -54,7 +49,6 @@
             </td>
         </tr>
     </RowTemplate>
-
 </FsDataTable>
 
 @code {

@@ -1,0 +1,41 @@
+﻿@* fs-front/Components/Shared/FormSection.razor *@
+
+<div class="fs-form-section @(IsOptional ? "is-optional" : IsComplete ? "is-complete" : "is-incomplete")">
+    <div class="fs-form-section__header">
+        <div class="fs-form-section__title-group">
+            <div class="fs-form-section__icon-wrap">
+                <i class="bi @IconClass"></i>
+            </div>
+            <span class="fs-form-section__title">@Title</span>
+        </div>
+        <div class="fs-form-section__badge-wrap">
+            @if (IsOptional)
+            {
+                <span class="fs-section-badge fs-section-badge--optional">Opcional</span>
+            }
+            else if (IsComplete)
+            {
+                <span class="fs-section-badge fs-section-badge--complete">
+                    <i class="bi bi-check2 me-1"></i>Completo
+                </span>
+            }
+            else
+            {
+                <span class="fs-section-badge fs-section-badge--incomplete">
+                    <i class="bi bi-exclamation me-1"></i>Incompleto
+                </span>
+            }
+        </div>
+    </div>
+    <div class="fs-form-section__body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string IconClass { get; set; } = "bi-folder";
+    [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public bool IsOptional { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

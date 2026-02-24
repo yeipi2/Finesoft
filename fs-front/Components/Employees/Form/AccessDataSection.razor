@@ -1,94 +1,70 @@
-﻿@using fs_front.DTO
+﻿@* fs-front/Components/Employees/Form/AccessDataSection.razor *@
+@using fs_front.DTO
+@using fs_front.Components.Shared
 
-<div class="accordion-item">
-    <h2 class="accordion-header" id="headingAccess">
-        <button class="accordion-button @(IsComplete ? "" : "text-danger")"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapseAccess"
-                aria-expanded="true"
-                aria-controls="collapseAccess"
-                @onclick="OnToggle">
-            <i class="bi bi-person-circle me-2"></i>
-            <strong>Datos de Acceso al Sistema</strong>
-            @if (!IsComplete)
-            {
-                <span class="badge bg-danger ms-2">Incompleto</span>
-            }
-            else
-            {
-                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-            }
-        </button>
-    </h2>
-    <div id="collapseAccess"
-         class="accordion-collapse collapse @(IsExpanded ? "show" : "")"
-         aria-labelledby="headingAccess">
-        <div class="accordion-body">
-            <div class="row g-3">
+<FormSection Title="Datos de Acceso al Sistema"
+             IconClass="bi-person-circle"
+             IsComplete="@IsComplete">
 
-                <div class="col-md-6">
-                    <label for="Email" class="form-label small fw-bold">
-                        Email / Usuario <span class="text-danger">*</span>
-                    </label>
-                    <InputText id="Email"
-                               type="email"
-                               class="form-control form-control-sm"
-                               placeholder="correo@empresa.com"
-                               Value="@Employee.Email"
-                               ValueChanged="@(v => { Employee.Email = v; OnChanged?.Invoke(); })"
-                               ValueExpression="@(() => Employee.Email)"
-                               disabled="@IsEditMode" />
-                    <small class="text-muted">Usuario de acceso al sistema</small>
-                    <ValidationMessage For="@(() => Employee.Email)" />
-                </div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label for="Email" class="form-label small fw-bold">
+                Email / Usuario <span class="text-danger">*</span>
+            </label>
+            <InputText id="Email"
+                       type="email"
+                       class="form-control form-control-sm"
+                       placeholder="correo@empresa.com"
+                       Value="@Employee.Email"
+                       ValueChanged="@(v => { Employee.Email = v; OnChanged?.Invoke(); })"
+                       ValueExpression="@(() => Employee.Email)"
+                       disabled="@IsEditMode" />
+            <small class="text-muted">Usuario de acceso al sistema</small>
+            <ValidationMessage For="@(() => Employee.Email)" />
+        </div>
 
-                @if (!IsEditMode)
-                {
-                    <div class="col-md-6">
-                        <label for="Password" class="form-label small fw-bold">
-                            Contraseña <span class="text-danger">*</span>
-                        </label>
-                        <InputText id="Password"
-                                   type="password"
-                                   class="form-control form-control-sm"
-                                   placeholder="Mínimo 6 caracteres"
-                                   Value="@Employee.Password"
-                                   ValueChanged="@(v => { Employee.Password = v; OnChanged?.Invoke(); })"
-                                   ValueExpression="@(() => Employee.Password)" />
-                        <ValidationMessage For="@(() => Employee.Password)" />
-                    </div>
-                }
-
-                <div class="col-md-6">
-                    <label for="RoleName" class="form-label small fw-bold">
-                        Rol en el Sistema <span class="text-danger">*</span>
-                    </label>
-                    <InputSelect id="RoleName"
-                                 class="form-select form-select-sm"
-                                 Value="@Employee.RoleName"
-                                 ValueChanged="@((string v) => { Employee.RoleName = v; OnChanged?.Invoke(); })"
-                                 ValueExpression="@(() => Employee.RoleName)">
-                        <option value="">-- Seleccionar Rol --</option>
-                        @foreach (var role in Roles)
-                        {
-                            <option value="@role">@role</option>
-                        }
-                    </InputSelect>
-                    <ValidationMessage For="@(() => Employee.RoleName)" />
-                </div>
-
+        @if (!IsEditMode)
+        {
+            <div class="col-md-6">
+                <label for="Password" class="form-label small fw-bold">
+                    Contraseña <span class="text-danger">*</span>
+                </label>
+                <InputText id="Password"
+                           type="password"
+                           class="form-control form-control-sm"
+                           placeholder="Mínimo 6 caracteres"
+                           Value="@Employee.Password"
+                           ValueChanged="@(v => { Employee.Password = v; OnChanged?.Invoke(); })"
+                           ValueExpression="@(() => Employee.Password)" />
+                <ValidationMessage For="@(() => Employee.Password)" />
             </div>
+        }
+
+        <div class="col-md-6">
+            <label for="RoleName" class="form-label small fw-bold">
+                Rol en el Sistema <span class="text-danger">*</span>
+            </label>
+            <InputSelect id="RoleName"
+                         class="form-select form-select-sm"
+                         Value="@Employee.RoleName"
+                         ValueChanged="@((string v) => { Employee.RoleName = v; OnChanged?.Invoke(); })"
+                         ValueExpression="@(() => Employee.RoleName)">
+                <option value="">-- Seleccionar Rol --</option>
+                @foreach (var role in Roles)
+                {
+                    <option value="@role">@role</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => Employee.RoleName)" />
         </div>
     </div>
-</div>
+
+</FormSection>
 
 @code {
     [Parameter] public EmployeeDto Employee { get; set; } = new();
     [Parameter] public bool IsEditMode { get; set; }
-    [Parameter] public bool IsExpanded { get; set; }
     [Parameter] public bool IsComplete { get; set; }
     [Parameter] public List<string> Roles { get; set; } = new();
     [Parameter] public Action? OnChanged { get; set; }
-    [Parameter] public EventCallback OnToggle { get; set; }
 }

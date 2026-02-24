@@ -28,35 +28,23 @@ else
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
                     </div>
                 }
-                <div class="accordion mb-3" id="employeeAccordion">
-                    <AccessDataSection Employee="_employeeModel"
-                                       IsEditMode="_isEditMode"
-                                       IsExpanded="_activeSection == 1"
-                                       IsComplete="_section1Complete"
-                                       Roles="_employeeRoles"
-                                       OnChanged="ValidateSections"
-                                       OnToggle="@(() => ToggleSection(1))" />
-                    <PersonalDataSection Employee="_employeeModel"
-                                         IsExpanded="_activeSection == 2"
-                                         IsComplete="_section2Complete"
-                                         OnChanged="ValidateSections"
-                                         OnToggle="@(() => ToggleSection(2))" />
-                    <WorkDataSection Employee="_employeeModel"
-                                     IsExpanded="_activeSection == 3"
-                                     IsComplete="_section3Complete"
-                                     OnChanged="ValidateSections"
-                                     OnToggle="@(() => ToggleSection(3))" />
-                    <EmergencyContactSection Employee="_employeeModel"
-                                             IsExpanded="_activeSection == 4"
-                                             OnToggle="@(() => ToggleSection(4))" />
-                    <NotesSection Employee="_employeeModel"
-                                  IsExpanded="_activeSection == 5"
-                                  OnToggle="@(() => ToggleSection(5))" />
-                </div>
-            </div>  @* ← cierra employee-form-body AQUÍ *@
+
+                <AccessDataSection Employee="_employeeModel"
+                                   IsEditMode="_isEditMode"
+                                   IsComplete="_section1Complete"
+                                   Roles="_employeeRoles"
+                                   OnChanged="ValidateSections" />
+
+                <PersonalDataSection Employee="_employeeModel"
+                                     IsComplete="_section2Complete"
+                                     OnChanged="ValidateSections" />
+
+                <WorkDataSection Employee="_employeeModel"
+                                 IsComplete="_section3Complete"
+                                 OnChanged="ValidateSections" />
+            </div>
 
             <div class="employee-form-footer">
-                @* ← footer FUERA del body *@
                 <div>
                     @if (!_allSectionsComplete)
                     {
@@ -96,7 +84,6 @@ else
     private string? _errorMessage;
     private bool _isEditMode => EmployeeId.HasValue && EmployeeId.Value > 0;
 
-    private int _activeSection = 1;
     private bool _section1Complete = false;
     private bool _section2Complete = false;
     private bool _section3Complete = false;
@@ -111,9 +98,7 @@ else
             {
                 var employee = await EmployeeApiService.GetEmployeeByIdAsync(EmployeeId!.Value);
                 if (employee == null)
-                {
                     _errorMessage = "No se pudo encontrar el empleado para editar.";
-                }
                 else
                 {
                     _employeeModel = employee;
@@ -140,17 +125,15 @@ else
         }
     }
 
-    private void ToggleSection(int section) => _activeSection = section;
-
     private void ValidateSections()
     {
         _section1Complete = _isEditMode
             ? !string.IsNullOrWhiteSpace(_employeeModel.Email) && !string.IsNullOrWhiteSpace(_employeeModel.RoleName)
             : !string.IsNullOrWhiteSpace(_employeeModel.Email) && !string.IsNullOrWhiteSpace(_employeeModel.Password) && !string.IsNullOrWhiteSpace(_employeeModel.RoleName);
 
-        _section2Complete = !string.IsNullOrWhiteSpace(_employeeModel.FullName) && !string.IsNullOrWhiteSpace(_employeeModel.RFC);
+        _section2Complete = !string.IsNullOrWhiteSpace(_employeeModel.FullName);
 
-        _section3Complete = !string.IsNullOrWhiteSpace(_employeeModel.Position) && _employeeModel.HireDate != default;
+        _section3Complete = !string.IsNullOrWhiteSpace(_employeeModel.Position);
 
         StateHasChanged();
     }

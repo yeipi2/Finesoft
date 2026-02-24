@@ -21,26 +21,21 @@
                 </div>
             }
 
-            <div class="accordion mb-3" id="invoiceFromQuoteAccordion">
+            <InvoiceFromQuoteSection Dto="@_dto"
+                                     Quotes="@_quotes"
+                                     SelectedQuote="@_selectedQuote"
+                                     IsLoading="@_isLoadingQuotes"
+                                     QuotePreSelected="@_quotePreSelected"
+                                     IsComplete="@_section1Complete"
+                                     OnQuoteSelected="HandleQuoteSelected" />
 
-                <InvoiceFromQuoteSection Dto="@_dto"
-                                         Quotes="@_quotes"
-                                         SelectedQuote="@_selectedQuote"
-                                         IsLoading="@_isLoadingQuotes"
-                                         QuotePreSelected="@_quotePreSelected"
-                                         IsComplete="@_section1Complete"
-                                         OnQuoteSelected="HandleQuoteSelected" />
+            <InvoiceFromQuoteDateSection Dto="@_dto"
+                                         IsComplete="@_section2Complete"
+                                         OnChanged="ValidateSections" />
 
-                <InvoiceFromQuoteDateSection Dto="@_dto"
-                                             IsComplete="@_section2Complete"
-                                             OnChanged="ValidateSections" />
+            <InvoiceNotesSection Notes="@_dto.Notes"
+                                 NotesChanged="@(v => _dto.Notes = v)" />
 
-                <InvoiceNotesSection Notes="@_dto.Notes"
-                                     IsActive="false"
-                                     NotesChanged="@(v => _dto.Notes = v)"
-                                     OnToggle="@(_ => { })" />
-
-            </div>
         </div>
 
         @* ── Footer siempre visible ── *@
@@ -56,7 +51,7 @@
             </div>
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
-                    Cancelar
+                    <i class="bi bi-x-lg me-1"></i> Cancelar
                 </button>
                 <button type="submit" class="btn btn-primary btn-sm"
                         disabled="@(_isSaving || !_allSectionsComplete)">
@@ -71,32 +66,6 @@
 
     </EditForm>
 </div>
-
-<style>
-    .invoice-form-wrapper {
-        display: flex;
-        flex-direction: column;
-        max-height: 82vh;
-        overflow: hidden;
-    }
-
-    .invoice-form-body {
-        flex: 1;
-        overflow-y: auto;
-        padding-right: 4px;
-    }
-
-    .invoice-form-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 0.75rem;
-        margin-top: 0.25rem;
-        border-top: 1px solid #dee2e6;
-        background-color: white;
-        flex-shrink: 0;
-    }
-</style>
 
 @code {
     [Parameter] public int? QuoteId { get; set; }

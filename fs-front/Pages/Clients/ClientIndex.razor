@@ -72,6 +72,14 @@ else
     private bool _hasAccess = false;
     private bool _canCreate, _canEdit, _canDelete;
 
+    // ── Opciones de diálogo reutilizables ──
+    private static readonly DialogOptions _formDialogOptions = new()
+    {
+        Width = "720px",
+        Resizable = false,
+        Draggable = false
+    };
+
     protected override async Task OnInitializedAsync()
     {
         var canView = await PermissionService.HasPermissionAsync("clients.view");
@@ -119,9 +127,8 @@ else
 
     private IEnumerable<ClientDto> _sortedClients => ApplySort(_filteredClients);
 
-    private IEnumerable<ClientDto> ApplySort(IEnumerable<ClientDto> q)
-    {
-        return (_sortField, _sortDir) switch
+    private IEnumerable<ClientDto> ApplySort(IEnumerable<ClientDto> q) =>
+        (_sortField, _sortDir) switch
         {
             ("company", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CompanyName),
             ("company", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CompanyName),
@@ -135,7 +142,6 @@ else
             ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
             _ => q.OrderByDescending(x => x.CompanyName),
         };
-    }
 
     private IEnumerable<ClientDto> _filteredClients =>
         _clients?
@@ -152,16 +158,19 @@ else
 
     private async Task ShowCreateModal()
     {
-        var result = await DialogService.OpenAsync<ClientForm>("Crear Cliente",
-            options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
+        var result = await DialogService.OpenAsync<ClientForm>(
+            "Crear Cliente",
+            options: _formDialogOptions);
         if (result == true) await LoadClients();
     }
 
     private async Task ShowEditModal(int? clientId)
     {
         var parameters = new Dictionary<string, object> { { "UserId", clientId } };
-        var result = await DialogService.OpenAsync<ClientForm>("Editar Cliente", parameters,
-            options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
+        var result = await DialogService.OpenAsync<ClientForm>(
+            "Editar Cliente",
+            parameters,
+            options: _formDialogOptions);
         if (result == true) await LoadClients();
     }
 

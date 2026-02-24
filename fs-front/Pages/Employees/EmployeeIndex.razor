@@ -158,7 +158,6 @@ else
             query = query.Where(e =>
                 e.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 e.Email.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                e.RFC.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 e.Position.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 e.Department.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
         }

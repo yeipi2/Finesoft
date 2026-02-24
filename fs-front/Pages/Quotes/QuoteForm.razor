@@ -28,43 +28,40 @@
                 </div>
             }
 
-            <div class="accordion mb-3" id="quoteAccordion">
+            <QuoteGeneralSection Model="_quoteDto"
+                                 IsComplete="_section1Complete"
+                                 IsEditMode="_isEditMode"
+                                 IsLoadingClients="_isLoadingClients"
+                                 FilteredClients="_filteredClients"
+                                 SelectedClient="_selectedClient"
+                                 ClientSearchText="@_clientSearchText"
+                                 ShowClientSuggestions="_showSuggestions"
+                                 OnClientSearchInput="OnClientSearchInput"
+                                 OnClientSelected="SelectClient"
+                                 OnClientFocus="HandleClientFocus"
+                                 OnClientBlur="HandleClientBlur" />
 
-                <QuoteGeneralSection Model="_quoteDto"
-                                     IsComplete="_section1Complete"
-                                     IsEditMode="_isEditMode"
-                                     IsLoadingClients="_isLoadingClients"
-                                     FilteredClients="_filteredClients"
-                                     SelectedClient="_selectedClient"
-                                     ClientSearchText="@_clientSearchText"
-                                     ShowClientSuggestions="_showSuggestions"
-                                     OnClientSearchInput="OnClientSearchInput"
-                                     OnClientSelected="SelectClient"
-                                     OnClientFocus="HandleClientFocus"
-                                     OnClientBlur="HandleClientBlur" />
+            <QuoteItemsSection Items="_quoteDto.Items"
+                               IsComplete="_section2Complete"
+                               IsLoadingTickets="_isLoadingTickets"
+                               ClosedTickets="_closedTickets"
+                               TicketSearchTexts="_ticketSearchTexts"
+                               FilteredTicketsCache="_filteredTicketsCache"
+                               TicketSuggestionsVisible="_ticketSuggestionsVisible"
+                               CalculatedSubtotal="_calculatedSubtotal"
+                               CalculatedTax="_calculatedTax"
+                               CalculatedTotal="_calculatedTotal"
+                               OnAddItem="AddItem"
+                               OnRemoveItem="RemoveItem"
+                               OnRecalculate="RecalculateTotals"
+                               OnTicketSearchInput="OnTicketSearchInput"
+                               OnTicketFocus="OnTicketFocus"
+                               OnTicketBlur="OnTicketBlur"
+                               OnTicketSelected="SelectTicket"
+                               OnClearTicket="ClearTicket" />
 
-                <QuoteItemsSection Items="_quoteDto.Items"
-                                   IsComplete="_section2Complete"
-                                   IsLoadingTickets="_isLoadingTickets"
-                                   ClosedTickets="_closedTickets"
-                                   TicketSearchTexts="_ticketSearchTexts"
-                                   FilteredTicketsCache="_filteredTicketsCache"
-                                   TicketSuggestionsVisible="_ticketSuggestionsVisible"
-                                   CalculatedSubtotal="_calculatedSubtotal"
-                                   CalculatedTax="_calculatedTax"
-                                   CalculatedTotal="_calculatedTotal"
-                                   OnAddItem="AddItem"
-                                   OnRemoveItem="RemoveItem"
-                                   OnRecalculate="RecalculateTotals"
-                                   OnTicketSearchInput="OnTicketSearchInput"
-                                   OnTicketFocus="OnTicketFocus"
-                                   OnTicketBlur="OnTicketBlur"
-                                   OnTicketSelected="SelectTicket"
-                                   OnClearTicket="ClearTicket" />
+            <QuoteNotesSection Model="_quoteDto" />
 
-                <QuoteNotesSection Model="_quoteDto" />
-
-            </div>
         </div>
 
         <div class="quote-form-footer">
@@ -95,38 +92,28 @@
 @code {
     [Parameter] public int? QuoteId { get; set; }
 
-    // ── Estado ────────────────────────────────────────────────────────────────
     private QuoteDto _quoteDto = new();
-
-    // Cliente
     private List<ClientDto> _allClients = new();
     private List<ClientDto> _filteredClients = new();
     private ClientDto? _selectedClient;
     private string _clientSearchText = string.Empty;
     private bool _showSuggestions = false;
     private bool _isLoadingClients = false;
-
-    // Tickets
     private List<TicketDetailDto>? _closedTickets = new();
     private Dictionary<int, string> _ticketSearchTexts = new();
     private Dictionary<int, List<TicketDetailDto>> _filteredTicketsCache = new();
     private HashSet<int> _ticketSuggestionsVisible = new();
     private bool _isLoadingTickets = false;
-
-    // Totales
     private decimal _calculatedSubtotal = 0;
     private decimal _calculatedTax = 0;
     private decimal _calculatedTotal = 0;
-
     private bool _isSaving = false;
     private string? _errorMessage;
     private bool _isEditMode => QuoteId.HasValue;
-
     private bool _section1Complete => _quoteDto.ClientId > 0;
     private bool _section2Complete => _quoteDto.Items.Any();
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
 
-    // ── Tickets ya usados en otros ítems del form ─────────────────────────────
     private HashSet<int> GetUsedTicketIds(int excludeIndex) =>
         _quoteDto.Items
             .Select((item, i) => (item, i))
@@ -140,19 +127,14 @@
         return _closedTickets?.Where(t => !used.Contains(t.Id)).ToList() ?? new();
     }
 
-    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadInitialData();
-
         if (_isEditMode) await LoadQuote();
-        else
-            _quoteDto = new QuoteDto { Status = "Borrador", ValidUntil = DateTime.Now.AddDays(30) };
-
+        else _quoteDto = new QuoteDto { Status = "Borrador", ValidUntil = DateTime.Now.AddDays(30) };
         RecalculateTotals();
     }
 
-    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadInitialData()
     {
         _isLoadingClients = true;
@@ -162,27 +144,21 @@
         {
             var clientsTask = ClientApiService.GetClientsAsync();
             var ticketsTask = TicketApiService.GetTicketsAsync();
-            var quotesTask = QuoteApiService.GetQuotesAsync(); // ← agregar
+            var quotesTask = QuoteApiService.GetQuotesAsync();
             await Task.WhenAll(clientsTask, ticketsTask, quotesTask);
-
             _allClients = (await clientsTask) ?? new();
             _filteredClients = new();
-
-            // Tickets ya usados en otras cotizaciones
             var allQuotes = await quotesTask;
             var usedTicketIds = allQuotes?
-                .Where(q => q.Id != QuoteId) // excluir la cotización actual en edición
+                .Where(q => q.Id != QuoteId)
                 .SelectMany(q => q.Items)
                 .Where(i => i.TicketId.HasValue && i.TicketId.Value > 0)
                 .Select(i => i.TicketId!.Value)
                 .ToHashSet() ?? new HashSet<int>();
-
             var allTickets = await ticketsTask;
             _closedTickets = allTickets?
-                .Where(t =>
-                    t.Status?.Equals("Cerrado", StringComparison.OrdinalIgnoreCase) == true
-                    && !usedTicketIds.Contains(t.Id)) // ← excluir ya usados
-                .OrderByDescending(t => t.ClosedAt ?? t.UpdatedAt ?? t.CreatedAt)
+                .Where(t => !usedTicketIds.Contains(t.Id))
+                .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
                 .ToList() ?? new();
         }
         catch (Exception ex)
@@ -199,6 +175,7 @@
             StateHasChanged();
         }
     }
+
     private async Task LoadQuote()
     {
         try
@@ -223,13 +200,11 @@
                         TicketId = i.TicketId
                     }).ToList()
                 };
-
                 if (quote.ClientId > 0)
                 {
                     _selectedClient = _allClients.FirstOrDefault(c => c.Id == quote.ClientId);
                     if (_selectedClient != null) _clientSearchText = _selectedClient.CompanyName;
                 }
-
                 for (int i = 0; i < _quoteDto.Items.Count; i++)
                 {
                     var item = _quoteDto.Items[i];
@@ -247,26 +222,19 @@
         catch (Exception ex) { _errorMessage = $"Error al cargar cotización: {ex.Message}"; }
     }
 
-    // ── Autocomplete cliente ──────────────────────────────────────────────────
     private void OnClientSearchInput(ChangeEventArgs e)
     {
         _clientSearchText = e.Value?.ToString() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(_clientSearchText))
         {
-            _filteredClients = new List<ClientDto>();
-            _showSuggestions = false;
-            _selectedClient = null;
-            _quoteDto.ClientId = 0;
+            _filteredClients = new List<ClientDto>(); _showSuggestions = false;
+            _selectedClient = null; _quoteDto.ClientId = 0;
         }
         else
         {
-            _filteredClients = _allClients
-                .Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(c => c.CompanyName).ToList();
+            _filteredClients = _allClients.Where(c => c.CompanyName.Contains(_clientSearchText, StringComparison.OrdinalIgnoreCase)).OrderBy(c => c.CompanyName).ToList();
             _showSuggestions = true;
-
-            var exact = _allClients.FirstOrDefault(c =>
-                c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
+            var exact = _allClients.FirstOrDefault(c => c.CompanyName.Equals(_clientSearchText, StringComparison.OrdinalIgnoreCase));
             if (exact is null && _selectedClient is not null) { _selectedClient = null; _quoteDto.ClientId = 0; }
         }
         StateHasChanged();
@@ -274,48 +242,25 @@
 
     private void SelectClient(ClientDto client)
     {
-        _selectedClient = client;
-        _quoteDto.ClientId = client.Id ?? 0;
-        _clientSearchText = client.CompanyName;
-        _showSuggestions = false;
+        _selectedClient = client; _quoteDto.ClientId = client.Id ?? 0;
+        _clientSearchText = client.CompanyName; _showSuggestions = false;
         StateHasChanged();
     }
 
-    private void HandleClientFocus()
-    {
-        if (!string.IsNullOrWhiteSpace(_clientSearchText)) _showSuggestions = true;
-    }
+    private void HandleClientFocus() { if (!string.IsNullOrWhiteSpace(_clientSearchText)) _showSuggestions = true; }
 
-    private async Task HandleClientBlur()
-    {
-        await Task.Delay(200);
-        _showSuggestions = false;
-        StateHasChanged();
-    }
+    private async Task HandleClientBlur() { await Task.Delay(200); _showSuggestions = false; StateHasChanged(); }
 
-    // ── Autocomplete ticket por ítem ─────────────────────────────────────────
     private void OnTicketSearchInput((ChangeEventArgs e, int index) args)
     {
         var (e, index) = args;
         var searchText = e.Value?.ToString() ?? string.Empty;
         _ticketSearchTexts[index] = searchText;
-
-        if (string.IsNullOrWhiteSpace(searchText))
-        {
-            _filteredTicketsCache[index] = new List<TicketDetailDto>();
-            _ticketSuggestionsVisible.Remove(index);
-            _quoteDto.Items[index].TicketId = null;
-        }
+        if (string.IsNullOrWhiteSpace(searchText)) { _filteredTicketsCache[index] = new(); _ticketSuggestionsVisible.Remove(index); _quoteDto.Items[index].TicketId = null; }
         else
         {
-            // ── FIX: excluir tickets ya usados en otros ítems ──
             var available = GetAvailableTickets(index);
-            _filteredTicketsCache[index] = available
-                .Where(t =>
-                    t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(t => t.Id).ToList();
+            _filteredTicketsCache[index] = available.Where(t => t.Id.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase) || t.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || t.ClientName.Contains(searchText, StringComparison.OrdinalIgnoreCase)).OrderBy(t => t.Id).ToList();
             _ticketSuggestionsVisible.Add(index);
         }
         StateHasChanged();
@@ -326,62 +271,42 @@
         var text = _ticketSearchTexts.TryGetValue(index, out var t) ? t : string.Empty;
         if (!string.IsNullOrWhiteSpace(text))
         {
-            // ── FIX: excluir tickets ya usados al mostrar sugerencias ──
             var available = GetAvailableTickets(index);
-            _filteredTicketsCache[index] = available
-                .Where(tk =>
-                    tk.Id.ToString().Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                    tk.Title.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                    tk.ClientName.Contains(text, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(tk => tk.Id).ToList();
+            _filteredTicketsCache[index] = available.Where(tk => tk.Id.ToString().Contains(text, StringComparison.OrdinalIgnoreCase) || tk.Title.Contains(text, StringComparison.OrdinalIgnoreCase) || tk.ClientName.Contains(text, StringComparison.OrdinalIgnoreCase)).OrderBy(tk => tk.Id).ToList();
             _ticketSuggestionsVisible.Add(index);
             StateHasChanged();
         }
     }
 
-    private async Task OnTicketBlur(int index)
-    {
-        await Task.Delay(200);
-        _ticketSuggestionsVisible.Remove(index);
-        StateHasChanged();
-    }
+    private async Task OnTicketBlur(int index) { await Task.Delay(200); _ticketSuggestionsVisible.Remove(index); StateHasChanged(); }
 
     private void SelectTicket((QuoteItemDto item, TicketDetailDto ticket, int index) args)
     {
         var (item, ticket, index) = args;
-        item.TicketId = ticket.Id;
-        _ticketSearchTexts[index] = $"#{ticket.Id} - {ticket.Title}";
-        _ticketSuggestionsVisible.Remove(index);
-        _filteredTicketsCache[index] = new List<TicketDetailDto>();
+        item.TicketId = ticket.Id; _ticketSearchTexts[index] = $"#{ticket.Id} - {ticket.Title}";
+        _ticketSuggestionsVisible.Remove(index); _filteredTicketsCache[index] = new();
         StateHasChanged();
     }
 
     private void ClearTicket((QuoteItemDto item, int index) args)
     {
-        var (item, index) = args;
-        item.TicketId = null;
-        _ticketSearchTexts[index] = string.Empty;
-        _filteredTicketsCache[index] = new List<TicketDetailDto>();
+        var (item, index) = args; item.TicketId = null;
+        _ticketSearchTexts[index] = string.Empty; _filteredTicketsCache[index] = new();
         StateHasChanged();
     }
 
-    // ── Gestión de ítems ──────────────────────────────────────────────────────
     private void AddItem()
     {
         _quoteDto.Items.Add(new QuoteItemDto { Quantity = 1, UnitPrice = 0 });
         var idx = _quoteDto.Items.Count - 1;
-        _ticketSearchTexts[idx] = string.Empty;
-        _filteredTicketsCache[idx] = new List<TicketDetailDto>();
+        _ticketSearchTexts[idx] = string.Empty; _filteredTicketsCache[idx] = new();
         RecalculateTotals();
     }
 
     private void RemoveItem(int index)
     {
         _quoteDto.Items.RemoveAt(index);
-        var newTexts = new Dictionary<int, string>();
-        var newCache = new Dictionary<int, List<TicketDetailDto>>();
-        var newVisible = new HashSet<int>();
-
+        var newTexts = new Dictionary<int, string>(); var newCache = new Dictionary<int, List<TicketDetailDto>>(); var newVisible = new HashSet<int>();
         for (int i = 0; i < _quoteDto.Items.Count; i++)
         {
             var old = i < index ? i : i + 1;
@@ -389,30 +314,22 @@
             if (_filteredTicketsCache.TryGetValue(old, out var c)) newCache[i] = c;
             if (_ticketSuggestionsVisible.Contains(old)) newVisible.Add(i);
         }
-        _ticketSearchTexts = newTexts;
-        _filteredTicketsCache = newCache;
-        _ticketSuggestionsVisible = newVisible;
+        _ticketSearchTexts = newTexts; _filteredTicketsCache = newCache; _ticketSuggestionsVisible = newVisible;
         RecalculateTotals();
     }
 
     private void RecalculateTotals()
     {
         _calculatedSubtotal = _quoteDto.Items.Sum(i => i.Quantity * i.UnitPrice);
-        _calculatedTax = _calculatedSubtotal * 0.16m;
-        _calculatedTotal = _calculatedSubtotal + _calculatedTax;
+        _calculatedTax = _calculatedSubtotal * 0.16m; _calculatedTotal = _calculatedSubtotal + _calculatedTax;
         StateHasChanged();
     }
 
-    // ── Submit ────────────────────────────────────────────────────────────────
-    // ── Submit ────────────────────────────────────────────────────────────────
     private async Task HandleSubmit()
     {
         _showSuggestions = false;
         if (_quoteDto.ClientId == 0) { _errorMessage = "Debe seleccionar un cliente de la lista."; return; }
-
-        foreach (var item in _quoteDto.Items)
-            if (!item.TicketId.HasValue || item.TicketId.Value == 0) item.TicketId = null;
-
+        foreach (var item in _quoteDto.Items) if (!item.TicketId.HasValue || item.TicketId.Value == 0) item.TicketId = null;
         _isSaving = true; _errorMessage = null; StateHasChanged();
         try
         {
@@ -433,49 +350,34 @@
         finally { _isSaving = false; StateHasChanged(); }
     }
 
-    // Convierte el JSON de error del backend en un mensaje legible
     private static string ParseApiError(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return "Error desconocido.";
-
         try
         {
-            using var doc = System.Text.Json.JsonDocument.Parse(
-                raw.Contains("{") ? raw[raw.IndexOf('{')..] : raw);
-
+            using var doc = System.Text.Json.JsonDocument.Parse(raw.Contains("{") ? raw[raw.IndexOf('{')..] : raw);
             var root = doc.RootElement;
-
-            // Caso 1: tiene campo "errors" con validaciones por campo
             if (root.TryGetProperty("errors", out var errors))
             {
                 var msgs = new List<string>();
                 foreach (var field in errors.EnumerateObject())
                 {
-                    // Nombre amigable del campo
                     var friendlyField = field.Name switch
                     {
-                        var f when f.StartsWith("Items[") =>
-                            $"Artículo #{int.Parse(f[6..f.IndexOf(']')]) + 1} — {GetFieldLabel(f[(f.IndexOf('.') + 1)..])}",
+                        var f when f.StartsWith("Items[") => $"Artículo #{int.Parse(f[6..f.IndexOf(']')]) + 1} — {GetFieldLabel(f[(f.IndexOf('.') + 1)..])}",
                         "ClientId" => "Cliente",
                         "ValidUntil" => "Válida Hasta",
                         "Status" => "Estado",
                         "Notes" => "Notas",
                         _ => field.Name
                     };
-
-                    foreach (var msg in field.Value.EnumerateArray())
-                        msgs.Add($"• {friendlyField}: {msg.GetString()}");
+                    foreach (var msg in field.Value.EnumerateArray()) msgs.Add($"• {friendlyField}: {msg.GetString()}");
                 }
                 return msgs.Any() ? string.Join("\n", msgs) : "Error de validación.";
             }
-
-            // Caso 2: tiene campo "title" genérico
-            if (root.TryGetProperty("title", out var title))
-                return title.GetString() ?? "Error del servidor.";
+            if (root.TryGetProperty("title", out var title)) return title.GetString() ?? "Error del servidor.";
         }
-        catch { /* Si no es JSON válido, devolver el raw */ }
-
-        // Caso 3: mensaje plano
+        catch { }
         return raw.Length > 300 ? raw[..300] + "..." : raw;
     }
 
@@ -490,7 +392,6 @@
     };
 
     private void Cancel() => DialogService.Close(false);
-
     private void Notify(string t, string m, NotificationSeverity s) =>
         NotificationService.Notify(new NotificationMessage { Severity = s, Summary = t, Detail = m, Duration = 4000 });
 }

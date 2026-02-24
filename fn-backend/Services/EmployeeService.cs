@@ -36,26 +36,7 @@ public class EmployeeService : IEmployeeService
             var user = await _userManager.FindByIdAsync(emp.UserId);
             var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
 
-            employeeDtos.Add(new EmployeeDto
-            {
-                Id = emp.Id,
-                UserId = emp.UserId,
-                Email = user?.Email ?? string.Empty,
-                RoleName = roles.FirstOrDefault() ?? string.Empty,
-                FullName = emp.FullName,
-                RFC = emp.RFC,
-                CURP = emp.CURP,
-                Position = emp.Position,
-                Department = emp.Department,
-                Phone = emp.Phone,
-                Address = emp.Address,
-                HireDate = emp.HireDate,
-                Salary = emp.Salary,
-                IsActive = emp.IsActive,
-                EmergencyContactName = emp.EmergencyContactName,
-                EmergencyContactPhone = emp.EmergencyContactPhone,
-                Notes = emp.Notes
-            });
+            employeeDtos.Add(MapToDto(emp, user, roles));
         }
 
         return employeeDtos;
@@ -69,26 +50,7 @@ public class EmployeeService : IEmployeeService
         var user = await _userManager.FindByIdAsync(employee.UserId);
         var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
 
-        return new EmployeeDto
-        {
-            Id = employee.Id,
-            UserId = employee.UserId,
-            Email = user?.Email ?? string.Empty,
-            RoleName = roles.FirstOrDefault() ?? string.Empty,
-            FullName = employee.FullName,
-            RFC = employee.RFC,
-            CURP = employee.CURP,
-            Position = employee.Position,
-            Department = employee.Department,
-            Phone = employee.Phone,
-            Address = employee.Address,
-            HireDate = employee.HireDate,
-            Salary = employee.Salary,
-            IsActive = employee.IsActive,
-            EmergencyContactName = employee.EmergencyContactName,
-            EmergencyContactPhone = employee.EmergencyContactPhone,
-            Notes = employee.Notes
-        };
+        return MapToDto(employee, user, roles);
     }
 
     public async Task<EmployeeDto?> GetEmployeeByUserIdAsync(string userId)
@@ -106,11 +68,9 @@ public class EmployeeService : IEmployeeService
         try
         {
             var employee = await _context.Employees.FindAsync(id);
-
             if (employee == null)
                 return (false, "Empleado no encontrado");
 
-            // 🔄 Cambiar estado
             employee.IsActive = !employee.IsActive;
             employee.UpdatedAt = DateTime.UtcNow;
 
@@ -118,7 +78,6 @@ public class EmployeeService : IEmployeeService
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("🔄 Estado de empleado cambiado: {Id}", id);
-
             return (true, null);
         }
         catch (Exception ex)
@@ -128,23 +87,14 @@ public class EmployeeService : IEmployeeService
         }
     }
 
-
     public async Task<ServiceResult<EmployeeDto>> CreateEmployeeAsync(EmployeeDto dto)
     {
-        // ✅ 1. Validar que el rol sea válido para empleados
         var validRoles = new[] { "Empleado", "Supervisor", "Administracion" };
         if (!validRoles.Contains(dto.RoleName))
-        {
-            return ServiceResult<EmployeeDto>.Failure(
-                "El rol debe ser Empleado, Supervisor o Administracion");
-        }
+            return ServiceResult<EmployeeDto>.Failure("El rol debe ser Empleado, Supervisor o Administracion");
 
-        // ✅ 2. Crear el usuario primero
         if (string.IsNullOrEmpty(dto.Password))
-        {
-            return ServiceResult<EmployeeDto>.Failure(
-                "La contraseña es requerida para crear un empleado");
-        }
+            return ServiceResult<EmployeeDto>.Failure("La contraseña es requerida para crear un empleado");
 
         var user = new IdentityUser
         {
@@ -155,37 +105,24 @@ public class EmployeeService : IEmployeeService
 
         var userResult = await _userManager.CreateAsync(user, dto.Password);
         if (!userResult.Succeeded)
-        {
-            return ServiceResult<EmployeeDto>.Failure(
-                userResult.Errors.Select(e => e.Description));
-        }
+            return ServiceResult<EmployeeDto>.Failure(userResult.Errors.Select(e => e.Description));
 
-        // ✅ 3. Asignar rol
         var roleResult = await _userManager.AddToRoleAsync(user, dto.RoleName);
         if (!roleResult.Succeeded)
         {
             await _userManager.DeleteAsync(user);
-            return ServiceResult<EmployeeDto>.Failure(
-                roleResult.Errors.Select(e => e.Description));
+            return ServiceResult<EmployeeDto>.Failure(roleResult.Errors.Select(e => e.Description));
         }
 
-        // ✅ 4. Crear el empleado
         var employee = new Employee
         {
             UserId = user.Id,
             FullName = dto.FullName,
-            RFC = dto.RFC,
-            CURP = dto.CURP,
+            Phone = dto.Phone,
             Position = dto.Position,
             Department = dto.Department,
-            Phone = dto.Phone,
-            Address = dto.Address,
             HireDate = dto.HireDate,
-            Salary = dto.Salary,
             IsActive = dto.IsActive,
-            EmergencyContactName = dto.EmergencyContactName,
-            EmergencyContactPhone = dto.EmergencyContactPhone,
-            Notes = dto.Notes,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -197,19 +134,14 @@ public class EmployeeService : IEmployeeService
             dto.Id = employee.Id;
             dto.UserId = user.Id;
 
-            _logger.LogInformation(
-                "✅ Empleado creado: {FullName} (User: {UserId})",
-                employee.FullName, user.Id);
-
+            _logger.LogInformation("✅ Empleado creado: {FullName} (User: {UserId})", employee.FullName, user.Id);
             return ServiceResult<EmployeeDto>.Success(dto);
         }
         catch (Exception ex)
         {
-            // Rollback: eliminar usuario si falla la creación del empleado
             await _userManager.DeleteAsync(user);
             _logger.LogError(ex, "❌ Error al crear empleado");
-            return ServiceResult<EmployeeDto>.Failure(
-                $"Error al guardar el empleado: {ex.Message}");
+            return ServiceResult<EmployeeDto>.Failure($"Error al guardar el empleado: {ex.Message}");
         }
     }
 
@@ -217,27 +149,16 @@ public class EmployeeService : IEmployeeService
     {
         var employee = await _context.Employees.FindAsync(id);
         if (employee == null)
-        {
             return ServiceResult<bool>.Failure("Empleado no encontrado");
-        }
 
-        // ✅ Actualizar datos del empleado
         employee.FullName = dto.FullName;
-        employee.RFC = dto.RFC;
-        employee.CURP = dto.CURP;
+        employee.Phone = dto.Phone;
         employee.Position = dto.Position;
         employee.Department = dto.Department;
-        employee.Phone = dto.Phone;
-        employee.Address = dto.Address;
         employee.HireDate = dto.HireDate;
-        employee.Salary = dto.Salary;
         employee.IsActive = dto.IsActive;
-        employee.EmergencyContactName = dto.EmergencyContactName;
-        employee.EmergencyContactPhone = dto.EmergencyContactPhone;
-        employee.Notes = dto.Notes;
         employee.UpdatedAt = DateTime.UtcNow;
 
-        // ✅ Actualizar email y rol del usuario
         var user = await _userManager.FindByIdAsync(employee.UserId);
         if (user != null)
         {
@@ -245,7 +166,6 @@ public class EmployeeService : IEmployeeService
             user.UserName = dto.Email;
             await _userManager.UpdateAsync(user);
 
-            // Cambiar rol si es necesario
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (currentRoles.FirstOrDefault() != dto.RoleName)
             {
@@ -265,16 +185,11 @@ public class EmployeeService : IEmployeeService
     {
         var employee = await _context.Employees.FindAsync(id);
         if (employee == null)
-        {
             return ServiceResult<bool>.Failure("Empleado no encontrado");
-        }
 
-        // ✅ Eliminar también el usuario asociado
         var user = await _userManager.FindByIdAsync(employee.UserId);
         if (user != null)
-        {
             await _userManager.DeleteAsync(user);
-        }
 
         _context.Employees.Remove(employee);
         await _context.SaveChangesAsync();
@@ -288,7 +203,6 @@ public class EmployeeService : IEmployeeService
         var employees = await _context.Employees
             .Where(e => e.IsActive &&
                        (e.FullName.Contains(query) ||
-                        e.RFC.Contains(query) ||
                         e.Position.Contains(query) ||
                         e.Department.Contains(query)))
             .OrderBy(e => e.FullName)
@@ -301,22 +215,23 @@ public class EmployeeService : IEmployeeService
         {
             var user = await _userManager.FindByIdAsync(emp.UserId);
             var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
-
-            result.Add(new EmployeeDto
-            {
-                Id = emp.Id,
-                UserId = emp.UserId,
-                Email = user?.Email ?? string.Empty,
-                RoleName = roles.FirstOrDefault() ?? string.Empty,
-                FullName = emp.FullName,
-                RFC = emp.RFC,
-                Position = emp.Position,
-                Department = emp.Department,
-                Phone = emp.Phone,
-                IsActive = emp.IsActive
-            });
+            result.Add(MapToDto(emp, user, roles));
         }
 
         return result;
     }
+
+    private static EmployeeDto MapToDto(Employee emp, IdentityUser? user, IList<string> roles) => new()
+    {
+        Id = emp.Id,
+        UserId = emp.UserId,
+        Email = user?.Email ?? string.Empty,
+        RoleName = roles.FirstOrDefault() ?? string.Empty,
+        FullName = emp.FullName,
+        Phone = emp.Phone,
+        Position = emp.Position,
+        Department = emp.Department,
+        HireDate = emp.HireDate,
+        IsActive = emp.IsActive
+    };
 }

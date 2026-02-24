@@ -7,81 +7,90 @@
     <Authorized>
         <aside class="fs-sidebar @(Collapsed ? "is-collapsed" : "")">
 
-            <div class="fs-sidebar__section">
-                <div class="fs-sidebar__title">General</div>
+            @if (_canViewDashboard)
+            {
+                <div class="fs-sidebar__section">
+                    <div class="fs-sidebar__title">General</div>
 
-                @if (_canViewDashboard)
-                {
                     <NavLink class="fs-navlink" href="/dashboard" Match="NavLinkMatch.All" title="Panel">
                         <i class="bi bi-house"></i><span>Panel</span>
                     </NavLink>
-                }
-            </div>
+                </div>
+            }
 
-            <div class="fs-sidebar__section">
-                <div class="fs-sidebar__title">Catálogos</div>
+            @if (_canViewClients || _canViewEmployees)
+            {
+                <div class="fs-sidebar__section">
+                    <div class="fs-sidebar__title">Catálogos</div>
 
-                @if (_canViewClients)
-                {
-                    <NavLink class="fs-navlink" href="clientes" Match="NavLinkMatch.Prefix" title="Clientes">
-                        <i class="bi bi-people"></i><span>Clientes</span>
-                    </NavLink>
-                }
+                    @if (_canViewClients)
+                    {
+                        <NavLink class="fs-navlink" href="clientes" Match="NavLinkMatch.Prefix" title="Clientes">
+                            <i class="bi bi-people"></i><span>Clientes</span>
+                        </NavLink>
+                    }
 
-                @if (_canViewEmployees)
-                {
-                    <NavLink class="fs-navlink" href="empleados" Match="NavLinkMatch.Prefix" title="Empleados">
-                        <i class="bi bi-person-badge"></i><span>Empleados</span>
-                    </NavLink>
-                }
-            </div>
+                    @if (_canViewEmployees)
+                    {
+                        <NavLink class="fs-navlink" href="empleados" Match="NavLinkMatch.Prefix" title="Empleados">
+                            <i class="bi bi-person-badge"></i><span>Empleados</span>
+                        </NavLink>
+                    }
+                </div>
+            }
 
-            <div class="fs-sidebar__section">
-                <div class="fs-sidebar__title">Operación</div>
+            @if (_canViewProjects || _canViewTickets)
+            {
+                <div class="fs-sidebar__section">
+                    <div class="fs-sidebar__title">Operación</div>
 
-                @if (_canViewProjects)
-                {
-                    <NavLink class="fs-navlink" href="proyectos" Match="NavLinkMatch.Prefix" title="Proyectos">
-                        <i class="bi bi-folder"></i><span>Proyectos</span>
-                    </NavLink>
-                }
+                    @if (_canViewProjects)
+                    {
+                        <NavLink class="fs-navlink" href="proyectos" Match="NavLinkMatch.Prefix" title="Proyectos">
+                            <i class="bi bi-folder"></i><span>Proyectos</span>
+                        </NavLink>
+                    }
 
-                @if (_canViewTickets)
-                {
-                    <NavLink class="fs-navlink" href="tickets" Match="NavLinkMatch.Prefix" title="Tickets">
-                        <i class="bi bi-ticket-perforated"></i><span>Tickets</span>
-                    </NavLink>
-                }
-            </div>
+                    @if (_canViewTickets)
+                    {
+                        <NavLink class="fs-navlink" href="tickets" Match="NavLinkMatch.Prefix" title="Tickets">
+                            <i class="bi bi-ticket-perforated"></i><span>Tickets</span>
+                        </NavLink>
+                    }
+                </div>
+            }
 
-            <div class="fs-sidebar__section">
-                <div class="fs-sidebar__title">Ventas</div>
+            @if (_canViewQuotes || _canViewInvoices)
+            {
+                <div class="fs-sidebar__section">
+                    <div class="fs-sidebar__title">Ventas</div>
 
-                @if (_canViewQuotes)
-                {
-                    <NavLink class="fs-navlink" href="cotizaciones" Match="NavLinkMatch.Prefix" title="Cotizaciones">
-                        <i class="bi bi-file-earmark-text"></i><span>Cotizaciones</span>
-                    </NavLink>
-                }
+                    @if (_canViewQuotes)
+                    {
+                        <NavLink class="fs-navlink" href="cotizaciones" Match="NavLinkMatch.Prefix" title="Cotizaciones">
+                            <i class="bi bi-file-earmark-text"></i><span>Cotizaciones</span>
+                        </NavLink>
+                    }
 
-                @if (_canViewInvoices)
-                {
-                    <NavLink class="fs-navlink" href="facturas" Match="NavLinkMatch.Prefix" title="Facturas">
-                        <i class="bi bi-receipt-cutoff"></i><span>Facturas</span>
-                    </NavLink>
-                }
-            </div>
+                    @if (_canViewInvoices)
+                    {
+                        <NavLink class="fs-navlink" href="facturas" Match="NavLinkMatch.Prefix" title="Facturas">
+                            <i class="bi bi-receipt-cutoff"></i><span>Facturas</span>
+                        </NavLink>
+                    }
+                </div>
+            }
 
-            <div class="fs-sidebar__section">
-                <div class="fs-sidebar__title">Análisis</div>
+            @if (_canViewReports)
+            {
+                <div class="fs-sidebar__section">
+                    <div class="fs-sidebar__title">Análisis</div>
 
-                @if (_canViewReports)
-                {
                     <NavLink class="fs-navlink" href="reportes" Match="NavLinkMatch.Prefix" title="Reportes">
                         <i class="bi bi-flag"></i><span>Reportes</span>
                     </NavLink>
-                }
-            </div>
+                </div>
+            }
 
             @if (_isAdminArea)
             {
@@ -89,7 +98,7 @@
                     <div class="fs-sidebar__title">Admin</div>
 
                     <NavLink class="fs-navlink" href="permisos" Match="NavLinkMatch.Prefix" title="Permisos">
-                        <i class="bi bi-key-fill fs-3" "></i><span>Permisos</span>
+                        <i class="bi bi-key-fill fs-3"></i><span>Permisos</span>
                     </NavLink>
 
                     @if (_canViewUsers)
@@ -100,6 +109,7 @@
                     }
                 </div>
             }
+
         </aside>
     </Authorized>
 </AuthorizeView>
@@ -138,7 +148,6 @@
 
         if (user.Identity?.IsAuthenticated != true)
         {
-            // reset
             _isAdminArea = false;
             _canViewDashboard = _canViewTickets = _canViewClients = _canViewProjects = false;
             _canViewQuotes = _canViewInvoices = _canViewReports = _canViewUsers = _canViewEmployees = false;

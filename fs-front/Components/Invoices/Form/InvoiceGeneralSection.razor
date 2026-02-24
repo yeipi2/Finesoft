@@ -1,176 +1,151 @@
 ﻿@using fs_front.DTO
+@using fs_front.Components.Shared
+<FormSection Title="Información General"
+             IconClass="bi-receipt"
+             IsComplete="@IsComplete">
 
-<div class="accordion-item">
-    <h2 class="accordion-header" id="headingGeneral">
-        <button class="accordion-button @(IsComplete ? "" : "text-danger")"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapseInvoiceGeneral"
-                aria-expanded="true"
-                aria-controls="collapseInvoiceGeneral"
-                @onclick="() => OnToggle.InvokeAsync(1)">
-            <i class="bi bi-receipt me-2"></i>
-            <strong>Información General</strong>
-            @if (!IsComplete)
+    <div class="row g-3">
+
+        @* ── Cliente ── *@
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">
+                Cliente <span class="text-danger">*</span>
+            </label>
+            @if (IsLoadingClients)
             {
-                <span class="badge bg-danger ms-2">Incompleto</span>
+                <div class="d-flex align-items-center">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span>Cargando clientes...</span>
+                </div>
             }
             else
             {
-                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-            }
-        </button>
-    </h2>
-    <div id="collapseInvoiceGeneral"
-         class="accordion-collapse collapse @(IsActive ? "show" : "")"
-         aria-labelledby="headingGeneral">
-        <div class="accordion-body">
-            <div class="row g-3">
+                <div class="position-relative">
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           placeholder="Buscar cliente por nombre..."
+                           value="@_clientSearchText"
+                           @oninput="HandleClientInput"
+                           @onkeydown="HandleKeyDown"
+                           @onfocus="HandleClientFocus"
+                           @onblur="HandleClientBlur"
+                           autocomplete="off" />
 
-                @* ── Cliente ── *@
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold">
-                        Cliente <span class="text-danger">*</span>
-                    </label>
-                    @if (IsLoadingClients)
+                    @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
                     {
-                        <div class="d-flex align-items-center">
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                            <span>Cargando clientes...</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="position-relative">
-                            <input type="text"
-                                   class="form-control form-control-sm"
-                                   placeholder="Buscar cliente por nombre..."
-                                   value="@_clientSearchText"
-                                   @oninput="HandleClientInput"
-                                   @onkeydown="HandleKeyDown"
-                                   @onfocus="HandleClientFocus"
-                                   @onblur="HandleClientBlur"
-                                   autocomplete="off" />
-
-                            @if (_showSuggestions && !string.IsNullOrWhiteSpace(_clientSearchText) && _filteredClients.Any())
+                        <div class="autocomplete-dropdown">
+                            @foreach (var client in _filteredClients.Take(10))
                             {
-                                <div class="autocomplete-dropdown">
-                                    @foreach (var client in _filteredClients.Take(10))
-                                    {
-                                        <div class="autocomplete-item"
-                                             @onmousedown="@(() => SelectClient(client))"
-                                             @onmousedown:preventDefault>
-                                            @client.CompanyName
-                                        </div>
-                                    }
+                                <div class="autocomplete-item"
+                                     @onmousedown="@(() => SelectClient(client))"
+                                     @onmousedown:preventDefault>
+                                    @client.CompanyName
                                 </div>
                             }
                         </div>
-
-                        @if (Dto.ClientId > 0 && SelectedClient != null)
-                        {
-                            <small class="text-success mt-1 d-block">
-                                ✓ Cliente: <strong>@SelectedClient.CompanyName</strong>
-                            </small>
-                        }
-                        @if (Dto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
-                        {
-                            <div class="form-text text-danger mt-1">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                Debe seleccionar un cliente de la lista
-                            </div>
-                        }
                     }
                 </div>
 
-                @* ── Tipo de Factura ── *@
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold">
-                        Tipo de Factura <span class="text-danger">*</span>
-                    </label>
-                    <select class="form-select form-select-sm"
-                            @bind="Dto.InvoiceType"
-                            @bind:after="NotifyChanged">
-                        <option value="Event">Por Evento</option>
-                        <option value="Monthly">Mensual</option>
-                    </select>
-                </div>
-
-                @* ── Fecha de Factura ── *@
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold">
-                        Fecha de Factura <span class="text-danger">*</span>
-                    </label>
-                    <InputDate class="form-control form-control-sm"
-                               @bind-Value="Dto.InvoiceDate"
-                               @bind-Value:after="NotifyChanged" />
-                </div>
-
-                @* ── Fecha de Vencimiento ── *@
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold">
-                        Fecha de Vencimiento <span class="text-danger">*</span>
-                    </label>
-                    <InputDate class="form-control form-control-sm"
-                               @bind-Value="Dto.DueDate"
-                               @bind-Value:after="NotifyChanged" />
-                </div>
-
-                @* ── Estado ── *@
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold">
-                        Estado <span class="text-danger">*</span>
-                    </label>
-                    <select class="form-select form-select-sm"
-                            @bind="Dto.Status"
-                            disabled="@(!IsEditMode)"
-                            @bind:after="NotifyChanged">
-                        <option value="Borrador">Borrador</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Pagada">Pagada</option>
-                        <option value="Vencida">Vencida</option>
-                        <option value="Cancelada">Cancelada</option>
-                    </select>
-                    @if (!IsEditMode)
-                    {
-                        <small class="text-muted d-block mt-1">
-                            Al crear, la factura inicia como <strong>Borrador</strong>
-                        </small>
-                    }
-                </div>
-
-                <InvoicePaymentTermsSection PaymentType="@Dto.PaymentType"
-                                            PaymentMethod="@Dto.PaymentMethod"
-                                            PaymentTypeChanged="HandlePaymentTypeChanged"
-                                            PaymentMethodChanged="HandlePaymentMethodChanged" />
-
-            </div>
+                @if (Dto.ClientId > 0 && SelectedClient != null)
+                {
+                    <small class="text-success mt-1 d-block">
+                        ✓ Cliente: <strong>@SelectedClient.CompanyName</strong>
+                    </small>
+                }
+                @if (Dto.ClientId == 0 && !string.IsNullOrEmpty(_clientSearchText))
+                {
+                    <div class="form-text text-danger mt-1">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Debe seleccionar un cliente de la lista
+                    </div>
+                }
+            }
         </div>
+
+        @* ── Tipo de Factura ── *@
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">
+                Tipo de Factura <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm"
+                    @bind="Dto.InvoiceType"
+                    @bind:after="NotifyChanged">
+                <option value="Event">Por Evento</option>
+                <option value="Monthly">Mensual</option>
+            </select>
+        </div>
+
+        @* ── Fecha de Factura ── *@
+        <div class="col-md-4">
+            <label class="form-label small fw-bold">
+                Fecha de Factura <span class="text-danger">*</span>
+            </label>
+            <InputDate class="form-control form-control-sm"
+                       @bind-Value="Dto.InvoiceDate"
+                       @bind-Value:after="NotifyChanged" />
+        </div>
+
+        @* ── Fecha de Vencimiento ── *@
+        <div class="col-md-4">
+            <label class="form-label small fw-bold">
+                Fecha de Vencimiento <span class="text-danger">*</span>
+            </label>
+            <InputDate class="form-control form-control-sm"
+                       @bind-Value="Dto.DueDate"
+                       @bind-Value:after="NotifyChanged" />
+        </div>
+
+        @* ── Estado ── *@
+        <div class="col-md-4">
+            <label class="form-label small fw-bold">
+                Estado <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm"
+                    @bind="Dto.Status"
+                    disabled="@(!IsEditMode)"
+                    @bind:after="NotifyChanged">
+                <option value="Borrador">Borrador</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Pagada">Pagada</option>
+                <option value="Vencida">Vencida</option>
+                <option value="Cancelada">Cancelada</option>
+            </select>
+            @if (!IsEditMode)
+            {
+                <small class="text-muted d-block mt-1">
+                    Al crear, la factura inicia como <strong>Borrador</strong>
+                </small>
+            }
+        </div>
+
+        <InvoicePaymentTermsSection PaymentType="@Dto.PaymentType"
+                                    PaymentMethod="@Dto.PaymentMethod"
+                                    PaymentTypeChanged="HandlePaymentTypeChanged"
+                                    PaymentMethodChanged="HandlePaymentMethodChanged" />
+
     </div>
-</div>
+
+</FormSection>
 
 @code {
-    [Parameter] public InvoiceDto Dto { get; set; } = new();
-    [Parameter] public List<ClientDto> AllClients { get; set; } = new();
-    [Parameter] public ClientDto? SelectedClient { get; set; }
-    [Parameter] public bool IsLoadingClients { get; set; }
-    [Parameter] public bool IsEditMode { get; set; }
-    [Parameter] public bool IsComplete { get; set; }
-    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public InvoiceDto       Dto              { get; set; } = new();
+    [Parameter] public List<ClientDto>  AllClients        { get; set; } = new();
+    [Parameter] public ClientDto?       SelectedClient    { get; set; }
+    [Parameter] public bool             IsLoadingClients  { get; set; }
+    [Parameter] public bool             IsEditMode        { get; set; }
+    [Parameter] public bool             IsComplete        { get; set; }
 
-    [Parameter] public EventCallback<ClientDto?> OnClientSelected { get; set; }
-    [Parameter] public EventCallback<string> OnSearchTextChange { get; set; }
-    [Parameter] public EventCallback OnChanged { get; set; }
-    [Parameter] public EventCallback OnPaymentTypeChange { get; set; }
-    [Parameter] public EventCallback<int> OnToggle { get; set; }
+    [Parameter] public EventCallback<ClientDto?> OnClientSelected    { get; set; }
+    [Parameter] public EventCallback<string>     OnSearchTextChange  { get; set; }
+    [Parameter] public EventCallback             OnChanged           { get; set; }
+    [Parameter] public EventCallback             OnPaymentTypeChange { get; set; }
 
-    private List<ClientDto> _filteredClients = new();
-    private bool _showSuggestions = false;
-    private string _clientSearchText = "";
+    private List<ClientDto> _filteredClients  = new();
+    private bool            _showSuggestions  = false;
+    private string          _clientSearchText = "";
 
     protected override void OnParametersSet()
     {
-        // Sync search text with selected client on edit load
         if (string.IsNullOrEmpty(_clientSearchText) && SelectedClient != null)
             _clientSearchText = SelectedClient.CompanyName;
     }
@@ -210,9 +185,9 @@
     private void SelectClient(ClientDto client)
     {
         _clientSearchText = client.CompanyName;
-        _showSuggestions = false;
-        _filteredClients = new();
-        Dto.ClientId = client.Id ?? 0;
+        _showSuggestions  = false;
+        _filteredClients  = new();
+        Dto.ClientId      = client.Id ?? 0;
         OnClientSelected.InvokeAsync(client);
         OnChanged.InvokeAsync();
     }

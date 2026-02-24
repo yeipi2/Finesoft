@@ -1,11 +1,10 @@
 ﻿@* fs-front/Components/Clients/Form/CompanyDataSection.razor *@
 @using fs_front.DTO
+@using fs_front.Components.Shared
 
-<AccordionSection Title="Datos de la Empresa"
-                  IconClass="bi-building"
-                  IsComplete="@IsComplete"
-                  IsExpanded="@IsExpanded"
-                  OnToggle="@OnToggle">
+<FormSection Title="Datos de la Empresa"
+             IconClass="bi-building"
+             IsComplete="@IsComplete">
 
     <div class="row g-3">
         <div class="col-12">
@@ -58,14 +57,12 @@
         }
     </div>
 
-</AccordionSection>
+</FormSection>
 
 @code {
     [Parameter] public ClientDto Model { get; set; } = new();
     [Parameter] public Dictionary<string, string> ValidationErrors { get; set; } = new();
     [Parameter] public bool IsComplete { get; set; }
-    [Parameter] public bool IsExpanded { get; set; }
     [Parameter] public bool IsEditMode { get; set; }
-    [Parameter] public EventCallback OnToggle { get; set; }
     [Parameter] public Action? OnValidate { get; set; }
 }

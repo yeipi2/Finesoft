@@ -1,95 +1,140 @@
-﻿@using fs_front.DTO
+﻿@* fs-front/Components/Employees/Form/WorkDataSection.razor *@
+@using fs_front.DTO
+@using fs_front.Components.Shared
 
-<div class="accordion-item">
-    <h2 class="accordion-header" id="headingWork">
-        <button class="accordion-button collapsed @(IsComplete ? "" : "text-danger")"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapseWork"
-                aria-expanded="false"
-                aria-controls="collapseWork"
-                @onclick="OnToggle">
-            <i class="bi bi-briefcase me-2"></i>
-            <strong>Datos Laborales</strong>
-            @if (!IsComplete)
+<FormSection Title="Datos Laborales"
+             IconClass="bi-briefcase"
+             IsComplete="@IsComplete">
+
+    <div class="row g-3">
+
+        @* PUESTO *@
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">
+                Puesto <span class="text-danger">*</span>
+            </label>
+
+            @if (!_useCustomPosition)
             {
-                <span class="badge bg-danger ms-2">Incompleto</span>
+                <InputSelect class="form-select form-select-sm"
+                             Value="@Employee.Position"
+                             ValueChanged="@((string v) => OnPositionSelected(v))"
+                             ValueExpression="@(() => Employee.Position)">
+                    <option value="">-- Seleccionar Puesto --</option>
+                    <optgroup label="Dirección">
+                        <option value="CEO (Director General)">CEO (Director General)</option>
+                    </optgroup>
+                    <optgroup label="Desarrollo">
+                        <option value="Líder de Desarrollo">Líder de Desarrollo</option>
+                        <option value="Desarrollador">Desarrollador</option>
+                    </optgroup>
+                    <optgroup label="Administración">
+                        <option value="Administración">Administración</option>
+                    </optgroup>
+                </InputSelect>
+                <ValidationMessage For="@(() => Employee.Position)" />
+                <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-muted"
+                        @onclick="EnableCustomPosition">
+                    <i class="bi bi-pencil me-1"></i>Escribir manualmente
+                </button>
             }
             else
             {
-                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                <InputText class="form-control form-control-sm"
+                           placeholder="Escribe el puesto"
+                           Value="@Employee.Position"
+                           ValueChanged="@(v => { Employee.Position = v; OnChanged?.Invoke(); })"
+                           ValueExpression="@(() => Employee.Position)" />
+                <ValidationMessage For="@(() => Employee.Position)" />
+                <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-muted"
+                        @onclick="EnableDropdownPosition">
+                    <i class="bi bi-list me-1"></i>Seleccionar de la lista
+                </button>
             }
-        </button>
-    </h2>
-    <div id="collapseWork"
-         class="accordion-collapse collapse @(IsExpanded ? "show" : "")"
-         aria-labelledby="headingWork">
-        <div class="accordion-body">
-            <div class="row g-3">
+        </div>
 
-                <div class="col-md-6">
-                    <label for="Position" class="form-label small fw-bold">
-                        Puesto <span class="text-danger">*</span>
-                    </label>
-                    <InputText id="Position"
-                               class="form-control form-control-sm"
-                               placeholder="Desarrollador, Gerente, etc."
-                               Value="@Employee.Position"
-                               ValueChanged="@(v => { Employee.Position = v; OnChanged?.Invoke(); })"
-                               ValueExpression="@(() => Employee.Position)" />
-                    <ValidationMessage For="@(() => Employee.Position)" />
-                </div>
+        @* DEPARTAMENTO - solo lectura, se llena automático *@
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">Departamento</label>
+            <input class="form-control form-control-sm @(_useCustomPosition ? "" : "bg-light")"
+                   value="@Employee.Department"
+                   placeholder="@(_useCustomPosition ? "Escribe el departamento" : "Se asigna automáticamente")"
+                   readonly="@(!_useCustomPosition)"
+                   @oninput="@(e => { if (_useCustomPosition) { Employee.Department = e.Value?.ToString() ?? ""; OnChanged?.Invoke(); } })" />
+            @if (!_useCustomPosition && !string.IsNullOrEmpty(Employee.Department))
+            {
+                <small class="text-success">
+                    <i class="bi bi-check-circle me-1"></i>Asignado automáticamente
+                </small>
+            }
+        </div>
 
-                <div class="col-md-6">
-                    <label for="Department" class="form-label small fw-bold">Departamento</label>
-                    <InputText id="Department"
-                               class="form-control form-control-sm"
-                               placeholder="TI, Ventas, RRHH, etc."
-                               @bind-Value="Employee.Department" />
-                </div>
-
-                <div class="col-md-6">
-                    <label for="HireDate" class="form-label small fw-bold">
-                        Fecha de Contratación <span class="text-danger">*</span>
-                    </label>
-                    <InputDate id="HireDate"
-                               class="form-control form-control-sm"
-                               Value="@Employee.HireDate"
-                               ValueChanged="@((DateTime v) => { Employee.HireDate = v; OnChanged?.Invoke(); })"
-                               ValueExpression="@(() => Employee.HireDate)" />
-                    <ValidationMessage For="@(() => Employee.HireDate)" />
-                </div>
-
-                <div class="col-md-6">
-                    <label for="Salary" class="form-label small fw-bold">Salario (Mensual MXN)</label>
-                    <InputNumber id="Salary"
-                                 class="form-control form-control-sm"
-                                 placeholder="0.00"
-                                 @bind-Value="Employee.Salary" />
-                    <small class="text-muted">Campo opcional y confidencial</small>
-                    <ValidationMessage For="@(() => Employee.Salary)" />
-                </div>
-
-                <div class="col-12">
-                    <div class="form-check form-switch">
-                        <InputCheckbox id="IsActive"
-                                       class="form-check-input"
-                                       @bind-Value="Employee.IsActive" />
-                        <label class="form-check-label small fw-bold" for="IsActive">
-                            Empleado Activo
-                        </label>
-                    </div>
-                </div>
-
+        <div class="col-12">
+            <div class="form-check form-switch">
+                <InputCheckbox id="IsActive"
+                               class="form-check-input"
+                               @bind-Value="Employee.IsActive" />
+                <label class="form-check-label small fw-bold" for="IsActive">
+                    Empleado Activo
+                </label>
             </div>
         </div>
     </div>
-</div>
+
+</FormSection>
 
 @code {
     [Parameter] public EmployeeDto Employee { get; set; } = new();
-    [Parameter] public bool IsExpanded { get; set; }
     [Parameter] public bool IsComplete { get; set; }
     [Parameter] public Action? OnChanged { get; set; }
-    [Parameter] public EventCallback OnToggle { get; set; }
+
+    private bool _useCustomPosition = false;
+
+    // Mapa puesto → departamento
+    private static readonly Dictionary<string, string> PositionDepartmentMap = new()
+    {
+        { "CEO (Director General)",  "Dirección"      },
+        { "Líder de Desarrollo",     "Desarrollo"     },
+        { "Desarrollador",           "Desarrollo"     },
+        { "Administración",          "Administración" }
+    };
+
+    protected override void OnParametersSet()
+    {
+        // Si al cargar el puesto no está en la lista predefinida, activar modo texto
+        if (!string.IsNullOrEmpty(Employee.Position) &&
+            !PositionDepartmentMap.ContainsKey(Employee.Position))
+        {
+            _useCustomPosition = true;
+        }
+    }
+
+    private void OnPositionSelected(string position)
+    {
+        Employee.Position = position;
+
+        // Asignar departamento automáticamente
+        if (PositionDepartmentMap.TryGetValue(position, out var dept))
+            Employee.Department = dept;
+        else
+            Employee.Department = string.Empty;
+
+        OnChanged?.Invoke();
+    }
+
+    private void EnableCustomPosition()
+    {
+        Employee.Position = string.Empty;
+        Employee.Department = string.Empty;
+        _useCustomPosition = true;
+        OnChanged?.Invoke();
+    }
+
+    private void EnableDropdownPosition()
+    {
+        Employee.Position = string.Empty;
+        Employee.Department = string.Empty;
+        _useCustomPosition = false;
+        OnChanged?.Invoke();
+    }
 }

@@ -1,43 +1,29 @@
-﻿@* Sección acordeón: Configuración del proyecto (IsActive) — Opcional *@
+﻿@* fs-front/Components/Projects/Form/ConfigSection.razor *@
 @using fs_front.DTO
+@using fs_front.Components.Shared
+<FormSection Title="Configuración"
+             IconClass="bi-gear"
+             IsComplete="true"
+             IsOptional="true">
 
-<div class="accordion-item">
-    <h2 class="accordion-header" id="headingConfig">
-        <button class="accordion-button collapsed"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapseConfig"
-                aria-expanded="false"
-                aria-controls="collapseConfig">
-            <i class="bi bi-gear me-2"></i>
-            <strong>Configuración</strong>
-            <span class="badge bg-secondary ms-2">Opcional</span>
-        </button>
-    </h2>
-    <div id="collapseConfig"
-         class="accordion-collapse collapse"
-         aria-labelledby="headingConfig"
-         data-bs-parent="#projectAccordion">
-        <div class="accordion-body">
-            <div class="row g-3">
-                <div class="col-12">
-                    <div class="form-check form-switch">
-                        <InputCheckbox id="IsActive"
-                                       class="form-check-input"
-                                       @bind-Value="Model.IsActive" />
-                        <label class="form-check-label small fw-bold" for="IsActive">
-                            Proyecto Activo
-                        </label>
-                    </div>
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Determina si el proyecto puede recibir nuevos tickets
-                    </small>
-                </div>
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="form-check form-switch">
+                <InputCheckbox id="IsActive"
+                               class="form-check-input"
+                               @bind-Value="Model.IsActive" />
+                <label class="form-check-label small fw-bold" for="IsActive">
+                    Proyecto Activo
+                </label>
             </div>
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Determina si el proyecto puede recibir nuevos tickets
+            </small>
         </div>
     </div>
-</div>
+
+</FormSection>
 
 @code {
     [Parameter, EditorRequired] public ProjectDto Model { get; set; } = default!;

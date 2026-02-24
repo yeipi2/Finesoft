@@ -1,5 +1,4 @@
-﻿@* Modal de creación/edición de ticket.
-   Usa: TicketInfoSection + TicketDetailsSection *@
+﻿@* Modal de creación/edición de ticket. *@
 @using fs_front.DTO
 @using Radzen
 @using Radzen.Blazor
@@ -21,27 +20,26 @@
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
                 </div>
             }
-            <div class="accordion mb-3" id="ticketAccordion">
-                <TicketInfoSection Model="_ticketDto"
-                                   IsComplete="_section1Complete"
-                                   OnChange="ValidateSections" />
-                <TicketDetailsSection Model="_ticketDto"
-                                      IsComplete="_section2Complete"
-                                      IsEditMode="_isEditMode"
-                                      IsLoadingProjects="_isLoadingProjects"
-                                      IsLoadingUsers="_isLoadingUsers"
-                                      Projects="_projects"
-                                      FilteredProjects="_filteredProjects"
-                                      SelectedProject="_selectedProject"
-                                      ProjectSearchText="@_projectSearchText"
-                                      Employees="_employees"
-                                      OnProjectSearchInput="OnProjectSearchInput"
-                                      OnProjectSelected="SelectProject" />
-            </div>
-        </div>  @* ← cierra body AQUÍ *@
+
+            <TicketInfoSection Model="_ticketDto"
+                               IsComplete="_section1Complete"
+                               OnChange="ValidateSections" />
+
+            <TicketDetailsSection Model="_ticketDto"
+                                  IsComplete="_section2Complete"
+                                  IsEditMode="_isEditMode"
+                                  IsLoadingProjects="_isLoadingProjects"
+                                  IsLoadingUsers="_isLoadingUsers"
+                                  Projects="_projects"
+                                  FilteredProjects="_filteredProjects"
+                                  SelectedProject="_selectedProject"
+                                  ProjectSearchText="@_projectSearchText"
+                                  Employees="_employees"
+                                  OnProjectSearchInput="OnProjectSearchInput"
+                                  OnProjectSelected="SelectProject" />
+        </div>
 
         <div class="ticket-form-footer">
-            @* ← footer FUERA del body *@
             <div>
                 @if (!_allSectionsComplete)
                 {
@@ -71,7 +69,6 @@
 @code {
     [Parameter] public int? TicketId { get; set; }
 
-    // ── Estado interno ────────────────────────────────────────────────────────
     private TicketDto _ticketDto = new();
     private List<ProjectDetailDto>? _projects;
     private List<ProjectDetailDto> _filteredProjects = new();
@@ -79,17 +76,16 @@
     private string _projectSearchText = string.Empty;
     private List<UserDto>? _employees;
 
-    private bool _isSaving          = false;
+    private bool _isSaving = false;
     private bool _isLoadingProjects = false;
-    private bool _isLoadingUsers    = false;
+    private bool _isLoadingUsers = false;
     private string? _errorMessage;
 
-    private bool _isEditMode       => TicketId.HasValue;
-    private bool _section1Complete  = false;
-    private bool _section2Complete  => _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0;
+    private bool _isEditMode => TicketId.HasValue;
+    private bool _section1Complete = false;
+    private bool _section2Complete => _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0;
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
 
-    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadInitialData();
@@ -102,29 +98,28 @@
         ValidateSections();
     }
 
-    // ── Carga de datos ────────────────────────────────────────────────────────
     private async Task LoadInitialData()
     {
         _isLoadingProjects = true;
-        _isLoadingUsers    = true;
+        _isLoadingUsers = true;
         StateHasChanged();
         try
         {
             try
             {
-                _projects        = await ProjectApiService.GetProjectsAsync();
+                _projects = await ProjectApiService.GetProjectsAsync();
                 _filteredProjects = _projects ?? new List<ProjectDetailDto>();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error al cargar proyectos: {ex.Message}");
-                _projects         = new List<ProjectDetailDto>();
+                _projects = new List<ProjectDetailDto>();
                 _filteredProjects = new List<ProjectDetailDto>();
             }
 
             try
             {
-                var users  = await UserApiService.GetUsersAsync();
+                var users = await UserApiService.GetUsersAsync();
                 _employees = users?.Where(u => u.RoleName?.Equals("Empleado", StringComparison.OrdinalIgnoreCase) == true).ToList()
                              ?? new List<UserDto>();
             }
@@ -137,7 +132,7 @@
         finally
         {
             _isLoadingProjects = false;
-            _isLoadingUsers    = false;
+            _isLoadingUsers = false;
             StateHasChanged();
         }
     }
@@ -151,21 +146,21 @@
             {
                 _ticketDto = new TicketDto
                 {
-                    Id               = ticket.Id,
-                    Title            = ticket.Title,
-                    Description      = ticket.Description,
-                    ProjectId        = ticket.ProjectId > 0 ? ticket.ProjectId : null,
-                    ServiceId        = ticket.ServiceId > 0 ? ticket.ServiceId : null,
-                    Status           = ticket.Status,
-                    Priority         = ticket.Priority,
+                    Id = ticket.Id,
+                    Title = ticket.Title,
+                    Description = ticket.Description,
+                    ProjectId = ticket.ProjectId > 0 ? ticket.ProjectId : null,
+                    ServiceId = ticket.ServiceId > 0 ? ticket.ServiceId : null,
+                    Status = ticket.Status,
+                    Priority = ticket.Priority,
                     AssignedToUserId = ticket.AssignedToUserId,
-                    EstimatedHours   = ticket.EstimatedHours,
-                    ActualHours      = ticket.ActualHours
+                    EstimatedHours = ticket.EstimatedHours,
+                    ActualHours = ticket.ActualHours
                 };
 
                 if (_ticketDto.ProjectId.HasValue)
                 {
-                    _selectedProject   = _projects?.FirstOrDefault(p => p.Id == _ticketDto.ProjectId.Value);
+                    _selectedProject = _projects?.FirstOrDefault(p => p.Id == _ticketDto.ProjectId.Value);
                     _projectSearchText = _selectedProject?.Name ?? string.Empty;
                 }
             }
@@ -173,15 +168,14 @@
         catch (Exception ex) { _errorMessage = $"Error al cargar ticket: {ex.Message}"; }
     }
 
-    // ── Autocomplete de proyecto ──────────────────────────────────────────────
     private void OnProjectSearchInput(ChangeEventArgs e)
     {
         _projectSearchText = e.Value?.ToString() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(_projectSearchText))
         {
-            _filteredProjects  = _projects ?? new List<ProjectDetailDto>();
-            _selectedProject   = null;
+            _filteredProjects = _projects ?? new List<ProjectDetailDto>();
+            _selectedProject = null;
             _ticketDto.ProjectId = null;
         }
         else
@@ -196,7 +190,7 @@
 
             if (exact is null && _selectedProject is not null)
             {
-                _selectedProject   = null;
+                _selectedProject = null;
                 _ticketDto.ProjectId = null;
             }
         }
@@ -205,14 +199,13 @@
 
     private void SelectProject(ProjectDetailDto project)
     {
-        _selectedProject     = project;
+        _selectedProject = project;
         _ticketDto.ProjectId = project.Id;
         _ticketDto.ServiceId = null;
-        _projectSearchText   = project.Name;
+        _projectSearchText = project.Name;
         ValidateSections();
     }
 
-    // ── Validación ────────────────────────────────────────────────────────────
     private void ValidateSections()
     {
         _section1Complete = !string.IsNullOrWhiteSpace(_ticketDto.Title)
@@ -220,7 +213,6 @@
         StateHasChanged();
     }
 
-    // ── Submit ────────────────────────────────────────────────────────────────
     private async Task HandleSubmit()
     {
         if (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0)
@@ -230,7 +222,7 @@
             return;
         }
 
-        _isSaving     = true;
+        _isSaving = true;
         _errorMessage = null;
         StateHasChanged();
 
@@ -251,7 +243,7 @@
         }
         catch (HttpRequestException httpEx) when (httpEx.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            _errorMessage = "No tienes permisos para realizar esta acción. Contacta a un administrador.";
+            _errorMessage = "No tienes permisos para realizar esta acción.";
         }
         catch (Exception ex) { _errorMessage = $"Error: {ex.Message}"; }
         finally { _isSaving = false; StateHasChanged(); }
@@ -262,6 +254,9 @@
     private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
-            Severity = severity, Summary = title, Detail = message, Duration = 4000
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
         });
 }

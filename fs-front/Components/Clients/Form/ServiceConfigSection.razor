@@ -1,11 +1,10 @@
 ﻿@* fs-front/Components/Clients/Form/ServiceConfigSection.razor *@
 @using fs_front.DTO
+@using fs_front.Components.Shared
 
-<AccordionSection Title="Configuración de Servicio"
-                  IconClass="bi-gear"
-                  IsComplete="@IsComplete"
-                  IsExpanded="@IsExpanded"
-                  OnToggle="@OnToggle">
+<FormSection Title="Configuración de Servicio"
+             IconClass="bi-gear"
+             IsComplete="@IsComplete">
 
     <div class="row g-3">
         <div class="col-md-6">
@@ -55,13 +54,11 @@
         </div>
     </div>
 
-</AccordionSection>
+</FormSection>
 
 @code {
     [Parameter] public ClientDto Model { get; set; } = new();
     [Parameter] public Dictionary<string, string> ValidationErrors { get; set; } = new();
     [Parameter] public bool IsComplete { get; set; }
-    [Parameter] public bool IsExpanded { get; set; }
-    [Parameter] public EventCallback OnToggle { get; set; }
     [Parameter] public Action? OnValidate { get; set; }
 }

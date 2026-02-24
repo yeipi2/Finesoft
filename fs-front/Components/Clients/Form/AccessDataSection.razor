@@ -1,11 +1,10 @@
 ﻿@* fs-front/Components/Clients/Form/AccessDataSection.razor *@
 @using fs_front.DTO
+@using fs_front.Components.Shared
 
-<AccordionSection Title="Datos de Acceso al Sistema"
-                  IconClass="bi-lock"
-                  IsComplete="@IsComplete"
-                  IsExpanded="@IsExpanded"
-                  OnToggle="@OnToggle">
+<FormSection Title="Datos de Acceso al Sistema"
+             IconClass="bi-lock"
+             IsComplete="@IsComplete">
 
     <div class="row g-3">
         <div class="col-md-6">
@@ -57,21 +56,16 @@
         </div>
     </div>
 
-</AccordionSection>
+</FormSection>
 
 @code {
     [Parameter] public ClientDto Model { get; set; } = new();
     [Parameter] public Dictionary<string, string> ValidationErrors { get; set; } = new();
     [Parameter] public bool IsComplete { get; set; }
-    [Parameter] public bool IsExpanded { get; set; }
-    [Parameter] public EventCallback OnToggle { get; set; }
     [Parameter] public Action? OnValidate { get; set; }
     [Parameter] public EventCallback<ChangeEventArgs> OnPasswordInput { get; set; }
 
     private bool ShowPassword { get; set; }
 
-    private void TogglePasswordVisibility()
-    {
-        ShowPassword = !ShowPassword;
-    }
+    private void TogglePasswordVisibility() => ShowPassword = !ShowPassword;
 }

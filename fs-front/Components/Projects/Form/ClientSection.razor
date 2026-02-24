@@ -1,136 +1,79 @@
-﻿@* Sección acordeón: selección de cliente con autocomplete *@
+﻿@* fs-front/Components/Projects/Form/ClientSection.razor *@
 @using fs_front.DTO
+@using fs_front.Components.Shared
 
-<div class="accordion-item">
-    <h2 class="accordion-header" id="headingClient">
-        <button class="accordion-button collapsed @(IsComplete ? "" : "text-danger")"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapseClient"
-                aria-expanded="false"
-                aria-controls="collapseClient">
-            <i class="bi bi-person-badge me-2"></i>
-            <strong>Cliente</strong>
-            @if (!IsComplete)
-            {
-                <span class="badge bg-danger ms-2">Incompleto</span>
-            }
-            else
-            {
-                <i class="bi bi-check-circle-fill text-success ms-2"></i>
-            }
-        </button>
-    </h2>
-    <div id="collapseClient"
-         class="accordion-collapse collapse"
-         aria-labelledby="headingClient"
-         data-bs-parent="#projectAccordion">
-        <div class="accordion-body">
+<FormSection Title="Cliente"
+             IconClass="bi-person-badge"
+             IsComplete="@IsComplete">
 
-            @if (IsLoadingClients)
-            {
-                <div class="d-flex align-items-center">
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    <span>Cargando clientes...</span>
-                </div>
-            }
-            else
-            {
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label for="ClientSearch" class="form-label small fw-bold">
-                            Cliente <span class="text-danger">*</span>
-                        </label>
-                        <div class="position-relative">
-                            <input type="text"
-                                   class="form-control form-control-sm"
-                                   id="ClientSearch"
-                                   placeholder="Buscar cliente por nombre..."
-                                   value="@SearchText"
-                                   @oninput="HandleSearchInput"
-                                   @onkeydown="HandleKeyDown"
-                                   @onfocus="() => _showSuggestions = true"
-                                   autocomplete="off" />
+    @if (IsLoadingClients)
+    {
+        <div class="d-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span>Cargando clientes...</span>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            <div class="col-12">
+                <label for="ClientSearch" class="form-label small fw-bold">
+                    Cliente <span class="text-danger">*</span>
+                </label>
+                <div class="position-relative">
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           id="ClientSearch"
+                           placeholder="Buscar cliente por nombre..."
+                           value="@SearchText"
+                           @oninput="HandleSearchInput"
+                           @onkeydown="HandleKeyDown"
+                           @onfocus="() => _showSuggestions = true"
+                           autocomplete="off" />
 
-                            @if (_showSuggestions && FilteredClients.Any())
+                    @if (_showSuggestions && FilteredClients.Any())
+                    {
+                        <div class="autocomplete-dropdown">
+                            @foreach (var client in FilteredClients.Take(10))
                             {
-                                <div class="autocomplete-dropdown">
-                                    @foreach (var client in FilteredClients.Take(10))
-                                    {
-                                        <div class="autocomplete-item" @onclick="() => HandleSelectClient(client)">
-                                            @client.CompanyName
-                                        </div>
-                                    }
+                                <div class="autocomplete-item" @onclick="() => HandleSelectClient(client)">
+                                    @client.CompanyName
                                 </div>
                             }
                         </div>
-
-                        @if (Model.ClientId > 0 && SelectedClient != null)
-                        {
-                            <small class="text-success mt-1 d-block">
-                                <i class="bi bi-check-circle-fill me-1"></i>
-                                Cliente seleccionado: <strong>@SelectedClient.CompanyName</strong>
-                            </small>
-                        }
-
-                        @if (Model.ClientId == 0 && !string.IsNullOrEmpty(SearchText))
-                        {
-                            <small class="text-danger mt-1 d-block">
-                                <i class="bi bi-exclamation-triangle me-1"></i>
-                                Debe seleccionar un cliente de la lista
-                            </small>
-                        }
-
-                        <ValidationMessage For="@(() => Model.ClientId)" />
-                    </div>
+                    }
                 </div>
-            }
 
+                @if (Model.ClientId > 0 && SelectedClient != null)
+                {
+                    <small class="text-success mt-1 d-block">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Cliente seleccionado: <strong>@SelectedClient.CompanyName</strong>
+                    </small>
+                }
+
+                @if (Model.ClientId == 0 && !string.IsNullOrEmpty(SearchText))
+                {
+                    <small class="text-danger mt-1 d-block">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Debe seleccionar un cliente de la lista
+                    </small>
+                }
+
+                <ValidationMessage For="@(() => Model.ClientId)" />
+            </div>
         </div>
-    </div>
-</div>
-
-<style>
-    .autocomplete-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        max-height: 300px;
-        overflow-y: auto;
-        background-color: white;
-        border: 1px solid #ced4da;
-        border-top: none;
-        border-radius: 0 0 0.25rem 0.25rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .autocomplete-item {
-        padding: 0.5rem 0.75rem;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 0.875rem;
-    }
-
-        .autocomplete-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-</style>
+</FormSection>
 
 @code {
     [Parameter, EditorRequired] public ProjectDto Model { get; set; } = default!;
     [Parameter] public bool IsComplete { get; set; }
     [Parameter] public bool IsLoadingClients { get; set; }
-
     [Parameter] public string SearchText { get; set; } = string.Empty;
     [Parameter] public List<ClientDto> FilteredClients { get; set; } = new();
     [Parameter] public ClientDto? SelectedClient { get; set; }
-
     [Parameter] public EventCallback<ChangeEventArgs> OnSearchInput { get; set; }
     [Parameter] public EventCallback<ClientDto> OnClientSelected { get; set; }
 
