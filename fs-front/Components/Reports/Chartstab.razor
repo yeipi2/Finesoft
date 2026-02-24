@@ -1,0 +1,198 @@
+﻿@* Reports/ChartsTab.razor *@
+@using fs_front.DTO
+@using fs_front.Pages.Reports
+@using Radzen.Blazor
+
+<div class="row g-4">
+
+    @* ══ FILA 1: Área ingresos (col-8) | Donut tickets (col-4) ══ *@
+
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                <i class="bi bi-graph-up-arrow text-primary me-2"></i>
+                Tendencia de Ingresos — Últimos 12 Meses
+            </div>
+            <div class="card-body" style="height:310px">
+                @if (ShortTrends != null && ShortTrends.Any())
+                {
+                    <RadzenChart Style="height:285px">
+                        <RadzenAreaSeries Data="@ShortTrends"
+                                          CategoryProperty="ShortMonth"
+                                          ValueProperty="Revenue"
+                                          Title="Ingresos"
+                                          Stroke="#6366f1" StrokeWidth="2.5"
+                                          Fill="rgba(99,102,241,0.13)"
+                                          Smooth="true">
+                            <RadzenMarkers MarkerType="MarkerType.Circle" Size="6" />
+                        </RadzenAreaSeries>
+                        <RadzenCategoryAxis Padding="10" />
+                        <RadzenValueAxis Formatter="@ReportsHelpers.FormatCurrency">
+                            <RadzenGridLines Visible="true" Stroke="#f0f0f0" />
+                        </RadzenValueAxis>
+                        <RadzenLegend Position="LegendPosition.Top" />
+                        <RadzenTooltip />
+                    </RadzenChart>
+                }
+                else { <ChartEmpty Icon="bi-graph-up" /> }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                <i class="bi bi-pie-chart-fill text-success me-2"></i>
+                Distribución de Tickets
+            </div>
+            <div class="card-body p-1" style="height:310px">
+                @if (TicketStatusChart != null && TicketStatusChart.Any())
+                {
+                    <RadzenChart Style="height:300px">
+                        <RadzenDonutSeries Data="@TicketStatusChart"
+                                           CategoryProperty="Status"
+                                           ValueProperty="Count"
+                                           Fills="@TicketColors"
+                                           InnerRadius="0.42">
+                            <RadzenSeriesDataLabels Visible="false" />
+                        </RadzenDonutSeries>
+                        <RadzenLegend Position="LegendPosition.Bottom" />
+                        <RadzenTooltip />
+                    </RadzenChart>
+                }
+                else { <ChartEmpty Icon="bi-pie-chart" /> }
+            </div>
+        </div>
+    </div>
+
+    @* ══ FILA 2: Top clientes (col-6) | Cobranza (col-6) ══ *@
+
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                <i class="bi bi-trophy-fill text-warning me-2"></i>
+                Top 5 Clientes por Facturación
+            </div>
+            <div class="card-body" style="height:310px">
+                @if (TopClients != null && TopClients.Any())
+                {
+                    <RadzenChart Style="height:285px">
+                        <RadzenColumnSeries Data="@TopClients"
+                                            CategoryProperty="ClientName"
+                                            ValueProperty="TotalRevenue"
+                                            Title="Ingresos"
+                                            Fill="#f59e0b">
+                            <RadzenSeriesDataLabels Visible="true" />
+                        </RadzenColumnSeries>
+                        <RadzenCategoryAxis Padding="20" />
+                        <RadzenValueAxis Formatter="@ReportsHelpers.FormatCurrency">
+                            <RadzenGridLines Visible="true" Stroke="#f0f0f0" />
+                        </RadzenValueAxis>
+                        <RadzenLegend Visible="false" />
+                        <RadzenTooltip />
+                    </RadzenChart>
+                }
+                else { <ChartEmpty Icon="bi-bar-chart" /> }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                <i class="bi bi-wallet2 me-2" style="color:#0d9488"></i>
+                Cobranza por Cliente — Pagado vs Pendiente
+            </div>
+            <div class="card-body" style="height:310px">
+                @if (ClientReports != null && ClientReports.Any(c => c.TotalBilled > 0))
+                {
+                    var billed = ClientReports.Where(c => c.TotalBilled > 0).ToList();
+                    <RadzenChart Style="height:285px">
+                        <RadzenColumnSeries Data="@billed" CategoryProperty="ClientName"
+                                            ValueProperty="TotalPaid"     Title="Pagado"    Fill="#10b981" />
+                        <RadzenColumnSeries Data="@billed" CategoryProperty="ClientName"
+                                            ValueProperty="PendingAmount" Title="Pendiente" Fill="#f59e0b" />
+                        <RadzenCategoryAxis Padding="20" />
+                        <RadzenValueAxis Formatter="@ReportsHelpers.FormatCurrency">
+                            <RadzenGridLines Visible="true" Stroke="#f0f0f0" />
+                        </RadzenValueAxis>
+                        <RadzenLegend Position="LegendPosition.Top" />
+                        <RadzenTooltip />
+                    </RadzenChart>
+                }
+                else { <ChartEmpty Icon="bi-bar-chart" Text="No hay datos de facturación" /> }
+            </div>
+        </div>
+    </div>
+
+    @* ══ FILA 3: Horas proyectos (col-7) | Resumen financiero (col-5) ══ *@
+
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                <i class="bi bi-clock-history text-info me-2"></i>
+                Horas Estimadas vs Registradas por Proyecto
+            </div>
+            <div class="card-body" style="height:310px">
+                @if (ProjectReports != null && ProjectReports.Any())
+                {
+                    <RadzenChart Style="height:285px">
+                        <RadzenBarSeries Data="@ProjectReports" CategoryProperty="ProjectName"
+                                         ValueProperty="EstimatedHours" Title="Estimadas"   Fill="#c7d2fe" />
+                        <RadzenBarSeries Data="@ProjectReports" CategoryProperty="ProjectName"
+                                         ValueProperty="TotalHours"     Title="Registradas" Fill="#6366f1" />
+                        <RadzenCategoryAxis Padding="10" />
+                        <RadzenValueAxis>
+                            <RadzenGridLines Visible="true" Stroke="#f0f0f0" />
+                            <RadzenAxisTitle Text="Horas" />
+                        </RadzenValueAxis>
+                        <RadzenLegend Position="LegendPosition.Top" />
+                        <RadzenTooltip />
+                    </RadzenChart>
+                }
+                else { <ChartEmpty Icon="bi-clock" Text="Sin datos de proyectos" /> }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
+                <i class="bi bi-receipt-cutoff text-danger me-2"></i>
+                Resumen Financiero del Período
+            </div>
+            <div class="card-body" style="height:310px">
+                @if (FinancialSummary != null && FinancialSummary.Any())
+                {
+                    <RadzenChart Style="height:285px">
+                        <RadzenColumnSeries Data="@FinancialSummary"
+                                            CategoryProperty="Label"
+                                            ValueProperty="Amount"
+                                            Title="Monto"
+                                            Fills="@(new[]{"#6366f1","#10b981","#f59e0b","#ef4444"})">
+                            <RadzenSeriesDataLabels Visible="true" />
+                        </RadzenColumnSeries>
+                        <RadzenCategoryAxis Padding="20" />
+                        <RadzenValueAxis Formatter="@ReportsHelpers.FormatCurrency">
+                            <RadzenGridLines Visible="true" Stroke="#f0f0f0" />
+                        </RadzenValueAxis>
+                        <RadzenLegend Visible="false" />
+                        <RadzenTooltip />
+                    </RadzenChart>
+                }
+                else { <ChartEmpty Icon="bi-receipt" /> }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public List<ShortTrendItem>?       ShortTrends      { get; set; }
+    [Parameter] public List<TicketStatusChartDto>? TicketStatusChart { get; set; }
+    [Parameter] public string[]                    TicketColors      { get; set; } = Array.Empty<string>();
+    [Parameter] public List<TopClientDto>?         TopClients        { get; set; }
+    [Parameter] public List<ClientReportDto>?      ClientReports     { get; set; }
+    [Parameter] public List<ProjectReportDto>?     ProjectReports    { get; set; }
+    [Parameter] public List<FinSummaryItem>?       FinancialSummary  { get; set; }
+}

@@ -928,51 +928,58 @@ public class InvoiceService : IInvoiceService
     private void ComposeHeader(IContainer container, Invoice invoice)
     {
         var purpleColor = new Color(0xFF6B46C1);
-        var orangeColor = new Color(0xFFF97316);
 
-        container.Column(column =>
+        // Solo logo + título + número + fechas + estado — esto SÍ se repite en pág 2
+        container.BorderBottom(3).BorderColor(purpleColor).PaddingBottom(10).Row(row =>
         {
-            column.Item().BorderBottom(3).BorderColor(purpleColor).PaddingBottom(10).Row(row =>
+            row.ConstantItem(120).Column(logoCol =>
             {
-                row.ConstantItem(120).Column(logoCol =>
-                {
-                    var logoPath = Path.Combine(_environment.WebRootPath, "images", "LogoFinesoft.png");
-                    if (File.Exists(logoPath))
-                    {
-                        logoCol.Item().Image(logoPath).FitWidth();
-                    }
-                    else
-                    {
-                        logoCol.Item().Text("FINESOFT").FontSize(24).Bold().FontColor(purpleColor);
-                    }
-                });
-
-                row.RelativeItem().PaddingLeft(20).Column(col =>
-                {
-                    col.Item().Text("FACTURA").FontSize(28).Bold().FontColor(purpleColor);
-                    col.Item().Text(invoice.InvoiceNumber).FontSize(16).FontColor(Colors.Grey.Darken2);
-                });
-
-                row.RelativeItem().AlignRight().Column(col =>
-                {
-                    col.Item().Text($"Fecha: {invoice.InvoiceDate:dd/MM/yyyy}").FontSize(10);
-                    if (invoice.DueDate.HasValue)
-                    {
-                        col.Item().Text($"Vencimiento: {invoice.DueDate.Value:dd/MM/yyyy}").FontSize(10);
-                    }
-
-                    var statusColor = invoice.Status switch
-                    {
-                        "Pagada" => Colors.Green.Medium,
-                        "Cancelada" => Colors.Red.Medium,
-                        "Vencida" => Colors.Red.Darken1,
-                        _ => orangeColor
-                    };
-                    col.Item().Text($"Estado: {invoice.Status}").FontSize(10).Bold().FontColor(statusColor);
-                });
+                var logoPath = Path.Combine(_environment.WebRootPath, "images", "LogoFinesoft.png");
+                if (File.Exists(logoPath))
+                    logoCol.Item().Image(logoPath).FitWidth();
+                else
+                    logoCol.Item().Text("FINESOFT").FontSize(24).Bold().FontColor(purpleColor);
             });
 
-            column.Item().PaddingTop(20).Row(row =>
+            row.RelativeItem().PaddingLeft(20).Column(col =>
+            {
+                col.Item().Text("FACTURA").FontSize(28).Bold().FontColor(purpleColor);
+                col.Item().Text(invoice.InvoiceNumber).FontSize(16).FontColor(Colors.Grey.Darken2);
+            });
+
+            row.RelativeItem().AlignRight().Column(col =>
+            {
+                col.Item().Text($"Fecha: {invoice.InvoiceDate:dd/MM/yyyy}").FontSize(10);
+                if (invoice.DueDate.HasValue)
+                    col.Item().Text($"Vencimiento: {invoice.DueDate.Value:dd/MM/yyyy}").FontSize(10);
+
+                var statusColor = invoice.Status switch
+                {
+                    "Pagada" => Colors.Green.Medium,
+                    "Cancelada" => Colors.Red.Medium,
+                    "Vencida" => Colors.Red.Darken1,
+                    "Pendiente" => Colors.Grey.Medium,
+                    _ => Colors.Grey.Medium
+                };
+
+                col.Item().Row(r =>
+                {
+                    r.AutoItem().Text("Estado: ").FontSize(10).Bold().FontColor(Colors.Black);
+                    r.AutoItem().Text(invoice.Status).FontSize(10).Bold().FontColor(statusColor);
+                });
+            });
+        });
+    }
+
+    private void ComposeContent(IContainer container, Invoice invoice)
+    {
+        var purpleColor = "#6B46C1";
+        var infoColor = "#6B46C1";
+
+        container.PaddingVertical(20).Column(column =>
+        {
+            // ── Datos cliente/facturación — solo aparece UNA vez (está en Content) ──
+            column.Item().PaddingBottom(20).Row(row =>
             {
                 row.RelativeItem().Column(col =>
                 {
@@ -989,29 +996,17 @@ public class InvoiceService : IInvoiceService
 
                 row.RelativeItem().AlignRight().Column(col =>
                 {
-                    col.Item().Background(orangeColor).Padding(5)
+                    col.Item().Background(purpleColor).Padding(5)
                         .Text("DATOS DE FACTURACIÓN").FontSize(11).Bold().FontColor(Colors.White);
                     col.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
                     col.Item().PaddingTop(5).Text($"Tipo: {invoice.InvoiceType}").FontSize(10);
                     col.Item().Text($"Dirección: {invoice.Client?.Address}").FontSize(10);
                     if (!string.IsNullOrEmpty(invoice.PaymentMethod))
-                    {
                         col.Item().Text($"Método de pago: {invoice.PaymentMethod}").FontSize(10);
-                    }
                 });
             });
-        });
-    }
 
-    private void ComposeContent(IContainer container, Invoice invoice)
-    {
-        var purpleColor = "#6B46C1";
-        var orangeColor = "#F97316";
-        var infoColor = "#0EA5E9";
-
-        container.PaddingVertical(20).Column(column =>
-        {
-            // ⭐ NUEVA SECCIÓN: Tickets Asociados (igual que en cotizaciones)
+            // ── Tickets asociados ──────────────────────────────────────────────────
             var ticketItems = invoice.Items?
                 .Where(i => i.TicketId.HasValue && i.Ticket != null)
                 .ToList() ?? new List<InvoiceItem>();
@@ -1034,9 +1029,8 @@ public class InvoiceService : IInvoiceService
                         var ticketTitle = ticket.Title ?? "Sin título";
 
                         column.Item().PaddingVertical(10).Border(1).BorderColor(Colors.Grey.Lighten2)
-                            .Background(Colors.Blue.Lighten5).Padding(15).Column(ticketCol =>
+                            .Background(Colors.Grey.Lighten4).Padding(15).Column(ticketCol =>
                             {
-                                // Título del ticket
                                 ticketCol.Item().Row(row =>
                                 {
                                     row.ConstantItem(80).Text($"Ticket #{ticket.Id}").FontSize(12).Bold()
@@ -1044,33 +1038,26 @@ public class InvoiceService : IInvoiceService
                                     row.RelativeItem().Text(ticketTitle).FontSize(12).Bold();
                                 });
 
-                                ticketCol.Item().PaddingVertical(8).LineHorizontal(1)
-                                    .LineColor(Colors.Grey.Lighten2);
+                                ticketCol.Item().PaddingVertical(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
-                                // Información en 2 columnas
                                 ticketCol.Item().Row(row =>
                                 {
-                                    // Columna izquierda
                                     row.RelativeItem().Column(leftCol =>
                                     {
                                         leftCol.Item().PaddingBottom(8).Row(infoRow =>
                                         {
-                                            infoRow.ConstantItem(70).AlignLeft().Text("Cliente:").FontSize(10)
-                                                .Bold();
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Cliente:").FontSize(10).Bold();
                                             infoRow.RelativeItem().AlignLeft().Text(clientName).FontSize(10);
                                         });
-
                                         leftCol.Item().PaddingBottom(8).Row(infoRow =>
                                         {
-                                            infoRow.ConstantItem(70).AlignLeft().Text("Proyecto:").FontSize(10)
-                                                .Bold();
+                                            infoRow.ConstantItem(70).AlignLeft().Text("Proyecto:").FontSize(10).Bold();
                                             infoRow.RelativeItem().AlignLeft().Text(projectName).FontSize(10);
                                         });
                                     });
 
                                     row.ConstantItem(20);
 
-                                    // Columna derecha
                                     row.RelativeItem().Column(rightCol =>
                                     {
                                         rightCol.Item().PaddingBottom(8).Row(infoRow =>
@@ -1078,14 +1065,12 @@ public class InvoiceService : IInvoiceService
                                             infoRow.ConstantItem(70).AlignLeft().Text("Horas:").FontSize(10).Bold();
                                             infoRow.RelativeItem().AlignLeft().Text($"{hours:0.0} h").FontSize(10);
                                         });
-
                                         if (hourlyRate > 0)
                                         {
                                             var ticketCost = hours * hourlyRate;
                                             rightCol.Item().PaddingBottom(8).Row(infoRow =>
                                             {
-                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10)
-                                                    .Bold();
+                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10).Bold();
                                                 infoRow.RelativeItem().AlignLeft().Text($"${ticketCost:N2}")
                                                     .FontSize(10).FontColor(Colors.Green.Medium);
                                             });
@@ -1093,11 +1078,9 @@ public class InvoiceService : IInvoiceService
                                     });
                                 });
 
-                                // Descripción
                                 if (!string.IsNullOrWhiteSpace(description))
                                 {
-                                    ticketCol.Item().PaddingTop(8).LineHorizontal(1)
-                                        .LineColor(Colors.Grey.Lighten2);
+                                    ticketCol.Item().PaddingTop(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
                                     ticketCol.Item().PaddingTop(8).Column(descCol =>
                                     {
                                         descCol.Item().Text("Descripción:").FontSize(10).Bold();
@@ -1116,7 +1099,7 @@ public class InvoiceService : IInvoiceService
                 column.Item().PaddingTop(20);
             }
 
-            // ⭐ TABLA DE ARTÍCULOS
+            // ── Artículos ──────────────────────────────────────────────────────────
             column.Item().Text("ARTÍCULOS").FontSize(14).Bold().FontColor(purpleColor);
             column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(purpleColor);
 
@@ -1154,16 +1137,12 @@ public class InvoiceService : IInvoiceService
 
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).Text(description);
-
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignCenter().Text(ticketText).FontSize(9).FontColor(infoColor);
-
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignCenter().Text(item.Quantity.ToString("0"));
-
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignRight().Text($"${item.UnitPrice:N2}");
-
                     table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
                         .Padding(8).AlignRight().Text($"${item.Subtotal:N2}");
 
@@ -1171,7 +1150,7 @@ public class InvoiceService : IInvoiceService
                 }
             });
 
-            // ⭐ TOTALES
+            // ── Totales ────────────────────────────────────────────────────────────
             column.Item().PaddingTop(20).AlignRight().Column(totalsColumn =>
             {
                 totalsColumn.Item().Border(2).BorderColor(purpleColor).Padding(15).Column(col =>
@@ -1188,11 +1167,11 @@ public class InvoiceService : IInvoiceService
                         row.RelativeItem().AlignRight().Text($"${invoice.Tax:N2}").FontSize(11);
                     });
 
-                    col.Item().PaddingTop(10).BorderTop(2).BorderColor(orangeColor).PaddingTop(10).Row(row =>
+                    col.Item().PaddingTop(10).BorderTop(2).BorderColor(Colors.Black).PaddingTop(10).Row(row =>
                     {
-                        row.RelativeItem().Text("TOTAL:").FontSize(16).Bold().FontColor(purpleColor);
+                        row.RelativeItem().Text("TOTAL:").FontSize(16).Bold().FontColor(Colors.Black);
                         row.RelativeItem().AlignRight().Text($"${invoice.Total:N2}").FontSize(16).Bold()
-                            .FontColor(orangeColor);
+                            .FontColor(Colors.Black);
                     });
 
                     if (invoice.Payments.Any())
@@ -1216,6 +1195,7 @@ public class InvoiceService : IInvoiceService
                 });
             });
 
+            // ── Historial de pagos ─────────────────────────────────────────────────
             if (invoice.Payments.Any())
             {
                 column.Item().PaddingTop(20).Column(paymentsCol =>
@@ -1252,18 +1232,19 @@ public class InvoiceService : IInvoiceService
                             table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight()
                                 .Text($"${payment.Amount:N2}").FontSize(8);
                             table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
-                                .Text(payment.Reference).FontSize(8);
+                                .Text(payment.Reference ?? "-").FontSize(8);
                         }
                     });
                 });
             }
 
+            // ── Notas ──────────────────────────────────────────────────────────────
             if (!string.IsNullOrEmpty(invoice.Notes))
             {
-                column.Item().PaddingTop(20).Border(1).BorderColor(orangeColor).Background("#FFF7ED")
+                column.Item().PaddingTop(20).Border(1).BorderColor(purpleColor).Background("#F5F0FF")
                     .Padding(15).Column(col =>
                     {
-                        col.Item().Text("Notas:").Bold().FontColor(orangeColor).FontSize(12);
+                        col.Item().Text("Notas:").Bold().FontColor(purpleColor).FontSize(12);
                         col.Item().PaddingTop(5).Text(invoice.Notes).FontSize(10);
                     });
             }
@@ -1287,8 +1268,7 @@ public class InvoiceService : IInvoiceService
 
                 row.RelativeItem().AlignCenter().Column(col =>
                 {
-                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8)
-                        .FontColor(Colors.Grey.Medium);
+                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Medium);
                 });
 
                 row.RelativeItem().AlignRight().Column(col =>

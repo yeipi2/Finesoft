@@ -1,0 +1,63 @@
+﻿@* Reports/EmployeesTab.razor *@
+@using fs_front.DTO
+@using fs_front.Pages.Reports
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Empleado</th>
+                        <th class="text-center">Creados</th>
+                        <th class="text-center">Cerrados</th>
+                        <th class="text-center">Horas</th>
+                        <th>Tasa resolución</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (UserReports != null && UserReports.Any())
+                    {
+                        @foreach (var user in UserReports)
+                        {
+                            var rr = user.TicketsCreated > 0
+                            ? (double)user.TicketsClosed / user.TicketsCreated * 100 : 0;
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="emp-row">
+                                        <div class="emp-avatar">
+                                            @user.UserName.Substring(0, 1).ToUpper()
+                                        </div>
+                                        <span class="fw-bold">@user.UserName</span>
+                                    </div>
+                                </td>
+                                <td class="text-center">@user.TicketsCreated</td>
+                                <td class="text-center text-success fw-semibold">@user.TicketsClosed</td>
+                                <td class="text-center">@user.TotalHoursWorked.ToString("N0") h</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="mini-progress flex-grow-1" style="max-width:80px">
+                                            <div class="mini-progress__bar mini-progress__bar--@ReportsHelpers.PerfColor(rr, 50, 75)"
+                                                 style="width:@rr%"></div>
+                                        </div>
+                                        <small class="@ReportsHelpers.TextColor(rr, 50, 75) fw-semibold">
+                                            @rr.ToString("N0")%
+                                        </small>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="5" class="text-center py-4">No hay datos disponibles.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<UserReportDto>? UserReports { get; set; }
+}

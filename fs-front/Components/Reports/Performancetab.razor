@@ -1,0 +1,149 @@
+﻿@* Reports/PerformanceTab.razor *@
+@using fs_front.DTO
+@using fs_front.Pages.Reports
+
+@{
+    var resRate = Metrics?.TicketResolutionRate ?? 0;
+    var satScore = (Metrics?.ClientSatisfactionScore ?? 0) / 20m;
+    var billEff = (Metrics?.BillingEfficiency ?? 0) * 100;
+    var resUtil = (Metrics?.ResourceUtilization ?? 0) * 100;
+    var resolved = Metrics?.TotalTicketsResolved ?? 0;
+    var total = Metrics?.TotalTicketsCreated ?? 0;
+    var avgTime = Metrics?.AverageResolutionTime ?? 0;
+}
+
+<div class="row g-4">
+
+    @* ── Mini KPI cards (fila completa) ── *@
+    <div class="col-12">
+        <div class="perf-kpi-grid">
+            <div class="perf-kpi perf-kpi--@ReportsHelpers.PerfColor((double)resRate, 70, 85)">
+                <i class="bi bi-check2-all"></i>
+                <span class="perf-kpi__val">@resRate.ToString("N0")%</span>
+                <span class="perf-kpi__label">Tasa de Resolución</span>
+            </div>
+            <div class="perf-kpi perf-kpi--@ReportsHelpers.PerfColor((double)satScore * 20, 60, 80)">
+                <i class="bi bi-emoji-smile"></i>
+                <span class="perf-kpi__val">@satScore.ToString("N1") / 5</span>
+                <span class="perf-kpi__label">Satisfacción Cliente</span>
+            </div>
+            <div class="perf-kpi perf-kpi--@ReportsHelpers.PerfColor((double)billEff, 70, 90)">
+                <i class="bi bi-lightning-charge"></i>
+                <span class="perf-kpi__val">@billEff.ToString("N0")%</span>
+                <span class="perf-kpi__label">Eficiencia Facturación</span>
+            </div>
+            <div class="perf-kpi perf-kpi--@ReportsHelpers.PerfColor((double)resUtil, 60, 80)">
+                <i class="bi bi-cpu"></i>
+                <span class="perf-kpi__val">@resUtil.ToString("N0")%</span>
+                <span class="perf-kpi__label">Utilización Recursos</span>
+            </div>
+            <div class="perf-kpi perf-kpi--blue">
+                <i class="bi bi-ticket-perforated"></i>
+                <span class="perf-kpi__val">@resolved / @total</span>
+                <span class="perf-kpi__label">Resueltos / Total</span>
+            </div>
+            <div class="perf-kpi perf-kpi--@ReportsHelpers.PerfColor(
+                                     avgTime > 0 ? 100 - (double)Math.Min(avgTime, 100) : 100, 50, 75)">
+                <i class="bi bi-stopwatch"></i>
+                <span class="perf-kpi__val">@avgTime.ToString("N0") h</span>
+                <span class="perf-kpi__label">Tiempo Prom. Resolución</span>
+            </div>
+        </div>
+    </div>
+
+    @* ── Barras indicadores ── *@
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white fw-bold py-3">
+                <i class="bi bi-bar-chart-steps text-primary me-2"></i>Indicadores Clave
+            </div>
+            <div class="card-body">
+                <div class="perf-bar-list">
+                    <div class="perf-bar-item">
+                        <div class="perf-bar-item__top">
+                            <span>Tasa de Resolución</span>
+                            <strong class="@ReportsHelpers.TextColor((double)resRate, 70, 85)">@resRate.ToString("N1")%</strong>
+                        </div>
+                        <div class="perf-progress">
+                            <div class="perf-progress__fill perf-progress__fill--@ReportsHelpers.PerfColor((double)resRate, 70, 85)"
+                                 style="width:@Math.Min((double)resRate, 100)%"></div>
+                        </div>
+                        <small class="text-muted">@resolved cerrados de @total totales</small>
+                    </div>
+                    <div class="perf-bar-item">
+                        <div class="perf-bar-item__top">
+                            <span>Satisfacción del Cliente</span>
+                            <strong class="@ReportsHelpers.TextColor((double)satScore * 20, 60, 80)">@satScore.ToString("N1") / 5.0</strong>
+                        </div>
+                        <div class="perf-progress">
+                            <div class="perf-progress__fill perf-progress__fill--@ReportsHelpers.PerfColor((double)satScore * 20, 60, 80)"
+                                 style="width:@Math.Min((double)(satScore / 5 * 100), 100)%"></div>
+                        </div>
+                        <small class="text-muted">Basado en respuestas de clientes</small>
+                    </div>
+                    <div class="perf-bar-item">
+                        <div class="perf-bar-item__top">
+                            <span>Eficiencia de Facturación</span>
+                            <strong class="@ReportsHelpers.TextColor((double)billEff, 70, 90)">@billEff.ToString("N0")%</strong>
+                        </div>
+                        <div class="perf-progress">
+                            <div class="perf-progress__fill perf-progress__fill--@ReportsHelpers.PerfColor((double)billEff, 70, 90)"
+                                 style="width:@Math.Min((double)billEff, 100)%"></div>
+                        </div>
+                        <small class="text-muted">Horas reales vs estimadas</small>
+                    </div>
+                    <div class="perf-bar-item">
+                        <div class="perf-bar-item__top">
+                            <span>Utilización de Recursos</span>
+                            <strong class="@ReportsHelpers.TextColor((double)resUtil, 60, 80)">@resUtil.ToString("N0")%</strong>
+                        </div>
+                        <div class="perf-progress">
+                            <div class="perf-progress__fill perf-progress__fill--@ReportsHelpers.PerfColor((double)resUtil, 60, 80)"
+                                 style="width:@Math.Min((double)resUtil, 100)%"></div>
+                        </div>
+                        <small class="text-muted">Capacidad del equipo utilizada</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Estado de tickets ── *@
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white fw-bold py-3">
+                <i class="bi bi-clipboard-data text-success me-2"></i>Estado de Tickets
+            </div>
+            <div class="card-body">
+                @if (TicketStatusChart != null)
+                {
+                    @foreach (var status in TicketStatusChart)
+                    {
+                        var pct = total > 0 ? (double)status.Count / total * 100 : 0;
+                        <div class="ticket-status-row">
+                            <div class="ticket-status-row__dot" style="background:@status.Color"></div>
+                            <div class="ticket-status-row__body">
+                                <div class="ticket-status-row__top">
+                                    <span>@status.Status</span>
+                                    <strong>@status.Count <small class="text-muted fw-normal">(@pct.ToString("N0")%)</small></strong>
+                                </div>
+                                <div class="ticket-mini-bar">
+                                    <div style="width:@pct%; background:@status.Color; height:100%; border-radius:4px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="ticket-status-total">
+                        <span>Total tickets</span><strong>@total</strong>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public PerformanceMetricsDto? Metrics { get; set; }
+    [Parameter] public List<TicketStatusChartDto>? TicketStatusChart { get; set; }
+}

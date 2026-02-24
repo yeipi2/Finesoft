@@ -2047,7 +2047,14 @@ code {
         padding: 0.7rem 0.9rem !important;
     }
 
-        .rz-dialog-wrapper .rz-dialog-content > * {
+        /* Solo aplica a wrappers de formularios, NO al confirm */
+        .rz-dialog-wrapper .rz-dialog-content > .ticket-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .quote-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .invoice-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .client-form-container,
+        .rz-dialog-wrapper .rz-dialog-content > .employee-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .project-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .fs-dialog-form {
             width: 100% !important;
             flex: 1 !important;
             min-height: 0 !important;
@@ -2157,3 +2164,32 @@ code {
     [data-theme="dark"] .autocomplete-item:hover {
         background-color: #1a3a5c;
     }
+/* ============================================================
+   39. RADZEN CONFIRM DIALOG — BOTONES
+   ============================================================ */
+
+.rz-confirm .rz-dialog-content {
+    display: block !important;
+    overflow: visible !important;
+    padding: 1rem !important;
+}
+
+.rz-confirm .rz-dialog-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1rem !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+.rz-confirm .rz-button {
+    width: auto !important;
+    height: auto !important;
+    padding: 0.4rem 1.2rem !important;
+    font-size: 0.875rem !important;
+    min-height: unset !important;
+    min-width: unset !important;
+    flex: unset !important;
+    display: inline-flex !important;
+}

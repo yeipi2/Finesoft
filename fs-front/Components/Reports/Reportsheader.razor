@@ -1,0 +1,39 @@
+﻿@* Reports/ReportsHeader.razor *@
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-bar-chart-fill fs-1 text-primary me-3"></i>
+        <div>
+            <p class="display-6 fw-bolder mb-2">Panel de Reportes</p>
+            <p class="text-muted mb-0">Métricas clave, indicadores financieros y operativos</p>
+        </div>
+    </div>
+    <div class="d-flex gap-2 align-items-end">
+        <div>
+            <label class="form-label small text-muted">Desde</label>
+            <input type="date" class="form-control"
+                   value="@StartDate?.ToString("yyyy-MM-dd")"
+                   @onchange="e => StartDateChanged.InvokeAsync(
+                   DateTime.TryParse(e.Value?.ToString(), out var d) ? d : StartDate)" />
+        </div>
+        <div>
+            <label class="form-label small text-muted">Hasta</label>
+            <input type="date" class="form-control"
+                   value="@EndDate?.ToString("yyyy-MM-dd")"
+                   @onchange="e => EndDateChanged.InvokeAsync(
+                                          DateTime.TryParse(e.Value?.ToString(), out var d) ? d : EndDate)" />
+        </div>
+        <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold small mb-1"
+                @onclick="OnRefresh">
+            <i class="bi bi-filter"></i> Actualizar
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DateTime? StartDate { get; set; }
+    [Parameter] public DateTime? EndDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> StartDateChanged { get; set; }
+    [Parameter] public EventCallback<DateTime?> EndDateChanged { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+}

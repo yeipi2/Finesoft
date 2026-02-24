@@ -1,0 +1,126 @@
+﻿@* Reports/FinancialTab.razor *@
+@using fs_front.DTO
+@using fs_front.Pages.Reports
+
+<div class="row">
+
+    @* ── Resumen + barra de distribución ── *@
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white fw-bold py-3">
+                <i class="bi bi-receipt text-primary me-2"></i>Resumen Financiero
+            </div>
+            <div class="card-body">
+                <div class="fin-summary">
+                    <div class="fin-row fin-row--total">
+                        <span>Total Facturado</span>
+                        <span class="fin-val">$@Report?.TotalInvoiced.ToString("N2")</span>
+                    </div>
+                    <div class="fin-row">
+                        <span><i class="bi bi-check-circle-fill me-1 text-success"></i>Pagado</span>
+                        <span class="fin-val fin-val--green">$@Report?.TotalPaid.ToString("N2")</span>
+                    </div>
+                    <div class="fin-row">
+                        <span><i class="bi bi-clock-fill me-1 text-warning"></i>Pendiente</span>
+                        <span class="fin-val fin-val--orange">$@Report?.TotalPending.ToString("N2")</span>
+                    </div>
+                    <div class="fin-row">
+                        <span><i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Vencido</span>
+                        <span class="fin-val fin-val--red">$@Report?.TotalOverdue.ToString("N2")</span>
+                    </div>
+                    <div class="fin-row fin-row--meta">
+                        <span>Total Facturas</span>
+                        <span class="fin-val">@Report?.InvoicesCount</span>
+                    </div>
+                    <div class="fin-row fin-row--meta">
+                        <span>Facturas Pagadas</span>
+                        <span class="fin-val fin-val--green">@Report?.PaidInvoicesCount</span>
+                    </div>
+                    <div class="fin-row fin-row--meta">
+                        <span>Promedio por Factura</span>
+                        <span class="fin-val">$@Report?.AverageInvoiceAmount.ToString("N2")</span>
+                    </div>
+                    <div class="fin-row fin-row--meta">
+                        <span>Tiempo prom. de pago</span>
+                        <span class="fin-val">@Report?.AveragePaymentTime.ToString("N0") días</span>
+                    </div>
+                </div>
+
+                <div class="collection-bar-wrap">
+                    <p class="collection-bar-label">Distribución de Cobranza</p>
+                    <div class="collection-bar">
+                        <div class="collection-bar__paid" style="width:@PaidPct%"></div>
+                        <div class="collection-bar__pending" style="width:@PendPct%"></div>
+                        <div class="collection-bar__overdue" style="width:@OverPct%"></div>
+                    </div>
+                    <div class="collection-bar-legend">
+                        <span class="leg-paid">■ Pagado @PaidPct.ToString("N0")%</span>
+                        <span class="leg-pending">■ Pendiente @PendPct.ToString("N0")%</span>
+                        <span class="leg-overdue">■ Vencido @OverPct.ToString("N0")%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Tabla tendencia mensual ── *@
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white fw-bold py-3">
+                <i class="bi bi-table text-primary me-2"></i>Tendencia Mensual (12 meses)
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-secondary small text-uppercase ps-3">Mes</th>
+                            <th class="text-secondary small text-uppercase text-end">Pagado</th>
+                            <th class="text-secondary small text-uppercase text-end">Pendiente</th>
+                            <th class="text-secondary small text-uppercase text-center">Facturas</th>
+                            <th class="text-secondary small text-uppercase">Cobranza</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (RevenueTrends != null)
+                        {
+                            @foreach (var item in RevenueTrends.Where(t => t.InvoicesCount > 0))
+                            {
+                                var pct = item.TotalInvoiced > 0
+                                ? (double)(item.TotalPaid / item.TotalInvoiced * 100) : 0;
+                                <tr>
+                                    <td class="fw-bold ps-3">@item.Month</td>
+                                    <td class="text-end text-success">$@item.TotalPaid.ToString("N2")</td>
+                                    <td class="text-end @(item.TotalPending > 0 ? "text-warning fw-bold" : "text-muted")">
+                                        $@item.TotalPending.ToString("N2")
+                                    </td>
+                                    <td class="text-center">@item.InvoicesCount</td>
+                                    <td>
+                                        <div class="mini-progress">
+                                            <div class="mini-progress__bar" style="width:@pct%"></div>
+                                        </div>
+                                        <small class="text-muted">@pct.ToString("N0")%</small>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public FinancialReportDto? Report { get; set; }
+    [Parameter] public List<RevenueTrendDto>? RevenueTrends { get; set; }
+
+    private double PaidPct => Pct(Report?.TotalPaid ?? 0);
+    private double PendPct => Pct(Report?.TotalPending ?? 0);
+    private double OverPct => Pct(Report?.TotalOverdue ?? 0);
+
+    private double Pct(decimal val)
+    {
+        var total = Report?.TotalInvoiced ?? 0;
+        return total > 0 ? (double)(val / total * 100) : 0;
+    }
+}

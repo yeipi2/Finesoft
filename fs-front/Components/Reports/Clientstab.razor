@@ -1,0 +1,68 @@
+﻿@* Reports/ClientsTab.razor *@
+@using fs_front.DTO
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Cliente</th>
+                        <th class="text-center">Proyectos</th>
+                        <th class="text-center">Tickets</th>
+                        <th class="text-center">Abiertos</th>
+                        <th class="text-end">Facturado</th>
+                        <th class="text-end">Pagado</th>
+                        <th class="text-end pe-4">Pendiente</th>
+                        <th>Cobranza</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ClientReports != null && ClientReports.Any())
+                    {
+                        @foreach (var client in ClientReports)
+                        {
+                            var pct = client.TotalBilled > 0
+                            ? (double)(client.TotalPaid / client.TotalBilled * 100) : 0;
+                            <tr>
+                                <td class="fw-bold ps-4">@client.ClientName</td>
+                                <td class="text-center">@client.TotalProjects</td>
+                                <td class="text-center">@client.TotalTickets</td>
+                                <td class="text-center">
+                                    @if (client.OpenTickets > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark">@client.OpenTickets</span>
+                                    }
+                                    else
+                                    {
+
+                                        <span class="text-success">✓</span>
+                                    }
+                                </td>
+                                <td class="text-end">$@client.TotalBilled.ToString("N2")</td>
+                                <td class="text-end text-success">$@client.TotalPaid.ToString("N2")</td>
+                                <td class="text-end pe-4 @(client.PendingAmount > 0 ? "text-danger fw-bold" : "text-success")">
+                                    $@client.PendingAmount.ToString("N2")
+                                </td>
+                                <td>
+                                    <div class="mini-progress">
+                                        <div class="mini-progress__bar" style="width:@pct%"></div>
+                                    </div>
+                                    <small class="text-muted">@pct.ToString("N0")%</small>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="8" class="text-center py-4">No hay datos disponibles.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<ClientReportDto>? ClientReports { get; set; }
+}

@@ -1,0 +1,11 @@
+﻿@* Reports/ChartEmpty.razor — estado vacío reutilizable para todas las gráficas *@
+
+<div class="chart-empty">
+    <i class="bi @Icon fs-1 text-muted"></i>
+    <p class="text-muted mt-2 small">@Text</p>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "bi-bar-chart";
+    [Parameter] public string Text { get; set; } = "Sin datos disponibles";
+}

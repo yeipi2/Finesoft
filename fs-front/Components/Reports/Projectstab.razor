@@ -1,0 +1,61 @@
+﻿@* Reports/ProjectsTab.razor *@
+@using fs_front.DTO
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Proyecto</th>
+                        <th>Cliente</th>
+                        <th class="text-center">Horas Est.</th>
+                        <th class="text-center">Horas Real</th>
+                        <th class="text-center">Tickets</th>
+                        <th class="text-center">Cerrados</th>
+                        <th class="text-end pe-4">Ingresos</th>
+                        <th>Avance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ProjectReports != null && ProjectReports.Any())
+                    {
+                        @foreach (var project in ProjectReports)
+                        {
+                            var pct = project.TotalTickets > 0
+                            ? (double)project.ClosedTickets / project.TotalTickets * 100 : 0;
+                            var over = project.TotalHours > project.EstimatedHours;
+                            <tr>
+                                <td class="fw-bold ps-4">@project.ProjectName</td>
+                                <td class="text-muted">@project.ClientName</td>
+                                <td class="text-center">@project.EstimatedHours.ToString("N0")</td>
+                                <td class="text-center @(over ? "text-danger fw-bold" : "")">
+                                    @project.TotalHours.ToString("N0") @if (over) {
+                                    <small>↑</small>
+                                }
+                            </td>
+                            <td class="text-center">@project.TotalTickets</td>
+                            <td class="text-center text-success">@project.ClosedTickets</td>
+                            <td class="text-end pe-4 text-success fw-bold">$@project.Revenue.ToString("N2")</td>
+                            <td>
+                                <div class="mini-progress">
+                                    <div class="mini-progress__bar mini-progress__bar--green" style="width:@pct%"></div>
+                                </div>
+                                <small class="text-muted">@pct.ToString("N0")%</small>
+                            </td>
+                        </tr>
+                    }
+                                        }
+                                        else
+                    {
+                        <tr><td colspan="8" class="text-center py-4">No hay datos disponibles.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<ProjectReportDto>? ProjectReports { get; set; }
+}

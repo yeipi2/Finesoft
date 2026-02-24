@@ -1,0 +1,391 @@
+﻿@* Reports/ReportsStyles.razor
+   CSS compartido de todos los componentes Reports.
+   Se incluye UNA sola vez desde Reportes.razor *@
+
+<style>
+    /* ═══════════════════════════════════════════
+       HELPERS GLOBALES
+    ═══════════════════════════════════════════ */
+    .chart-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+
+    /* ═══════════════════════════════════════════
+       MINI PROGRESS BAR
+    ═══════════════════════════════════════════ */
+    .mini-progress {
+        height: 6px;
+        background: #f1f5f9;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 2px;
+    }
+
+    .mini-progress__bar {
+        height: 100%;
+        background: #6366f1;
+        border-radius: 3px;
+    }
+
+    .mini-progress__bar--green {
+        background: #10b981;
+    }
+
+    .mini-progress__bar--orange {
+        background: #f59e0b;
+    }
+
+    .mini-progress__bar--red {
+        background: #ef4444;
+    }
+
+    /* ═══════════════════════════════════════════
+       FINANCIAL SUMMARY
+    ═══════════════════════════════════════════ */
+    .fin-summary {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 20px;
+    }
+
+    .fin-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f8fafc;
+        font-size: .9rem;
+    }
+
+    .fin-row--total {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .fin-row--meta {
+        color: #6b7280;
+    }
+
+    .fin-val {
+        font-weight: 700;
+    }
+
+    .fin-val--green {
+        color: #10b981;
+    }
+
+    .fin-val--orange {
+        color: #f59e0b;
+    }
+
+    .fin-val--red {
+        color: #ef4444;
+    }
+
+    .collection-bar-wrap {
+        margin-top: 16px;
+    }
+
+    .collection-bar-label {
+        font-size: .78rem;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }
+
+    .collection-bar {
+        height: 12px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        display: flex;
+        overflow: hidden;
+    }
+
+    .collection-bar__paid {
+        background: #10b981;
+        transition: width .4s;
+    }
+
+    .collection-bar__pending {
+        background: #f59e0b;
+        transition: width .4s;
+    }
+
+    .collection-bar__overdue {
+        background: #ef4444;
+        transition: width .4s;
+    }
+
+    .collection-bar-legend {
+        display: flex;
+        gap: 16px;
+        margin-top: 6px;
+        font-size: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .leg-paid {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .leg-pending {
+        color: #f59e0b;
+        font-weight: 600;
+    }
+
+    .leg-overdue {
+        color: #ef4444;
+        font-weight: 600;
+    }
+
+    /* ═══════════════════════════════════════════
+       PERFORMANCE — KPI MINI CARDS
+    ═══════════════════════════════════════════ */
+    .perf-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 12px;
+    }
+
+    .perf-kpi {
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 5px;
+        border: 2px solid;
+        box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+
+        .perf-kpi i {
+            font-size: 1.5rem;
+        }
+
+    .perf-kpi__val {
+        font-size: 1.3rem;
+        font-weight: 800;
+    }
+
+    .perf-kpi__label {
+        font-size: .73rem;
+        color: #6b7280;
+        font-weight: 600;
+    }
+
+    .perf-kpi--green {
+        border-color: #dcfce7;
+    }
+
+        .perf-kpi--green i, .perf-kpi--green .perf-kpi__val {
+            color: #16a34a;
+        }
+
+    .perf-kpi--orange {
+        border-color: #fef9c3;
+    }
+
+        .perf-kpi--orange i, .perf-kpi--orange .perf-kpi__val {
+            color: #d97706;
+        }
+
+    .perf-kpi--red {
+        border-color: #fee2e2;
+    }
+
+        .perf-kpi--red i, .perf-kpi--red .perf-kpi__val {
+            color: #dc2626;
+        }
+
+    .perf-kpi--blue {
+        border-color: #dbeafe;
+    }
+
+        .perf-kpi--blue i, .perf-kpi--blue .perf-kpi__val {
+            color: #2563eb;
+        }
+
+    /* ═══════════════════════════════════════════
+       PERFORMANCE — BARS
+    ═══════════════════════════════════════════ */
+    .perf-bar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .perf-bar-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .perf-bar-item__top {
+        display: flex;
+        justify-content: space-between;
+        font-size: .87rem;
+    }
+
+    .perf-progress {
+        height: 10px;
+        background: #f1f5f9;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .perf-progress__fill {
+        height: 100%;
+        border-radius: 5px;
+        transition: width .4s;
+    }
+
+    .perf-progress__fill--green {
+        background: #10b981;
+    }
+
+    .perf-progress__fill--orange {
+        background: #f59e0b;
+    }
+
+    .perf-progress__fill--red {
+        background: #ef4444;
+    }
+
+    .perf-progress__fill--blue {
+        background: #3b82f6;
+    }
+
+    /* ═══════════════════════════════════════════
+       TICKET STATUS
+    ═══════════════════════════════════════════ */
+    .ticket-status-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .ticket-status-row__dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 3px;
+    }
+
+    .ticket-status-row__body {
+        flex: 1;
+    }
+
+    .ticket-status-row__top {
+        display: flex;
+        justify-content: space-between;
+        font-size: .88rem;
+        margin-bottom: 5px;
+    }
+
+    .ticket-mini-bar {
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .ticket-status-total {
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 12px;
+        margin-top: 4px;
+        font-size: .9rem;
+        font-weight: 700;
+    }
+
+    /* ═══════════════════════════════════════════
+       EMPLOYEE
+    ═══════════════════════════════════════════ */
+    .emp-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .emp-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .85rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       DARK MODE
+    ═══════════════════════════════════════════ */
+    [data-theme="dark"] .card,
+    [data-theme="dark"] .card-header.bg-white {
+        background: #1e1e35 !important;
+        border-color: #2d2d4e !important;
+        color: #f1f1f1 !important;
+    }
+
+    [data-theme="dark"] .perf-kpi {
+        background: #1e1e35 !important;
+    }
+
+    [data-theme="dark"] .mini-progress,
+    [data-theme="dark"] .perf-progress,
+    [data-theme="dark"] .ticket-mini-bar {
+        background: #2d2d4e;
+    }
+
+    [data-theme="dark"] .fin-row {
+        border-color: #2d2d4e;
+        color: #f1f1f1;
+    }
+
+    [data-theme="dark"] .collection-bar {
+        background: #2d2d4e;
+    }
+
+    [data-theme="dark"] .ticket-status-total {
+        border-color: #2d2d4e;
+        color: #f1f1f1;
+    }
+
+    [data-theme="dark"] .table thead th {
+        background: #252545 !important;
+        color: #a0aec0 !important;
+        border-color: #2d2d4e !important;
+    }
+
+    [data-theme="dark"] .table tbody td {
+        border-color: #2d2d4e;
+        color: #f1f1f1;
+    }
+
+    [data-theme="dark"] .table tbody tr:hover td {
+        background: #252545;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════ */
+    @@media (max-width: 768px) {
+        .perf-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>

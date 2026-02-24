@@ -1,0 +1,31 @@
+﻿@* Reports/ReportsTabs.razor *@
+
+<ul class="nav nav-tabs mb-4">
+    @foreach (var tab in _tabs)
+    {
+        <li class="nav-item">
+            <button class="@TabClass(tab.Key)"
+                    @onclick="() => ActiveTabChanged.InvokeAsync(tab.Key)">
+                <i class="@tab.Value.Icon me-2"></i>@tab.Value.Label
+            </button>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter] public string ActiveTab { get; set; } = "charts";
+    [Parameter] public EventCallback<string> ActiveTabChanged { get; set; }
+
+    private readonly Dictionary<string, (string Icon, string Label)> _tabs = new()
+    {
+        ["charts"] = ("bi bi-graph-up", "Gráficas"),
+        ["financial"] = ("bi bi-currency-dollar", "Financiero"),
+        ["performance"] = ("bi bi-speedometer2", "Rendimiento"),
+        ["clients"] = ("bi bi-people", "Clientes"),
+        ["projects"] = ("bi bi-kanban", "Proyectos"),
+        ["employees"] = ("bi bi-person-badge", "Empleados"),
+    };
+
+    private string TabClass(string tab) =>
+        $"nav-link btn {(ActiveTab == tab ? "active fw-bold" : "text-secondary")}";
+}

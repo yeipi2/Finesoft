@@ -97,12 +97,16 @@
             <label for="Status" class="form-label small fw-bold">
                 Estado <span class="text-danger">*</span>
             </label>
-            <select id="Status" class="form-select form-select-sm" @bind="Model.Status">
+            <select id="Status" class="form-select form-select-sm" @bind="Model.Status" disabled="@(!IsEditMode)">
                 <option value="Abierto">Abierto</option>
                 <option value="En Progreso">En Progreso</option>
                 <option value="En Revisión">En Revisión</option>
                 <option value="Cerrado">Cerrado</option>
             </select>
+            @if (!IsEditMode)
+            {
+                <small class="text-muted">Los tickets nuevos siempre inician como Abierto</small>
+            }
         </div>
 
         @* ── Asignar a ── *@
