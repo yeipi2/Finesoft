@@ -1,6 +1,7 @@
 ﻿using fn_backend.DTO;
 using fn_backend.Models;
 using fs_backend.Identity;
+using fs_backend.Models;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -63,27 +64,67 @@ public class EmployeeService : IEmployeeService
         return await GetEmployeeByIdAsync(employee.Id);
     }
 
-    public async Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id)
+    /// <summary>
+    /// Cambia el estado activo/inactivo del empleado.
+    /// Si se desactiva, desasigna todos sus tickets abiertos (Abierto, En Progreso, En Revisión).
+    /// </summary>
+    public async Task<(bool Success, string? ErrorMessage, int UnassignedTickets)> ToggleEmployeeStatusAsync(int id)
     {
         try
         {
             var employee = await _context.Employees.FindAsync(id);
             if (employee == null)
-                return (false, "Empleado no encontrado");
+                return (false, "Empleado no encontrado", 0);
 
             employee.IsActive = !employee.IsActive;
             employee.UpdatedAt = DateTime.UtcNow;
 
+            int unassignedCount = 0;
+
+            // Si se está DESACTIVANDO el empleado, desasignar sus tickets activos
+            if (!employee.IsActive)
+            {
+                var statusesToUnassign = new[] { "Abierto", "En Progreso", "En Revisión" };
+
+                var ticketsToUnassign = await _context.Tickets
+                    .Where(t => t.AssignedToUserId == employee.UserId
+                                && statusesToUnassign.Contains(t.Status))
+                    .ToListAsync();
+
+                foreach (var ticket in ticketsToUnassign)
+                {
+                    ticket.AssignedToUserId = null;
+                    ticket.UpdatedAt = DateTime.UtcNow;
+
+                    // Registrar en historial
+                    _context.Set<TicketHistory>().Add(new TicketHistory
+                    {
+                        TicketId = ticket.Id,
+                        UserId = employee.UserId,
+                        Action = "AssignedToChanged",
+                        OldValue = employee.FullName,
+                        NewValue = "Sin asignar",
+                        ChangedAt = DateTime.UtcNow
+                    });
+                }
+
+                _context.Tickets.UpdateRange(ticketsToUnassign);
+                unassignedCount = ticketsToUnassign.Count;
+
+                _logger.LogInformation(
+                    "🔄 Empleado {Id} desactivado. {Count} ticket(s) desasignados.",
+                    id, unassignedCount);
+            }
+
             _context.Employees.Update(employee);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("🔄 Estado de empleado cambiado: {Id}", id);
-            return (true, null);
+            return (true, null, unassignedCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Error al cambiar estado del empleado {Id}", id);
-            return (false, ex.Message);
+            return (false, ex.Message, 0);
         }
     }
 

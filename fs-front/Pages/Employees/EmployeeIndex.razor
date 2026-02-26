@@ -5,6 +5,7 @@
 @using fs_front.Components.Employees.Index
 @using fs_front.Components.Employees.Form
 @inject IEmployeeApiService EmployeeApiService
+@inject ITicketApiService TicketApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject PermissionService PermissionService
@@ -17,8 +18,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-            background:white;z-index:9999;
-            display:flex;align-items:center;justify-content:center;">
+                background:white;z-index:9999;
+                display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -185,12 +186,77 @@ else
 
     private async Task ToggleEmployeeStatus(EmployeeDto employee)
     {
+        var actionText = employee.IsActive ? "desactivar" : "activar";
+        string confirmMessage;
+
+        // Solo si se va a DESACTIVAR, contar tickets activos asignados
+        if (employee.IsActive)
+        {
+            int activeTickets = 0;
+            try
+            {
+                var tickets = await TicketApiService.GetTicketsAsync();
+                var activeStatuses = new[] { "Abierto", "En Progreso", "En Revisión" };
+                activeTickets = tickets?
+                    .Count(t => t.AssignedToUserId == employee.UserId
+                                && activeStatuses.Contains(t.Status)) ?? 0;
+            }
+            catch
+            {
+                // Si falla la consulta de tickets, continuamos sin el conteo
+            }
+
+            if (activeTickets > 0)
+            {
+                var ticketWord = activeTickets == 1 ? "ticket activo" : "tickets activos";
+                confirmMessage =
+                    $"¿Estás seguro de que quieres desactivar a {employee.FullName}? " +
+                    $"Esta acción dejará {activeTickets} {ticketWord} sin asignar.";
+            }
+            else
+            {
+                confirmMessage =
+                    $"¿Estás seguro de que quieres desactivar a {employee.FullName}?";
+            }
+        }
+        else
+        {
+            confirmMessage = $"¿Estás seguro de que quieres activar a {employee.FullName}?";
+        }
+
+        var confirmed = await DialogService.Confirm(
+            confirmMessage,
+            $"Confirmar {actionText}",
+            new ConfirmOptions
+            {
+                OkButtonText = $"Sí, {actionText}",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed != true) return;
+
         try
         {
-            var (success, errorMessage) = await EmployeeApiService.ToggleEmployeeStatusAsync(employee.Id!.Value);
+            var (success, errorMessage, unassignedTickets) =
+                await EmployeeApiService.ToggleEmployeeStatusAsync(employee.Id!.Value);
+
             if (success)
             {
-                ShowNotification("Éxito", "Estado actualizado correctamente.", NotificationSeverity.Success);
+                ShowNotification(
+                    "Éxito",
+                    $"Empleado {(employee.IsActive ? "desactivado" : "activado")} correctamente.",
+                    NotificationSeverity.Success);
+
+                // Notificación extra si quedaron tickets sin asignar
+                if (unassignedTickets > 0)
+                {
+                    var ticketWord = unassignedTickets == 1 ? "ticket" : "tickets";
+                    ShowNotification(
+                        "Tickets desasignados",
+                        $"{unassignedTickets} {ticketWord} activo(s) quedaron sin asignar.",
+                        NotificationSeverity.Warning);
+                }
+
                 await LoadEmployees();
             }
             else

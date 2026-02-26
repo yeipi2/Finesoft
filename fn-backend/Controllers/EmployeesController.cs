@@ -23,7 +23,6 @@ public class EmployeesController : ControllerBase
 
     /// <summary>
     /// GET: api/employees
-    /// Cualquier usuario autenticado puede ver la lista (para dropdowns)
     /// </summary>
     [HttpGet]
     [Authorize]
@@ -38,7 +37,6 @@ public class EmployeesController : ControllerBase
 
     /// <summary>
     /// GET: api/employees/{id}
-    /// Requiere permiso: employees.view_detail
     /// </summary>
     [HttpGet("{id}")]
     [RequirePermission("employees.view_detail")]
@@ -46,16 +44,13 @@ public class EmployeesController : ControllerBase
     {
         var employee = await _employeeService.GetEmployeeByIdAsync(id);
         if (employee == null)
-        {
             return NotFound(new { message = "Empleado no encontrado" });
-        }
 
         return Ok(employee);
     }
 
     /// <summary>
     /// GET: api/employees/user/{userId}
-    /// Obtener empleado por userId
     /// </summary>
     [HttpGet("user/{userId}")]
     [Authorize]
@@ -63,16 +58,13 @@ public class EmployeesController : ControllerBase
     {
         var employee = await _employeeService.GetEmployeeByUserIdAsync(userId);
         if (employee == null)
-        {
             return NotFound(new { message = "Empleado no encontrado para este usuario" });
-        }
 
         return Ok(employee);
     }
 
     /// <summary>
     /// POST: api/employees
-    /// Requiere permiso: employees.create
     /// </summary>
     [HttpPost]
     [RequirePermission("employees.create")]
@@ -83,19 +75,13 @@ public class EmployeesController : ControllerBase
 
         var result = await _employeeService.CreateEmployeeAsync(dto);
         if (!result.Succeeded)
-        {
             return BadRequest(result.Errors);
-        }
 
-        return CreatedAtAction(
-            nameof(GetEmployeeById),
-            new { id = result.Data!.Id },
-            result.Data);
+        return CreatedAtAction(nameof(GetEmployeeById), new { id = result.Data!.Id }, result.Data);
     }
 
     /// <summary>
     /// PUT: api/employees/{id}
-    /// Requiere permiso: employees.edit
     /// </summary>
     [HttpPut("{id}")]
     [RequirePermission("employees.edit")]
@@ -117,7 +103,6 @@ public class EmployeesController : ControllerBase
 
     /// <summary>
     /// DELETE: api/employees/{id}
-    /// Requiere permiso: employees.delete
     /// </summary>
     [HttpDelete("{id}")]
     [RequirePermission("employees.delete")]
@@ -137,30 +122,32 @@ public class EmployeesController : ControllerBase
         return Ok(new { message = "Empleado eliminado exitosamente" });
     }
 
+    /// <summary>
+    /// PUT: api/employees/toggle-status/{id}
+    /// Cambia estado activo/inactivo. Si se desactiva, desasigna tickets activos.
+    /// Devuelve cuántos tickets fueron desasignados.
+    /// </summary>
     [HttpPut("toggle-status/{id}")]
     public async Task<IActionResult> ToggleStatus(int id)
     {
-        var result = await _employeeService.ToggleEmployeeStatusAsync(id);
+        var (success, errorMessage, unassignedTickets) = await _employeeService.ToggleEmployeeStatusAsync(id);
 
-        if (!result.Success)
-            return BadRequest(result.ErrorMessage);
+        if (!success)
+            return BadRequest(errorMessage);
 
-        return NoContent();
+        // Devolvemos la cantidad de tickets desasignados para que el frontend pueda notificar
+        return Ok(new { unassignedTickets });
     }
-
 
     /// <summary>
     /// GET: api/employees/search
-    /// Cualquier usuario autenticado puede buscar empleados
     /// </summary>
     [HttpGet("search")]
     [Authorize]
     public async Task<IActionResult> SearchEmployees([FromQuery] string query)
     {
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
-        {
             return Ok(new List<EmployeeDto>());
-        }
 
         var employees = await _employeeService.SearchEmployeesAsync(query);
         return Ok(employees);

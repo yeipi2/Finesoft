@@ -81,9 +81,7 @@ public class EmployeeApiService : IEmployeeApiService
             var response = await _httpClient.PutAsJsonAsync($"api/employees/{id}", employee);
 
             if (response.IsSuccessStatusCode)
-            {
                 return (true, null);
-            }
 
             var errorContent = await response.Content.ReadAsStringAsync();
             return (false, $"Error al actualizar empleado: {errorContent}");
@@ -101,9 +99,7 @@ public class EmployeeApiService : IEmployeeApiService
             var response = await _httpClient.DeleteAsync($"api/employees/{id}");
 
             if (response.IsSuccessStatusCode)
-            {
                 return (true, null);
-            }
 
             var errorContent = await response.Content.ReadAsStringAsync();
             return (false, $"Error al eliminar empleado: {errorContent}");
@@ -114,7 +110,11 @@ public class EmployeeApiService : IEmployeeApiService
         }
     }
 
-    public async Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id)
+    /// <summary>
+    /// Cambia el estado del empleado. Retorna también cuántos tickets fueron desasignados
+    /// para que el componente pueda mostrar una notificación informativa.
+    /// </summary>
+    public async Task<(bool Success, string? ErrorMessage, int UnassignedTickets)> ToggleEmployeeStatusAsync(int id)
     {
         try
         {
@@ -122,36 +122,31 @@ public class EmployeeApiService : IEmployeeApiService
 
             if (response.IsSuccessStatusCode)
             {
-                return (true, null);
+                var result = await response.Content.ReadFromJsonAsync<ToggleStatusResult>();
+                return (true, null, result?.UnassignedTickets ?? 0);
             }
 
             var errorContent = await response.Content.ReadAsStringAsync();
-            return (false, $"Error al cambiar estado: {errorContent}");
+            return (false, $"Error al cambiar estado: {errorContent}", 0);
         }
         catch (Exception e)
         {
-            return (false, $"Error: {e.Message}");
+            return (false, $"Error: {e.Message}", 0);
         }
     }
-
 
     public async Task<List<EmployeeDto>> SearchEmployeesAsync(string query)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
-            {
                 return new List<EmployeeDto>();
-            }
 
             var encodedQuery = Uri.EscapeDataString(query);
             var response = await _httpClient.GetAsync($"api/employees/search?query={encodedQuery}");
 
             if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<List<EmployeeDto>>()
-                       ?? new List<EmployeeDto>();
-            }
+                return await response.Content.ReadFromJsonAsync<List<EmployeeDto>>() ?? new List<EmployeeDto>();
 
             return new List<EmployeeDto>();
         }
@@ -160,5 +155,11 @@ public class EmployeeApiService : IEmployeeApiService
             Console.WriteLine($"Error al buscar empleados: {ex.Message}");
             return new List<EmployeeDto>();
         }
+    }
+
+    // DTO interno para deserializar la respuesta del toggle
+    private class ToggleStatusResult
+    {
+        public int UnassignedTickets { get; set; }
     }
 }

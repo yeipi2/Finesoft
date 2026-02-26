@@ -10,7 +10,8 @@ public interface IEmployeeApiService
     Task<(bool Success, EmployeeDto? CreatedEmployee, string? ErrorMessage)> CreateEmployeeAsync(EmployeeDto employee);
     Task<(bool Success, string? ErrorMessage)> UpdateEmployeeAsync(int id, EmployeeDto employee);
     Task<(bool Success, string? ErrorMessage)> DeleteEmployeeAsync(int id);
-    Task<List<EmployeeDto>> SearchEmployeesAsync(string query);
-    Task<(bool Success, string? ErrorMessage)> ToggleEmployeeStatusAsync(int id);
 
+    Task<(bool Success, string? ErrorMessage, int UnassignedTickets)> ToggleEmployeeStatusAsync(int id);
+
+    Task<List<EmployeeDto>> SearchEmployeesAsync(string query);
 }

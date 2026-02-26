@@ -11,17 +11,17 @@
              EmptySubtitle="Prueba ajustando filtros o búsqueda.">
 
     <Header>
-        <FsSortHeader Text="ID"        Field="id"        ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-        <FsSortHeader Text="Título"    Field="title"     ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-        <th>Cliente / Proyecto</th>
-        <FsSortHeader Text="Prioridad" Field="priority"  ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-        <FsSortHeader Text="Estado"    Field="status"    ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-        @if (CanViewAll)
-        {
-            <th>Asignado a</th>
-        }
-        <th>Horas</th>
-        <th class="text-center">Acciones</th>
+        <FsSortHeader Text="ID" Field="id" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Título" Field="title" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+    <th>Cliente / Proyecto</th>
+    <FsSortHeader Text="Prioridad" Field="priority" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+    <FsSortHeader Text="Estado" Field="status" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+    @if (CanViewAll)
+    {
+        <th style="width: 130px; min-width: 130px;">Asignado a</th>
+    }
+    <th style="width: 140px; min-width: 140px;">Horas</th>
+    <th class="text-center" style="width: 80px;">Acciones</th>
     </Header>
 
     <RowTemplate Context="ticket">
@@ -32,8 +32,8 @@
                 <div class="fw-bold">@ticket.Title</div>
                 <small class="text-muted">
                     @(ticket.Description?.Length > 50
-                        ? ticket.Description.Substring(0, 50) + "..."
-                        : ticket.Description)
+                                        ? ticket.Description.Substring(0, 50) + "..."
+                                        : ticket.Description)
                 </small>
             </td>
 
@@ -52,27 +52,38 @@
 
             @if (CanViewAll)
             {
-                <td>
+                <td style="width: 130px; min-width: 130px;">
                     @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
                     {
-                        <span>@ticket.AssignedToUserName</span>
+                        <span class="text-truncate d-inline-block" style="max-width: 120px;"
+                              title="@ticket.AssignedToUserName">
+                            @ticket.AssignedToUserName
+                        </span>
                     }
                     else
                     {
-                        <span class="text-muted">Sin asignar</span>
+                        <span class="text-muted fst-italic">Sin asignar</span>
                     }
                 </td>
             }
 
-            <td>
-                <div><small class="text-muted">Estimadas:</small> @ticket.EstimatedHours.ToString("0.0")h</div>
-                <div><small class="text-muted">Reales:</small> <strong class="text-success">@ticket.ActualHours.ToString("0.0")h</strong></div>
+            <td style="width: 140px; min-width: 140px;">
+                <div class="d-flex flex-column gap-1">
+                    <div>
+                        <small class="text-muted">Estimadas:</small>
+                        <span class="ms-1">@ticket.EstimatedHours.ToString("0.0")h</span>
+                    </div>
+                    <div>
+                        <small class="text-muted">Reales:</small>
+                        <strong class="text-success ms-1">@ticket.ActualHours.ToString("0.0")h</strong>
+                    </div>
+                </div>
             </td>
 
             <td class="text-center">
                 @if (CurrentRole != "Cliente")
                 {
-                    <button class="btn btn-sm btn-outline-primary me-1"
+                    <button class="btn btn-sm btn-outline-primary"
                             @onclick="() => OnViewDetails.InvokeAsync(ticket.Id)"
                             title="Ver detalles">
                         <i class="bi bi-eye-fill"></i>
@@ -86,7 +97,7 @@
 
 @code {
     [Parameter, EditorRequired] public IEnumerable<TicketDetailDto> Items { get; set; } = Enumerable.Empty<TicketDetailDto>();
-    [Parameter] public bool IsLoading  { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
     [Parameter] public bool CanViewAll { get; set; }
     [Parameter] public string? CurrentRole { get; set; }
 
