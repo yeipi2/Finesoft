@@ -27,7 +27,7 @@
                                 <td>@payment.PaymentMethod</td>
                                 <td>@payment.Reference</td>
                                 <td class="text-end">
-                                    <strong class="text-success">@payment.Amount.ToString("C")</strong>
+                                    <strong class="text-success">@payment.Amount.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong>
                                 </td>
                                 <td>@payment.RecordedByUserName</td>
                                 <td>

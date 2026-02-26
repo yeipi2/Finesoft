@@ -1,0 +1,165 @@
+﻿@using fs_front.DTO
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="profile-hero">
+    <div class="profile-cover">
+        <div class="profile-cover-gradient"></div>
+        @if (!string.IsNullOrEmpty(_coverDataUrl))
+        {
+            <img src="@_coverDataUrl" class="profile-cover-img" alt="Portada" />
+        }
+        <label class="profile-cover-edit" title="Cambiar portada">
+            <i class="bi bi-image"></i>
+            <span>Cambiar portada</span>
+            <InputFile OnChange="OnCoverChange" accept="image/*" class="d-none" />
+        </label>
+    </div>
+
+    <div class="profile-identity-row">
+        <div class="profile-avatar-zone">
+            <div class="profile-avatar-outer">
+                @if (!string.IsNullOrEmpty(_avatarDataUrl))
+                {
+                    <img src="@_avatarDataUrl" class="profile-avatar-photo" alt="Foto de perfil" />
+                }
+                else
+                {
+                    <div class="profile-avatar-initials">@GetInitials(Profile?.FullName ?? Profile?.UserName)</div>
+                }
+                <label class="profile-avatar-overlay" title="Cambiar foto">
+                    <i class="bi bi-camera-fill"></i>
+                    <InputFile OnChange="OnAvatarChange" accept="image/*" class="d-none" />
+                </label>
+            </div>
+        </div>
+
+        <div class="profile-identity-info">
+            <div class="profile-name-row">
+                <h2 class="profile-display-name">@(Profile?.FullName ?? Profile?.UserName)</h2>
+                <span class="badge profile-role-badge @GetRoleBadgeClass(Profile?.Role)">
+                    @GetRoleLabel(Profile?.Role)
+                </span>
+            </div>
+            <div class="profile-meta-row">
+                <span class="profile-meta-item">
+                    <i class="bi bi-envelope"></i>@Profile?.Email
+                </span>
+                @if (!string.IsNullOrEmpty(Profile?.Phone))
+                {
+                    <span class="profile-meta-item">
+                        <i class="bi bi-telephone"></i>@Profile!.Phone
+                    </span>
+                }
+                @if ((Profile?.Role == "Empleado" || Profile?.Role == "Supervisor" || Profile?.Role == "Administracion")
+                                && !string.IsNullOrEmpty(Profile?.Position))
+                {
+                    <span class="profile-meta-item">
+                        <i class="bi bi-briefcase"></i>@Profile!.Position
+                        @if (!string.IsNullOrEmpty(Profile.Department))
+                        {
+                            <span class="text-muted"> · @Profile.Department</span>
+                        }
+                    </span>
+                }
+                @if (Profile?.Role == "Cliente" && !string.IsNullOrEmpty(Profile?.CompanyName))
+                {
+                    <span class="profile-meta-item">
+                        <i class="bi bi-building"></i>@Profile!.CompanyName
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_fileError))
+{
+    <div class="alert alert-warning mt-2 mx-4 py-2 small">
+        <i class="bi bi-exclamation-triangle me-1"></i>@_fileError
+    </div>
+}
+
+@code {
+    [Parameter] public ProfileDto? Profile { get; set; }
+
+    private string? _avatarDataUrl;
+    private string? _coverDataUrl;
+    private string? _fileError;
+
+    private string UserId => Profile?.UserId ?? Profile?.Email ?? "anon";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || Profile is null) return;
+        try
+        {
+            _avatarDataUrl = await JS.InvokeAsync<string?>("profileStorage.getAvatar", UserId);
+            _coverDataUrl = await JS.InvokeAsync<string?>("profileStorage.getCover", UserId);
+            if (_avatarDataUrl != null || _coverDataUrl != null)
+                StateHasChanged();
+        }
+        catch { /* profileStorage no disponible aún */ }
+    }
+
+    private async Task OnAvatarChange(InputFileChangeEventArgs e)
+    {
+        _fileError = null;
+        var file = e.File;
+        if (file.Size > 2 * 1024 * 1024) { _fileError = "La imagen no puede superar los 2 MB."; return; }
+        if (!file.ContentType.StartsWith("image/")) { _fileError = "Solo se permiten imágenes."; return; }
+
+        var buf = new byte[file.Size];
+        await file.OpenReadStream(2 * 1024 * 1024).ReadAsync(buf);
+        _avatarDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
+
+        try { await JS.InvokeVoidAsync("profileStorage.saveAvatar", UserId, _avatarDataUrl); }
+        catch { }
+    }
+
+    private async Task OnCoverChange(InputFileChangeEventArgs e)
+    {
+        _fileError = null;
+        var file = e.File;
+        if (file.Size > 5 * 1024 * 1024) { _fileError = "La portada no puede superar los 5 MB."; return; }
+        if (!file.ContentType.StartsWith("image/")) { _fileError = "Solo se permiten imágenes."; return; }
+
+        var buf = new byte[file.Size];
+        await file.OpenReadStream(5 * 1024 * 1024).ReadAsync(buf);
+        _coverDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
+
+        try { await JS.InvokeVoidAsync("profileStorage.saveCover", UserId, _coverDataUrl); }
+        catch { }
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "??";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private static string GetRoleBadgeClass(string? role) => role switch
+    {
+        "Admin" => "bg-danger",
+        "Administracion" => "bg-warning text-dark",
+        "Supervisor" => "bg-info text-dark",
+        "Empleado" => "bg-primary",
+        "Cliente" => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private static string GetRoleLabel(string? role) => role switch
+    {
+        "Admin" => "Administrador",
+        "Administracion" => "Administración",
+        "Supervisor" => "Supervisor",
+        "Empleado" => "Empleado",
+        "Cliente" => "Cliente",
+        _ => "Sin rol"
+    };
+}

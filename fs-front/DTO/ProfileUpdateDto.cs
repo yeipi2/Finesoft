@@ -1,0 +1,14 @@
+﻿namespace fs_front.DTO;
+
+public class ProfileUpdateDto
+{
+    public string? Email { get; set; }
+    public string? FullName { get; set; }
+    public string? Phone { get; set; }
+    public string? Position { get; set; }
+    public string? Department { get; set; }
+    public string? CompanyName { get; set; }
+    public string? ContactName { get; set; }
+    public string? RFC { get; set; }
+    public string? Address { get; set; }
+}

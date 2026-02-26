@@ -11,4 +11,7 @@ public interface IUserService
     Task<ServiceResult<bool>> UpdateUserAsync(string id, UserDto updateUserDto);
     Task<ServiceResult<bool>> DeleteUserAsync(string id);
     Task<ServiceResult<bool>> ChangePasswordAsync(string id, ChangePasswordDto changePasswordDto);
+
+    Task<ProfileDto?> GetMyProfileAsync(string userId);
+    Task<ServiceResult<bool>> UpdateMyProfileAsync(string userId, string role, ProfileUpdateDto dto);
 }

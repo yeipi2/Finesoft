@@ -9,4 +9,8 @@ public interface IUserApiService
     Task<(bool Success, UserDto? CreatedUser, string? ErrorMessage)> CreateUserAsync(UserDto user);
     Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(string id, UserDto user);
     Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(string id);
+
+    Task<ProfileDto?> GetMyProfileAsync();
+    Task<(bool Success, string? Error)> UpdateMyProfileAsync(ProfileUpdateDto dto);
+    Task<(bool Success, string? Error)> ChangeMyPasswordAsync(ChangePasswordDto dto);
 }

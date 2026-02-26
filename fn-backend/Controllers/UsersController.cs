@@ -1,9 +1,10 @@
 ﻿using fn_backend.DTO;
 using fn_backend.Services;
 using fs_backend.Attributes;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Security.Claims;
 
 namespace fn_backend.Controllers;
 
@@ -206,5 +207,45 @@ public class UsersController : ControllerBase
         }
 
         return Ok(new { message = "Contraseña cambiada exitosamente" });
+    }
+    /// GET: api/users/me
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> GetMyProfile()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var profile = await _userService.GetMyProfileAsync(userId);
+        if (profile is null) return NotFound();
+
+        return Ok(profile);
+    }
+
+    /// PUT: api/users/me
+    [HttpPut("me")]
+    [Authorize]
+    public async Task<IActionResult> UpdateMyProfile(ProfileUpdateDto dto)
+    {
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        Console.WriteLine($"[DEBUG] userId={userId} role='{role}'");
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _userService.UpdateMyProfileAsync(userId, role, dto);
+        return result.Succeeded ? Ok(new { message = "Perfil actualizado" }) : BadRequest(result.Errors);
+    }
+
+    /// POST: api/users/me/change-password
+    [HttpPost("me/change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangeMyPassword(ChangePasswordDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _userService.ChangePasswordAsync(userId, dto);
+        return result.Succeeded ? Ok(new { message = "Contraseña cambiada exitosamente" }) : BadRequest(result.Errors);
     }
 }

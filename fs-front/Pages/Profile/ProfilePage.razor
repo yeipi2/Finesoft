@@ -1,0 +1,89 @@
+﻿@page "/perfil"
+@using fs_front.DTO
+@using fs_front.Components.Profile
+@inject IUserApiService UserApi
+@inject NavigationManager Nav
+@attribute [Authorize]
+
+<PageTitle>Finesoft - Mi Perfil</PageTitle>
+
+<div class="pf-page-wrapper">
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (_profile is null)
+    {
+        <div class="alert alert-warning">No se pudo cargar el perfil.</div>
+    }
+    else
+    {
+        <div class="pf-page-header mb-4">
+            <h4 class="fw-bold mb-0">Mi Perfil</h4>
+            <div class="text-muted small">Administra tu información personal y seguridad</div>
+        </div>
+
+        <ProfileHeader Profile="_profile" />
+
+        <!-- Sección colapsable: Información Personal -->
+        <div class="pf-collapse-card mb-3">
+            <div class="pf-collapse-toggle-row">
+                <button class="pf-collapse-toggle" @onclick="() => _infoOpen = !_infoOpen">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-lines-fill text-primary"></i>
+                        <span class="fw-semibold">Información Personal</span>
+                    </div>
+                    <i class="bi @(_infoOpen ? "bi-chevron-up" : "bi-chevron-down") pf-chevron-icon"></i>
+                </button>
+                @if (_infoOpen)
+                {
+                    <button class="btn pf-edit-btn ms-2 me-3" @onclick="() => _infoSectionRef?.StartEdit()">
+                        <i class="bi bi-pencil me-1"></i>Editar teléfono
+                    </button>
+                }
+            </div>
+            @if (_infoOpen)
+            {
+                <div class="pf-collapse-body">
+                    <ProfileInfoSection @ref="_infoSectionRef" Profile="_profile" OnUpdated="Reload" />
+                </div>
+            }
+        </div>
+
+        <!-- Sección colapsable: Cambiar Contraseña -->
+        <div class="pf-collapse-card mb-3">
+            <button class="pf-collapse-toggle" @onclick="() => _passwordOpen = !_passwordOpen">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-shield-lock-fill text-warning"></i>
+                    <span class="fw-semibold">Cambiar Contraseña</span>
+                </div>
+                <i class="bi @(_passwordOpen ? "bi-chevron-up" : "bi-chevron-down") pf-chevron-icon"></i>
+            </button>
+            @if (_passwordOpen)
+            {
+                <div class="pf-collapse-body">
+                    <ChangePasswordSection />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private ProfileDto? _profile = null;
+    private ProfileInfoSection? _infoSectionRef = null;
+    private bool _loading = true;
+    private bool _infoOpen = true;
+    private bool _passwordOpen = false;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        _loading = true;
+        _profile = await UserApi.GetMyProfileAsync();
+        _loading = false;
+    }
+}

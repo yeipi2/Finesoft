@@ -11,6 +11,8 @@ public class Client
     /// <summary>
     /// ID del usuario asociado (IdentityUser) - OPCIONAL al inicio, REQUERIDO después
     /// </summary>
+    /// 
+    [MaxLength(450)]
     public string? UserId { get; set; } // ⭐ Relación con IdentityUser
 
     [Required]

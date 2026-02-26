@@ -2193,3 +2193,657 @@ code {
     flex: unset !important;
     display: inline-flex !important;
 }
+
+/* ============================================================
+   PROFILE PAGE — COMPLETE STYLES
+   Add these rules to your app.css
+   ============================================================ */
+
+/* ── Hero / Cover ── */
+.profile-hero {
+    background: var(--card-bg, #fff);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(15,23,42,.08);
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(15,23,42,.06);
+}
+
+.profile-cover {
+    position: relative;
+    height: 160px;
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 40%, #06b6d4 100%);
+    overflow: hidden;
+}
+
+.profile-cover-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-cover-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,.25) 100%);
+    z-index: 1;
+}
+
+.profile-cover-edit {
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background .2s;
+}
+
+.profile-cover-edit:hover {
+    background: rgba(0,0,0,.65);
+}
+
+/* ── Identity row ── */
+.profile-identity-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 0 24px 20px;
+    position: relative;
+}
+
+.profile-avatar-zone {
+    flex-shrink: 0;
+    margin-top: -44px;
+    z-index: 2;
+}
+
+.profile-avatar-outer {
+    position: relative;
+    width: 88px;
+    height: 88px;
+}
+
+.profile-avatar-photo,
+.profile-avatar-initials {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,.18);
+    object-fit: cover;
+}
+
+.profile-avatar-initials {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: -.02em;
+}
+
+.profile-avatar-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity .2s;
+    border: 4px solid #fff;
+}
+
+.profile-avatar-outer:hover .profile-avatar-overlay {
+    opacity: 1;
+}
+
+.profile-identity-info {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 4px;
+}
+
+.profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.profile-display-name {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -.02em;
+}
+
+.profile-role-badge {
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .28em .7em;
+    border-radius: 6px;
+    letter-spacing: .02em;
+}
+
+.profile-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.profile-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .82rem;
+    color: #6b7280;
+}
+
+.profile-meta-item i {
+    font-size: .8rem;
+    opacity: .7;
+}
+
+/* ── Profile card ── */
+.pf-card {
+    border-radius: 14px !important;
+    border: 1px solid rgba(15,23,42,.07) !important;
+    box-shadow: 0 2px 12px rgba(15,23,42,.05) !important;
+    overflow: hidden;
+}
+
+.pf-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: #fff;
+    border-bottom: 1px solid rgba(15,23,42,.07);
+}
+
+.pf-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .95rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.pf-edit-btn {
+    border: 1px solid #3b82f6;
+    color: #3b82f6;
+    background: transparent;
+    border-radius: 8px;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    transition: all .18s;
+}
+
+.pf-edit-btn:hover {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.pf-info-body {
+    padding: 20px;
+}
+
+/* ── Info grid ── */
+.pf-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 4px 0;
+}
+
+.pf-info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    transition: background .15s;
+}
+
+.pf-info-row:hover {
+    background: #f8fafc;
+}
+
+.pf-info-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.pf-info-label {
+    font-size: .72rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 2px;
+}
+
+.pf-info-value {
+    font-size: .88rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.pf-readonly-notice {
+    margin-top: 16px;
+    padding: 10px 14px;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    font-size: .78rem;
+    color: #92400e;
+}
+
+/* ── Phone edit zone ── */
+.pf-edit-zone {
+    max-width: 460px;
+}
+
+.pf-edit-header {
+    font-size: .9rem;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.pf-phone-current {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: .83rem;
+    margin-bottom: 14px;
+}
+
+.pf-label {
+    font-size: .82rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 5px;
+}
+
+.pf-phone-input {
+    border-radius: 8px;
+    font-size: .9rem;
+}
+
+.pf-edit-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.pf-save-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: .85rem;
+    padding: 7px 18px;
+}
+
+.pf-cancel-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: .85rem;
+    padding: 7px 16px;
+}
+
+/* ── Password section ── */
+.pf-password-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.pf-pw-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.pf-input-eye {
+    position: relative;
+}
+
+.pf-input-eye .form-control {
+    padding-right: 40px;
+    border-radius: 8px;
+}
+
+.pf-eye-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    font-size: .95rem;
+}
+
+.pf-eye-btn:hover { color: #475569; }
+
+/* Strength bar */
+.pf-strength-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pf-strength-track {
+    flex: 1;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.pf-strength-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .3s ease, background .3s;
+}
+
+.pf-strength-weak   { background: #ef4444; }
+.pf-strength-fair   { background: #f59e0b; }
+.pf-strength-good   { background: #3b82f6; }
+.pf-strength-strong { background: #22c55e; }
+
+.pf-strength-label {
+    font-size: .7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pf-strength-text-weak   { color: #ef4444; }
+.pf-strength-text-fair   { color: #f59e0b; }
+.pf-strength-text-good   { color: #3b82f6; }
+.pf-strength-text-strong { color: #22c55e; }
+
+.pf-pw-btn {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: .87rem;
+    padding: 8px 20px;
+}
+
+.pf-pw-tips {
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+}
+
+/* ============================================================
+   DARK MODE — PROFILE PAGE
+   ============================================================ */
+
+[data-theme="dark"] .profile-hero {
+    background: #1e1e35;
+    border-color: #2d2d4e;
+    box-shadow: 0 4px 24px rgba(0,0,0,.3);
+}
+
+[data-theme="dark"] .profile-display-name {
+    color: #f1f1f1;
+}
+
+[data-theme="dark"] .profile-meta-item {
+    color: #a0aec0;
+}
+
+[data-theme="dark"] .profile-avatar-photo,
+[data-theme="dark"] .profile-avatar-initials {
+    border-color: #1e1e35;
+}
+
+[data-theme="dark"] .pf-card-header {
+    background: #252545 !important;
+    border-bottom-color: #2d2d4e;
+}
+
+[data-theme="dark"] .pf-card-title {
+    color: #f1f1f1;
+}
+
+[data-theme="dark"] .pf-info-row:hover {
+    background: #252545;
+}
+
+[data-theme="dark"] .pf-info-icon {
+    background: rgba(59,130,246,.15);
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .pf-info-label {
+    color: #64748b;
+}
+
+[data-theme="dark"] .pf-info-value {
+    color: #f1f1f1;
+}
+
+[data-theme="dark"] .pf-readonly-notice {
+    background: rgba(253,230,138,.06);
+    border-color: rgba(253,230,138,.2);
+    color: #fde68a;
+}
+
+[data-theme="dark"] .pf-phone-current {
+    background: #252545;
+    border-color: #2d2d4e;
+    color: #f1f1f1;
+}
+
+[data-theme="dark"] .pf-edit-header {
+    color: #f1f1f1;
+}
+
+[data-theme="dark"] .pf-strength-track {
+    background: #2d2d4e;
+}
+
+[data-theme="dark"] .pf-pw-tips {
+    border-top-color: #2d2d4e;
+}
+
+[data-theme="dark"] .pf-info-body {
+    background: #1e1e35;
+}
+
+[data-theme="dark"] .pf-cancel-btn {
+    background: #252545 !important;
+    border-color: #2d2d4e !important;
+    color: #a0aec0 !important;
+}
+
+
+/* ============================================================
+   AGREGAR AL FINAL DE app.css — Profile page extras
+   ============================================================ */
+
+/* ── Wrapper principal más ancho ── */
+.pf-page-wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* ── Header de la página ── */
+.pf-page-header h4 {
+    font-size: 1.5rem;
+}
+
+/* ── Cover más alto ── */
+.profile-cover {
+    height: 200px !important;
+}
+
+/* ── Avatar más grande ── */
+.profile-avatar-outer {
+    width: 110px !important;
+    height: 110px !important;
+}
+
+.profile-avatar-photo,
+.profile-avatar-initials {
+    width: 110px !important;
+    height: 110px !important;
+    font-size: 2.2rem !important;
+}
+
+.profile-avatar-zone {
+    margin-top: -55px !important;
+}
+
+/* ── Nombre más grande ── */
+.profile-display-name {
+    font-size: 1.7rem !important;
+}
+
+.profile-meta-item {
+    font-size: .9rem !important;
+}
+
+/* ── Info grid más grande ── */
+.pf-info-row {
+    padding: 14px 20px !important;
+}
+
+.pf-info-icon {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1rem !important;
+}
+
+.pf-info-label {
+    font-size: .75rem !important;
+}
+
+.pf-info-value {
+    font-size: .95rem !important;
+}
+
+/* ── Tarjetas colapsables ── */
+.pf-collapse-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid rgba(15,23,42,.08);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(15,23,42,.05);
+}
+
+.pf-collapse-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: .95rem;
+    color: var(--text-primary, #1e293b);
+    transition: background .15s;
+}
+
+.pf-collapse-toggle:hover {
+    background: rgba(59,130,246,.05);
+}
+
+.pf-chevron-icon {
+    font-size: .85rem;
+    color: #94a3b8;
+    transition: transform .2s;
+}
+
+.pf-collapse-body {
+    border-top: 1px solid rgba(15,23,42,.07);
+    padding: 20px 22px;
+}
+
+/* Quitar el card propio de ProfileInfoSection y ChangePasswordSection
+   ya que ahora los envuelve pf-collapse-card */
+.pf-collapse-body .card.pf-card {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.pf-collapse-body .pf-card-header {
+    display: none !important;  /* El header ya lo tiene el toggle */
+}
+
+.pf-collapse-body .pf-info-body,
+.pf-collapse-body .card-body {
+    padding: 0 !important;
+}
+
+/* ── Sección de acciones (botón editar teléfono) ── */
+.pf-section-actions {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(15,23,42,.06);
+}
+
+/* ── Dark mode extras ── */
+[data-theme="dark"] .pf-collapse-card {
+    background: var(--card-bg, #1e1e35);
+    border-color: #2d2d4e;
+}
+
+[data-theme="dark"] .pf-collapse-toggle {
+    color: var(--text-primary, #f1f1f1);
+}
+
+[data-theme="dark"] .pf-collapse-toggle:hover {
+    background: rgba(255,255,255,.04);
+}
+
+[data-theme="dark"] .pf-collapse-body {
+    border-top-color: #2d2d4e;
+}
+
+/* Toggle row con botón editar a la derecha */
+.pf-collapse-toggle-row {
+    display: flex;
+    align-items: center;
+}
+
+.pf-collapse-toggle-row .pf-collapse-toggle {
+    flex: 1;
+}

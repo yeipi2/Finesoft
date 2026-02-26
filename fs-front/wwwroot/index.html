@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,7 +13,6 @@
     <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css">
     <link href="css/brandlogo.css" rel="stylesheet" />
 </head>
-
 <body>
     <div id="app">
         <svg class="loading-progress">
@@ -30,10 +28,11 @@
         <a class="dismiss">🗙</a>
     </div>
 
-    <!-- AGREGAR ESTAS LÍNEAS ANTES DE LOS OTROS SCRIPTS -->
+    <!-- profileStorage: ANTES de blazor.webassembly.js, FUERA del div #app -->
+    <script src="Js/profileStorage.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="downloadHelper.js"></script>
-
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/Radzen.Blazor/Radzen.Blazor.min.js"></script>
     <script src="_content/BlazorAnimate/blazorAnimateInterop.js"></script>

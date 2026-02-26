@@ -11,14 +11,14 @@
             <label for="Email" class="form-label small fw-bold">
                 Email / Usuario <span class="text-danger">*</span>
             </label>
+           
             <InputText id="Email"
                        type="email"
                        class="form-control form-control-sm"
                        placeholder="correo@empresa.com"
                        Value="@Employee.Email"
                        ValueChanged="@(v => { Employee.Email = v; OnChanged?.Invoke(); })"
-                       ValueExpression="@(() => Employee.Email)"
-                       disabled="@IsEditMode" />
+                       ValueExpression="@(() => Employee.Email)" />
             <small class="text-muted">Usuario de acceso al sistema</small>
             <ValidationMessage For="@(() => Employee.Email)" />
         </div>

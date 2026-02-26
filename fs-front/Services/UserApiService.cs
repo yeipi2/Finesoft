@@ -77,6 +77,26 @@ public class UserApiService : IUserApiService
         return (false, errorContent);
     }
 
+    public async Task<ProfileDto?> GetMyProfileAsync()
+    {
+        try { return await _httpClient.GetFromJsonAsync<ProfileDto>("api/users/me"); }
+        catch { return null; }
+    }
+
+    public async Task<(bool Success, string? Error)> UpdateMyProfileAsync(ProfileUpdateDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync("api/users/me", dto);
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await response.Content.ReadAsStringAsync());
+    }
+
+    public async Task<(bool Success, string? Error)> ChangeMyPasswordAsync(ChangePasswordDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/users/me/change-password", dto);
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await response.Content.ReadAsStringAsync());
+    }
+
     // public async Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(string id, ChangePasswordDto passwords)
     // {
     //     var response = await _httpClient.PostAsJsonAsync($"api/users/{id}/change-password", passwords);

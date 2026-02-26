@@ -5,6 +5,7 @@
 
 <div class="row g-4">
 
+
     @* ══ FILA 1: Área ingresos (col-8) | Donut tickets (col-4) ══ *@
 
     <div class="col-md-8">
@@ -65,9 +66,9 @@
         </div>
     </div>
 
-    @* ══ FILA 2: Top clientes (col-6) | Cobranza (col-6) ══ *@
+    @* ══ FILA 2: Top clientes — ancho completo ══ *@
 
-    <div class="col-md-6">
+    <div class="col-12">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
                 <i class="bi bi-trophy-fill text-warning me-2"></i>
@@ -92,38 +93,15 @@
                         <RadzenTooltip />
                     </RadzenChart>
                 }
-                else { <ChartEmpty Icon="bi-bar-chart" /> }
+                else
+                {
+
+                    <ChartEmpty Icon="bi-bar-chart" />
+                }
             </div>
         </div>
     </div>
 
-    <div class="col-md-6">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white fw-bold py-3 d-flex align-items-center">
-                <i class="bi bi-wallet2 me-2" style="color:#0d9488"></i>
-                Cobranza por Cliente — Pagado vs Pendiente
-            </div>
-            <div class="card-body" style="height:310px">
-                @if (ClientReports != null && ClientReports.Any(c => c.TotalBilled > 0))
-                {
-                    var billed = ClientReports.Where(c => c.TotalBilled > 0).ToList();
-                    <RadzenChart Style="height:285px">
-                        <RadzenColumnSeries Data="@billed" CategoryProperty="ClientName"
-                                            ValueProperty="TotalPaid"     Title="Pagado"    Fill="#10b981" />
-                        <RadzenColumnSeries Data="@billed" CategoryProperty="ClientName"
-                                            ValueProperty="PendingAmount" Title="Pendiente" Fill="#f59e0b" />
-                        <RadzenCategoryAxis Padding="20" />
-                        <RadzenValueAxis Formatter="@ReportsHelpers.FormatCurrency">
-                            <RadzenGridLines Visible="true" Stroke="#f0f0f0" />
-                        </RadzenValueAxis>
-                        <RadzenLegend Position="LegendPosition.Top" />
-                        <RadzenTooltip />
-                    </RadzenChart>
-                }
-                else { <ChartEmpty Icon="bi-bar-chart" Text="No hay datos de facturación" /> }
-            </div>
-        </div>
-    </div>
 
     @* ══ FILA 3: Horas proyectos (col-7) | Resumen financiero (col-5) ══ *@
 

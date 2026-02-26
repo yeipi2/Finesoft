@@ -93,10 +93,27 @@ public class ClientService : IClientService
         }
     }
 
-    public async Task<IEnumerable<Client>> GetClientsAsync()
+    // ClientService.cs — GetClientsAsync
+    public async Task<IEnumerable<ClientDto>> GetClientsAsync()
     {
-        var clients = await _context.Clients.ToListAsync();
-        return clients;
+        return await _context.Clients
+            .Include(c => c.Projects)  // ⭐ necesario para que Projects no sea null
+            .Select(c => new ClientDto
+            {
+                Id = c.Id,
+                UserId = c.UserId,
+                CompanyName = c.CompanyName,
+                ContactName = c.ContactName,
+                Email = c.Email,
+                Phone = c.Phone,
+                RFC = c.RFC,
+                Address = c.Address,
+                ServiceMode = c.ServiceMode,
+                MonthlyRate = c.MonthlyRate,
+                IsActive = c.IsActive,
+                ProjectCount = c.Projects.Count  // EF lo traduce a COUNT(*) en SQL
+            })
+            .ToListAsync();
     }
 
     public async Task<Client?> GetClientByIdAsync(int id)

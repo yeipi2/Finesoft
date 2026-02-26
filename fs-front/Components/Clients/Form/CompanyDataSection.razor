@@ -47,12 +47,12 @@
                 <label for="EmailEdit" class="form-label small fw-bold">
                     Email <span class="text-danger">*</span>
                 </label>
-                <InputText id="EmailEdit"
-                           type="email"
+                <InputText id="Email"
                            class="form-control form-control-sm"
                            placeholder="correo@empresa.com"
-                           @bind-Value="Model.Email"
-                           disabled="true" />
+                           Value="@Model.Email"
+                           ValueChanged="@(v => { Model.Email = v; OnValidate?.Invoke(); })"
+                           ValueExpression="@(() => Model.Email)" />
             </div>
         }
     </div>

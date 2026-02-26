@@ -45,4 +45,6 @@ public class ClientDto
     public double? MonthlyRate { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public int ProjectCount { get; set; } = 0;
 }

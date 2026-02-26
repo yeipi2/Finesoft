@@ -73,29 +73,29 @@
         }
         <div class="mb-2">
             <small class="text-muted">Subtotal</small>
-            <div class="fw-bold">@Invoice?.Subtotal.ToString("C")</div>
+            <div class="fw-bold">@Invoice?.Subtotal.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
         </div>
         <div class="mb-2">
             <small class="text-muted">IVA (16%)</small>
-            <div class="fw-bold">@Invoice?.Tax.ToString("C")</div>
+            <div class="fw-bold">@Invoice?.Tax.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
         </div>
         <hr />
         <div class="mb-2">
             <small class="text-muted">Total</small>
-            <div class="h4 text-success mb-0">@Invoice?.Total.ToString("C")</div>
+            <div class="h4 text-success mb-0">@Invoice?.Total.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
         </div>
         @if (Invoice?.PaidAmount > 0)
         {
             <div class="mb-2">
                 <small class="text-muted">Pagado</small>
-                <div class="h5 text-success mb-0">@Invoice.PaidAmount.ToString("C")</div>
+                <div class="h5 text-success mb-0">@Invoice.PaidAmount.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
             </div>
         }
         @if (Invoice?.Balance > 0)
         {
             <div>
                 <small class="text-muted">Saldo Pendiente</small>
-                <div class="h5 text-warning mb-0">@Invoice.Balance.ToString("C")</div>
+                <div class="h5 text-warning mb-0">@Invoice.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
             </div>
         }
     </div>
@@ -131,7 +131,7 @@ else if (Invoice?.Status == "Pendiente" && Invoice.Balance > 0)
         <div class="card-body text-center">
             <i class="bi bi-clock-history fs-1 text-warning mb-3"></i>
             <p class="mb-3">
-                Saldo pendiente: <strong>@Invoice.Balance.ToString("C")</strong>
+                Saldo pendiente: <strong>@Invoice.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong>
             </p>
             <button class="btn btn-success w-100" @onclick="OnRegisterPayment">
                 <i class="bi bi-cash-coin"></i> Registrar Pago

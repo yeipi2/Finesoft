@@ -1,7 +1,7 @@
 ﻿@using fs_front.DTO
 @using fs_front.Repositories
 
-<div style="width: 100%; max-width: 500px;">
+<div style="width: 100%;">
     <RadzenTemplateForm TItem="UserDto" Data="@_model" Submit="@OnSubmit">
         <RadzenStack Gap="1.5rem">
 
@@ -14,35 +14,38 @@
             }
 
             <RadzenStack Gap="1rem">
-                <RadzenFormField Text="Nombre de Usuario" Variant="Variant.Outlined">
+                <RadzenFormField Text="Nombre de Usuario" Variant="Variant.Outlined" style="width:100%">
                     <ChildContent>
-                        <RadzenTextBox @bind-Value="_model.UserName" Name="UserName" class="w-50"
+                        <RadzenTextBox @bind-Value="_model.UserName" Name="UserName"
+                                       style="width:100%"
                                        Placeholder="Ingrese el nombre de usuario" />
                     </ChildContent>
                 </RadzenFormField>
 
-                <RadzenFormField Text="Correo Electrónico" Variant="Variant.Outlined">
+                <RadzenFormField Text="Correo Electrónico" Variant="Variant.Outlined" style="width:100%">
                     <ChildContent>
-                        <RadzenTextBox @bind-Value="_model.Email" Name="Email" class="w-50"
+                        <RadzenTextBox @bind-Value="_model.Email" Name="Email"
+                                       style="width:100%"
                                        Placeholder="usuario@ejemplo.com" />
                     </ChildContent>
                 </RadzenFormField>
 
                 @if (!_isEditMode)
                 {
-                    <RadzenFormField Text="Contraseña" Variant="Variant.Outlined">
+                    <RadzenFormField Text="Contraseña" Variant="Variant.Outlined" style="width:100%">
                         <ChildContent>
-                            <RadzenPassword @bind-Value="_model.Password" Name="Password" class="w-50"
+                            <RadzenPassword @bind-Value="_model.Password" Name="Password"
+                                            style="width:100%"
                                             Placeholder="Mínimo 6 caracteres" />
                         </ChildContent>
                     </RadzenFormField>
                 }
 
-                <RadzenFormField Text="Rol" Variant="Variant.Outlined">
+                <RadzenFormField Text="Rol" Variant="Variant.Outlined" style="width:100%">
                     <ChildContent>
                         @if (_isLoadingRoles)
                         {
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center p-2">
                                 <span class="spinner-border spinner-border-sm me-2"></span>
                                 <span>Cargando roles...</span>
                             </div>
@@ -50,7 +53,8 @@
                         else
                         {
                             <RadzenDropDown @bind-Value="_model.RoleName" Name="RoleName"
-                                            Data="@_availableRoles" class="w-50"
+                                            Data="@_availableRoles"
+                                            style="width:100%"
                                             Placeholder="Seleccionar rol..."
                                             Disabled="@(_availableRoles.Count == 0)" />
                         }
@@ -62,11 +66,11 @@
                          Gap="0.5rem" class="mt-3">
                 <RadzenButton Text="Cancelar" Icon="cancel" ButtonStyle="ButtonStyle.Light"
                               Click="@OnCancel" Disabled="@_isSaving" />
-
                 <RadzenButton ButtonType="ButtonType.Submit" Icon="save"
                               Text="@(_isEditMode ? "Actualizar" : "Crear")"
                               ButtonStyle="ButtonStyle.Primary" IsBusy="@_isSaving" />
             </RadzenStack>
+
         </RadzenStack>
     </RadzenTemplateForm>
 </div>
@@ -89,56 +93,31 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadAvailableRoles();
-
         if (_isEditMode)
-        {
             await LoadUserForEdit();
-        }
     }
 
-    // ✅ CARGAR ROLES DESDE LA API
     private async Task LoadAvailableRoles()
     {
         _isLoadingRoles = true;
         try
         {
             var rolesPermissions = await PermissionApiService.GetAllRolesPermissionsAsync();
-
             if (rolesPermissions != null && rolesPermissions.Any())
             {
                 _availableRoles = rolesPermissions
                     .Select(r => r.RoleName)
                     .OrderBy(name => name)
                     .ToList();
-
-                Console.WriteLine($"✅ Roles cargados: {string.Join(", ", _availableRoles)}");
             }
             else
             {
-                // Fallback a roles hardcodeados si no se pueden cargar
-                _availableRoles = new List<string>
-                {
-                    "Admin",
-                    "Administracion",
-                    "Empleado",
-                    "Cliente",
-                    "Supervisor"
-                };
-                Console.WriteLine("⚠️ Usando roles por defecto");
+                _availableRoles = new List<string> { "Admin", "Administracion", "Empleado", "Cliente", "Supervisor" };
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"❌ Error al cargar roles: {ex.Message}");
-            // Fallback a roles hardcodeados
-            _availableRoles = new List<string>
-            {
-                "Admin",
-                "Administracion",
-                "Empleado",
-                "Cliente",
-                "Supervisor"
-            };
+            _availableRoles = new List<string> { "Admin", "Administracion", "Empleado", "Cliente", "Supervisor" };
         }
         finally
         {
@@ -176,17 +155,10 @@
     {
         _isSaving = true;
         _errorMessage = null;
-
         try
         {
-            if (_isEditMode)
-            {
-                await UpdateUser(model);
-            }
-            else
-            {
-                await CreateUser(model);
-            }
+            if (_isEditMode) await UpdateUser(model);
+            else await CreateUser(model);
         }
         catch (Exception ex)
         {
@@ -201,7 +173,6 @@
     private async Task CreateUser(UserDto model)
     {
         var result = await UserApiService.CreateUserAsync(model);
-
         if (result.Success)
         {
             ShowNotification("Éxito", "Usuario creado correctamente.", NotificationSeverity.Success);
@@ -215,14 +186,12 @@
 
     private async Task UpdateUser(UserDto model)
     {
-        var updateUserDto = new UserDto
+        var result = await UserApiService.UpdateUserAsync(UserId!, new UserDto
         {
             UserName = model.UserName,
             Email = model.Email,
             RoleName = model.RoleName
-        };
-
-        var result = await UserApiService.UpdateUserAsync(UserId!, updateUserDto);
+        });
 
         if (result.Success)
         {
@@ -235,13 +204,9 @@
         }
     }
 
-    private void OnCancel()
-    {
-        DialogService.Close(false);
-    }
+    private void OnCancel() => DialogService.Close(false);
 
-    private void ShowNotification(string title, string message, NotificationSeverity severity)
-    {
+    private void ShowNotification(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
             Severity = severity,
@@ -249,6 +214,4 @@
             Detail = message,
             Duration = 4000
         });
-    }
-
 }

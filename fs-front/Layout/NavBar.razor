@@ -1,31 +1,76 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using fs_front.Services
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <AuthorizeView Context="authCtx">
     <Authorized>
         <div class="fs-user-menu">
-            <button type="button"                    class="fs-avatar"                    @onclick="ToggleDropdown"                    aria-label="Menú de usuario"
-                    title="@authCtx.User.Identity?.Name">
-                @GetUserInitials(authCtx.User.Identity?.Name)
+            <button type="button"
+                    class="fs-avatar"
+                    @onclick="ToggleDropdown"
+                    aria-label="Menú de usuario"
+                    title="@authCtx.User.Identity?.Name"
+                    style="@(_avatarDataUrl != null ? "background:transparent;padding:0;overflow:hidden;" : "")">
+                @if (!string.IsNullOrEmpty(_avatarDataUrl))
+                {
+                    <img src="@_avatarDataUrl"
+                         style="width:34px;height:34px;border-radius:999px;object-fit:cover;display:block;"
+                         alt="Avatar" />
+                }
+                else
+                {
+                    @GetUserInitials(authCtx.User.Identity?.Name)
+                }
             </button>
 
             @if (_isDropdownOpen)
             {
-                <!-- Overlay para cerrar al click fuera -->
                 <div class="fs-overlay" @onclick="CloseDropdown"></div>
 
-                <!-- Dropdown (no debe cerrar cuando haces click dentro) -->
                 <div class="fs-user-dropdown" @onclick:stopPropagation="true">
-                    <div class="p-3">
-                        <div class="fw-semibold">@authCtx.User.Identity?.Name</div>
-                        <div class="text-muted small">
-                            @authCtx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                    <div class="p-3 d-flex align-items-center gap-3">
+                        <div class="flex-shrink-0">
+                            @if (!string.IsNullOrEmpty(_avatarDataUrl))
+                            {
+                                <img src="@_avatarDataUrl"
+                                     style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;"
+                                     alt="Avatar" />
+                            }
+                            else
+                            {
+                                <div style="width:42px;height:42px;border-radius:50%;background:#3b82f6;
+                                                    color:#fff;font-weight:800;font-size:.9rem;display:flex;
+                                                    align-items:center;justify-content:center;border:2px solid #e2e8f0;">
+                                    @GetUserInitials(authCtx.User.Identity?.Name)
+                                </div>
+                            }
                         </div>
-                        <div class="mt-2">
-                            <span class="badge bg-primary">@GetUserRole(authCtx.User)</span>
+                        <div style="min-width:0">
+                            <div class="fw-semibold text-truncate" style="max-width:170px">
+                                @authCtx.User.Identity?.Name
+                            </div>
+                            <div class="text-muted small text-truncate" style="max-width:170px">
+                                @authCtx.User.FindFirst(ClaimTypes.Email)?.Value
+                            </div>
+                            <div class="mt-1">
+                                <span class="badge @GetRoleBadgeClass(authCtx.User)">
+                                    @GetUserRole(authCtx.User)
+                                </span>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="fs-user-dropdown__divider"></div>
+
+                    <a href="/perfil"
+                       class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+                       style="color:inherit;font-weight:600;font-size:.88rem;"
+                       @onclick="CloseDropdown">
+                        <i class="bi bi-person-circle text-muted"></i>
+                        <span>Mi Perfil</span>
+                    </a>
 
                     <div class="fs-user-dropdown__divider"></div>
 
@@ -43,7 +88,44 @@
     [Inject] public AuthenticationStateProvider Provider { get; set; } = default!;
     [Inject] public NavigationManager Navigation { get; set; } = default!;
 
-    private bool _isDropdownOpen;
+    private bool _isDropdownOpen = false;
+    private string? _avatarDataUrl = null;
+    private string _userId = "";
+
+    private DotNetObjectReference<NavBar>? _selfRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await Provider.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity?.IsAuthenticated != true) return;
+
+        _userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+               ?? user.FindFirst("sub")?.Value
+               ?? user.FindFirst(ClaimTypes.Email)?.Value
+               ?? user.Identity.Name ?? "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrEmpty(_userId)) return;
+        try
+        {
+            _avatarDataUrl = await JS.InvokeAsync<string?>("profileStorage.getAvatar", _userId);
+            if (_avatarDataUrl != null) StateHasChanged();
+
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("profileStorage.onAvatarChanged", _selfRef, _userId);
+        }
+        catch { /* profileStorage no disponible aún */ }
+    }
+
+    [JSInvokable]
+    public void OnAvatarChangedFromJs(string dataUrl)
+    {
+        _avatarDataUrl = dataUrl;
+        InvokeAsync(StateHasChanged);
+    }
 
     private void ToggleDropdown() => _isDropdownOpen = !_isDropdownOpen;
     private void CloseDropdown() => _isDropdownOpen = false;
@@ -55,17 +137,24 @@
         Navigation.NavigateTo("/iniciar-sesion");
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(_userId))
+                await JS.InvokeVoidAsync("profileStorage.offAvatarChanged", _userId);
+        }
+        catch { }
+        _selfRef?.Dispose();
+    }
+
     private static string GetUserInitials(string? userName)
     {
-        if (string.IsNullOrWhiteSpace(userName))
-            return "??";
-
-        var local = userName.Split('@')[0];
-        var parts = local.Split('.', StringSplitOptions.RemoveEmptyEntries);
-
+        if (string.IsNullOrWhiteSpace(userName)) return "??";
+        var local = userName.Contains('@') ? userName.Split('@')[0] : userName;
+        var parts = local.Split(new[] { ' ', '.' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2)
             return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
-
         return local.Length >= 2 ? local[..2].ToUpperInvariant() : local.ToUpperInvariant();
     }
 
@@ -80,6 +169,20 @@
             "Supervisor" => "Supervisor",
             "Cliente" => "Cliente",
             _ => "Sin rol"
+        };
+    }
+
+    private static string GetRoleBadgeClass(ClaimsPrincipal user)
+    {
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+        return role switch
+        {
+            "Admin" => "bg-danger",
+            "Administracion" => "bg-warning text-dark",
+            "Supervisor" => "bg-info text-dark",
+            "Empleado" => "bg-primary",
+            "Cliente" => "bg-success",
+            _ => "bg-secondary"
         };
     }
 }

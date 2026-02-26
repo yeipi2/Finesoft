@@ -1,0 +1,15 @@
+﻿<div class="pf-info-row">
+    <div class="pf-info-icon">
+        <i class="bi @Icon"></i>
+    </div>
+    <div class="pf-info-content">
+        <div class="pf-info-label">@Label</div>
+        <div class="pf-info-value">@(string.IsNullOrEmpty(Value) ? "—" : Value)</div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Value { get; set; }
+}

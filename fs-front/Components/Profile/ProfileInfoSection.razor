@@ -1,0 +1,166 @@
+﻿@using fs_front.DTO
+@inject IJSRuntime JS
+
+<div class="pf-section-body">
+    @if (!_editingPhone)
+    {
+        <div class="pf-info-grid">
+            <InfoRow Icon="bi-envelope" Label="Correo electrónico" Value="@Profile?.Email" />
+            <InfoRow Icon="bi-telephone" Label="Teléfono" Value="@Profile?.Phone" />
+
+            @if (Profile?.Role == "Empleado" || Profile?.Role == "Supervisor" || Profile?.Role == "Administracion")
+            {
+                <InfoRow Icon="bi-person-badge" Label="Nombre completo" Value="@Profile!.FullName" />
+                <InfoRow Icon="bi-briefcase" Label="Puesto" Value="@Profile!.Position" />
+                <InfoRow Icon="bi-diagram-3" Label="Departamento" Value="@Profile!.Department" />
+                <InfoRow Icon="bi-calendar-check" Label="Fecha de ingreso" Value="@Profile!.HireDate?.ToString("dd/MM/yyyy")" />
+            }
+            @if (Profile?.Role == "Cliente")
+            {
+                <InfoRow Icon="bi-building" Label="Empresa" Value="@Profile!.CompanyName" />
+                <InfoRow Icon="bi-person" Label="Contacto" Value="@Profile!.ContactName" />
+                <InfoRow Icon="bi-card-text" Label="RFC" Value="@Profile!.RFC" />
+                <InfoRow Icon="bi-geo-alt" Label="Dirección" Value="@Profile!.Address" />
+                <InfoRow Icon="bi-gear" Label="Modalidad servicio" Value="@Profile!.ServiceMode" />
+            }
+            @if (Profile?.Role == "Admin")
+            {
+                <InfoRow Icon="bi-person-badge" Label="Usuario" Value="@Profile!.UserName" />
+            }
+        </div>
+
+        <div class="pf-section-actions">
+            <button class="btn pf-edit-btn" @onclick="StartEdit">
+                <i class="bi bi-pencil me-2"></i>Editar teléfono
+            </button>
+        </div>
+
+        <div class="pf-readonly-notice">
+            <i class="bi bi-lock-fill me-1"></i>
+            Solo el número de teléfono puede ser modificado desde aquí. Para cambiar otros datos, contacta al administrador.
+        </div>
+    }
+    else
+    {
+        <div class="pf-edit-zone">
+            <div class="pf-edit-header">
+                <i class="bi bi-telephone-fill text-primary me-2"></i>
+                <strong>Actualizar número de teléfono</strong>
+            </div>
+
+            <div class="pf-phone-current">
+                <span class="text-muted small">Número actual:</span>
+                <span class="fw-semibold ms-2">@(string.IsNullOrEmpty(Profile?.Phone) ? "Sin teléfono" : Profile!.Phone)</span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label pf-label">Nuevo número de teléfono</label>
+                <input type="tel"
+                       class="@($"form-control pf-phone-input {(_phoneError != null ? "is-invalid" : "")}")"
+                       @bind="_newPhone"
+                       @bind:event="oninput"
+                       placeholder="Ej. 6681234567"
+                       maxlength="20" />
+                @if (_phoneError != null)
+                {
+                    <div class="invalid-feedback">@_phoneError</div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger py-2 small">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>@_error
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(_success))
+            {
+                <div class="alert alert-success py-2 small">
+                    <i class="bi bi-check-circle-fill me-1"></i>@_success
+                </div>
+            }
+
+            <div class="pf-edit-actions">
+                <button class="btn btn-primary pf-save-btn" @onclick="ConfirmSave" disabled="@_saving">
+                    @if (_saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    else
+                    {
+
+                        <i class="bi bi-check-lg me-1"></i>
+                    }
+                    Guardar cambio
+                </button>
+                <button class="btn btn-outline-secondary pf-cancel-btn" @onclick="Cancel" disabled="@_saving">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public ProfileDto? Profile { get; set; }
+    [Parameter] public EventCallback OnUpdated { get; set; }
+    [Inject] public IUserApiService UserApi { get; set; } = default!;
+
+    private bool _editingPhone = false;
+    private bool _saving = false;
+    private string _newPhone = string.Empty;
+    private string? _phoneError = null;
+    private string? _error = null;
+    private string? _success = null;
+
+    public void StartEdit()
+    {
+        _newPhone = Profile?.Phone ?? string.Empty;
+        _phoneError = null;
+        _error = null;
+        _success = null;
+        _editingPhone = true;
+    }
+
+    private async Task ConfirmSave()
+    {
+        _phoneError = null;
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_newPhone)) { _phoneError = "El teléfono no puede estar vacío."; return; }
+        if (_newPhone.Length < 7) { _phoneError = "Ingresa un número válido."; return; }
+        if (_newPhone == Profile?.Phone) { _phoneError = "El número es igual al actual."; return; }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"¿Deseas cambiar tu número de teléfono a \"{_newPhone}\"?");
+        if (!confirmed) return;
+
+        _saving = true;
+        var form = new ProfileUpdateDto
+        {
+            Email = Profile?.Email,
+            Phone = _newPhone,
+            FullName = Profile?.FullName,
+            Position = Profile?.Position,
+            Department = Profile?.Department,
+            CompanyName = Profile?.CompanyName,
+            ContactName = Profile?.ContactName,
+            RFC = Profile?.RFC,
+            Address = Profile?.Address,
+        };
+
+        var (ok, err) = await UserApi.UpdateMyProfileAsync(form);
+        _saving = false;
+
+        if (ok) { _success = "Teléfono actualizado correctamente."; _editingPhone = false; await OnUpdated.InvokeAsync(); }
+        else { _error = err ?? "Error al guardar el teléfono."; }
+    }
+
+    private void Cancel()
+    {
+        _editingPhone = false;
+        _error = null;
+        _success = null;
+        _phoneError = null;
+    }
+}
