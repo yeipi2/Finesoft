@@ -1,0 +1,18 @@
+/* ============================================================
+   13. RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 992px) {
+    .fs-content {
+        flex-direction: column;
+    }
+
+    .fs-sidebar {
+        display: none;
+    }
+
+    .fs-topbar__title {
+        max-width: 260px;
+    }
+}
+

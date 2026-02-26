@@ -1,0 +1,443 @@
+/* ============================================================
+   34. FS-FORM-SECTION — secciones de formulario
+   ============================================================ */
+
+.fs-form-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+    .fs-form-section.is-complete {
+        border-left: 4px solid #22c55e;
+    }
+
+    .fs-form-section.is-incomplete {
+        border-left: 4px solid #ef4444;
+    }
+
+    .fs-form-section.is-optional {
+        border-left: 4px solid #94a3b8;
+    }
+
+.fs-form-section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.85rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.fs-form-section__title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.fs-form-section__icon-wrap {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+
+.fs-form-section.is-complete .fs-form-section__icon-wrap {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.fs-form-section.is-incomplete .fs-form-section__icon-wrap {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.fs-form-section.is-optional .fs-form-section__icon-wrap {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.fs-form-section__title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+}
+
+.fs-form-section.is-incomplete .fs-form-section__title {
+    color: #dc2626;
+}
+
+.fs-section-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.18rem 0.5rem;
+    border-radius: 20px;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.fs-section-badge--complete {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.fs-section-badge--incomplete {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.fs-section-badge--optional {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.fs-form-section__body {
+    padding: 0.75rem 0.9rem;
+}
+
+/* ============================================================
+   35. WRAPPERS DE FORMULARIOS (dialog)
+   ============================================================ */
+
+.ticket-form-wrapper,
+.quote-form-wrapper,
+.invoice-form-wrapper,
+.client-form-container,
+.employee-form-wrapper,
+.project-form-wrapper,
+.fs-dialog-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+    /* El EditForm (<form>) dentro de cualquier wrapper también debe ser flex */
+    .ticket-form-wrapper > form,
+    .quote-form-wrapper > form,
+    .invoice-form-wrapper > form,
+    .client-form-container > form,
+    .employee-form-wrapper > form,
+    .project-form-wrapper > form,
+    .fs-dialog-form > form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+.ticket-form-body,
+.quote-form-body,
+.invoice-form-body,
+.client-form-body,
+.employee-form-body,
+.project-form-body,
+.fs-dialog-form-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.1rem 0.1rem 0.3rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+    .ticket-form-body::-webkit-scrollbar,
+    .quote-form-body::-webkit-scrollbar,
+    .invoice-form-body::-webkit-scrollbar,
+    .client-form-body::-webkit-scrollbar,
+    .employee-form-body::-webkit-scrollbar,
+    .project-form-body::-webkit-scrollbar,
+    .fs-dialog-form-body::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .ticket-form-body::-webkit-scrollbar-thumb,
+    .quote-form-body::-webkit-scrollbar-thumb,
+    .invoice-form-body::-webkit-scrollbar-thumb,
+    .client-form-body::-webkit-scrollbar-thumb,
+    .employee-form-body::-webkit-scrollbar-thumb,
+    .project-form-body::-webkit-scrollbar-thumb,
+    .fs-dialog-form-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+.ticket-form-footer,
+.quote-form-footer,
+.invoice-form-footer,
+.form-actions,
+.employee-form-footer,
+.project-form-footer,
+.fs-dialog-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.6rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid #dee2e6;
+    background-color: #fff;
+    flex-shrink: 0;
+}
+
+.form-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+}
+/* ============================================================
+   36. AUTOCOMPLETE DROPDOWN
+   ============================================================ */
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 260px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    margin-top: 1px;
+}
+
+.autocomplete-item {
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.875rem;
+    transition: background-color 0.12s ease;
+    line-height: 1.4;
+}
+
+    .autocomplete-item:hover {
+        background-color: #e7f3ff;
+    }
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+/* ============================================================
+   37. RADZEN DIALOG
+   ============================================================ */
+
+.rz-dialog {
+    min-width: 500px;
+}
+
+.rz-dialog-wrapper {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: 76px 1rem 76px !important;
+    box-sizing: border-box !important;
+}
+
+    .rz-dialog-wrapper .rz-dialog {
+        width: clamp(650px, 58vw, 900px) !important;
+        max-height: calc(100vh - 92px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .rz-dialog-wrapper.dialog-sm .rz-dialog {
+        width: clamp(480px, 38vw, 600px) !important;
+    }
+
+    .rz-dialog-wrapper.dialog-md .rz-dialog {
+        width: clamp(650px, 58vw, 900px) !important;
+    }
+
+    .rz-dialog-wrapper.dialog-lg .rz-dialog {
+        width: clamp(850px, 72vw, 1050px) !important;
+    }
+
+    .rz-dialog-wrapper.dialog-xl .rz-dialog {
+        width: clamp(1050px, 85vw, 1250px) !important;
+    }
+
+    .rz-dialog-wrapper .rz-dialog-titlebar {
+        flex-shrink: 0 !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 0.92rem !important;
+        font-weight: 600 !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+
+    .rz-dialog-wrapper .rz-dialog-content {
+        flex: 1 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0.7rem 0.9rem !important;
+    }
+
+        /* Solo aplica a wrappers de formularios, NO al confirm */
+        .rz-dialog-wrapper .rz-dialog-content > .ticket-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .quote-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .invoice-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .client-form-container,
+        .rz-dialog-wrapper .rz-dialog-content > .employee-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .project-form-wrapper,
+        .rz-dialog-wrapper .rz-dialog-content > .fs-dialog-form {
+            width: 100% !important;
+            flex: 1 !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+/* ============================================================
+   38. DARK MODE — FORM SECTIONS & DIALOG
+   ============================================================ */
+
+[data-theme="dark"] .rz-dialog-wrapper .rz-dialog-titlebar {
+    background: #1e1e35 !important;
+    border-bottom-color: #2d2d4e !important;
+    color: #f1f1f1 !important;
+}
+
+[data-theme="dark"] .fs-form-section {
+    background: #1e1e35;
+    border-color: #2d2d4e;
+    box-shadow: none;
+}
+
+    [data-theme="dark"] .fs-form-section.is-complete {
+        border-left-color: #22c55e;
+    }
+
+    [data-theme="dark"] .fs-form-section.is-incomplete {
+        border-left-color: #f87171;
+    }
+
+    [data-theme="dark"] .fs-form-section.is-optional {
+        border-left-color: #475569;
+    }
+
+[data-theme="dark"] .fs-form-section__header {
+    background: #252545;
+    border-bottom-color: #2d2d4e;
+}
+
+[data-theme="dark"] .fs-form-section__title {
+    color: #f1f1f1;
+}
+
+[data-theme="dark"] .fs-form-section.is-incomplete .fs-form-section__title {
+    color: #f87171;
+}
+
+[data-theme="dark"] .fs-form-section.is-complete .fs-form-section__icon-wrap {
+    background: rgba(34,197,94,.15);
+    color: #4ade80;
+}
+
+[data-theme="dark"] .fs-form-section.is-incomplete .fs-form-section__icon-wrap {
+    background: rgba(239,68,68,.15);
+    color: #f87171;
+}
+
+[data-theme="dark"] .fs-form-section.is-optional .fs-form-section__icon-wrap {
+    background: #2d2d4e;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .fs-section-badge--complete {
+    background: rgba(34,197,94,.15);
+    color: #4ade80;
+    border-color: rgba(34,197,94,.3);
+}
+
+[data-theme="dark"] .fs-section-badge--incomplete {
+    background: rgba(239,68,68,.15);
+    color: #f87171;
+    border-color: rgba(239,68,68,.3);
+}
+
+[data-theme="dark"] .fs-section-badge--optional {
+    background: #252545;
+    color: #94a3b8;
+    border-color: #2d2d4e;
+}
+
+[data-theme="dark"] .fs-form-section__body {
+    background: #1e1e35;
+}
+
+[data-theme="dark"] .ticket-form-footer,
+[data-theme="dark"] .quote-form-footer,
+[data-theme="dark"] .invoice-form-footer,
+[data-theme="dark"] .form-actions,
+[data-theme="dark"] .employee-form-footer,
+[data-theme="dark"] .project-form-footer,
+[data-theme="dark"] .fs-dialog-form-footer {
+    border-top-color: #2d2d4e;
+    background-color: #1e1e35;
+}
+
+[data-theme="dark"] .autocomplete-dropdown {
+    background-color: #252545;
+    border-color: #2d2d4e;
+}
+
+[data-theme="dark"] .autocomplete-item {
+    border-bottom-color: #2d2d4e;
+    color: #f1f1f1;
+}
+
+    [data-theme="dark"] .autocomplete-item:hover {
+        background-color: #1a3a5c;
+    }
+/* ============================================================
+   39. RADZEN CONFIRM DIALOG — BOTONES
+   ============================================================ */
+
+.rz-confirm .rz-dialog-content {
+    display: block !important;
+    overflow: visible !important;
+    padding: 1rem !important;
+}
+
+.rz-confirm .rz-dialog-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1rem !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+.rz-confirm .rz-button {
+    width: auto !important;
+    height: auto !important;
+    padding: 0.4rem 1.2rem !important;
+    font-size: 0.875rem !important;
+    min-height: unset !important;
+    min-width: unset !important;
+    flex: unset !important;
+    display: inline-flex !important;
+}
+

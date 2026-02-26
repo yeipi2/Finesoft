@@ -1,0 +1,229 @@
+/* ============================================================
+   07. APP SHELL — LAYOUT PRINCIPAL
+   ============================================================ */
+
+.fs-appshell {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+.fs-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .06);
+    flex-shrink: 0;
+}
+
+.fs-topbar__toggle {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fs-topbar__inner {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+}
+
+.fs-topbar__left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fs-topbar__center {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.fs-topbar__right {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.fs-topbar__title {
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 520px;
+}
+
+.fs-content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.fs-main {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    height: 100%;
+    padding: 24px;
+    background: #f6f7fb;
+}
+
+/* ============================================================
+   08. SIDEBAR
+   ============================================================ */
+
+.fs-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: #fff;
+    border-right: 1px solid rgba(0, 0, 0, .06);
+    padding: 8px;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+    .fs-sidebar::-webkit-scrollbar {
+        display: none;
+    }
+
+.fs-sidebar__title {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #6c757d;
+    margin: 8px 10px 4px;
+}
+
+.fs-navlink {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    color: #495057;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: .92rem;
+}
+
+    .fs-navlink i {
+        font-size: 1.05rem;
+        width: 22px;
+        text-align: center;
+    }
+
+    .fs-navlink.active {
+        background: rgba(13, 110, 253, .10);
+        color: #0d6efd;
+    }
+
+    .fs-navlink:hover {
+        background: rgba(0, 0, 0, .04);
+    }
+
+.fs-sidebar.is-collapsed {
+    width: 76px;
+    padding: 8px;
+}
+
+    .fs-sidebar.is-collapsed .fs-navlink {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+
+        .fs-sidebar.is-collapsed .fs-navlink span,
+        .fs-sidebar.is-collapsed .fs-sidebar__title {
+            display: none;
+        }
+
+/* ============================================================
+   09. USER MENU (Topbar)
+   ============================================================ */
+
+.fs-user-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.fs-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 0;
+    outline: none;
+    padding: 0;
+    background: #6c757d;
+    color: #fff;
+    font-weight: 800;
+    font-size: .85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    box-shadow: none;
+}
+
+    .fs-avatar:hover {
+        filter: brightness(.95);
+    }
+
+    .fs-avatar:focus-visible {
+        box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25);
+    }
+
+.fs-user-dropdown {
+    position: absolute;
+    top: 44px;
+    right: 0;
+    min-width: 260px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.fs-user-dropdown__divider {
+    height: 1px;
+    background: rgba(0, 0, 0, .08);
+}
+
+.fs-user-dropdown__item-danger {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 10px 12px;
+    color: #dc3545;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+    .fs-user-dropdown__item-danger:hover {
+        background: rgba(220, 53, 69, .08);
+    }
+
+.fs-overlay {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    z-index: 999;
+}
+

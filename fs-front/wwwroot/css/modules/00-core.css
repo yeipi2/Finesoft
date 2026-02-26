@@ -1,0 +1,190 @@
+/* ============================================================
+   01. FUENTES
+   ============================================================ */
+
+@font-face {
+    font-family: 'Inter';
+    src: url("../fonts/Inter.ttf");
+}
+
+html, body {
+    font-family: 'Inter', Helvetica, Arial, sans-serif;
+}
+
+/* ============================================================
+   02. VARIABLES — TEMA CLARO (default)
+   ============================================================ */
+
+:root {
+    --hero-bg: #ffffff;
+    --section-bg: #f8f9fa;
+    --cta-bg: #f0f0f5;
+    --card-bg: #ffffff;
+    --stat-card-bg: #f8f9fa;
+    --window-bar-bg: #f0f0f0;
+    --text-primary: #1a1a2e;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --badge-bg: #f3f4f6;
+    --btn-secondary-bg: #ffffff;
+    --btn-secondary-hover: #f3f4f6;
+    --theme-toggle-bg: #ffffff;
+    --theme-toggle-color: #1a1a2e;
+    --cta-text: #1a1a2e;
+    --cta-subtitle: #6b7280;
+}
+
+/* ============================================================
+   03. VARIABLES — TEMA OSCURO
+   ============================================================ */
+
+[data-theme="dark"] {
+    --hero-bg: #0f0f1a;
+    --section-bg: #1a1a2e;
+    --cta-bg: #16213e;
+    --card-bg: #1e1e35;
+    --stat-card-bg: #252545;
+    --window-bar-bg: #252545;
+    --text-primary: #f1f1f1;
+    --text-secondary: #a0aec0;
+    --border-color: #2d2d4e;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --badge-bg: #252545;
+    --btn-secondary-bg: #1e1e35;
+    --btn-secondary-hover: #252545;
+    --theme-toggle-bg: #1e1e35;
+    --theme-toggle-color: #f1f1f1;
+    --cta-text: #f1f1f1;
+    --cta-subtitle: #a0aec0;
+}
+
+/* ============================================================
+   04. BLAZOR — BASE
+   ============================================================ */
+
+h1:focus {
+    outline: none;
+}
+
+a, .btn-link {
+    color: #0071c1;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus,
+.form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+.content {
+    padding-top: 1.1rem;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid red;
+}
+
+.validation-message {
+    color: red;
+}
+
+code {
+    color: #c02d76;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.super-tiny {
+    font-size: 0.75rem;
+}
+
+.bg-active {
+    background-color: #e2fceb;
+}
+
+.bg-inactive {
+    background-color: #f16868;
+}
+
+/* ============================================================
+   05. BLAZOR — ERROR UI
+   ============================================================ */
+
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, .2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbmsiPjwvc3ZnPg==) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+/* ============================================================
+   06. BLAZOR — LOADING PROGRESS
+   ============================================================ */
+
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    margin: 20vh auto 1rem auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: #1b6ec2;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }
+

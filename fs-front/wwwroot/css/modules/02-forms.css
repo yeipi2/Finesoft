@@ -1,0 +1,65 @@
+/* ============================================================
+   10. CARDS
+   ============================================================ */
+
+.card {
+    border: 1px solid rgba(15, 23, 42, .06);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    border-radius: 14px;
+}
+
+/* ============================================================
+   11. FORMULARIOS — PATRÓN UNIVERSAL MODAL
+   ============================================================ */
+
+.quote-form-wrapper,
+.client-form-container,
+.project-form-wrapper,
+.employee-form-wrapper,
+.ticket-form-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+    .quote-form-wrapper > form,
+    .client-form-container > form,
+    .project-form-wrapper > form,
+    .employee-form-wrapper > form,
+    .ticket-form-wrapper > form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+.quote-form-body,
+.client-form-body,
+.project-form-body,
+.employee-form-body,
+.ticket-form-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+.quote-form-footer,
+.client-form-footer,
+.project-form-footer,
+.employee-form-footer,
+.ticket-form-footer,
+.invoice-form-footer,
+.form-footer-sticky,
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0 0.6rem 0;
+    margin-top: 0.25rem;
+    border-top: 1px solid #dee2e6;
+    background-color: white;
+    flex-shrink: 0;
+}
+
