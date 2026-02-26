@@ -1,6 +1,6 @@
 ﻿@using fs_front.DTO
-@inject IJSRuntime JS
-@implements IAsyncDisposable
+@using fs_front.Repositories
+@inject IUserApiService UserApi
 
 <div class="profile-hero">
     <div class="profile-cover">
@@ -25,7 +25,9 @@
                 }
                 else
                 {
-                    <div class="profile-avatar-initials">@GetInitials(Profile?.FullName ?? Profile?.UserName)</div>
+                    <div class="profile-avatar-initials">
+                        @GetInitials(Profile?.FullName ?? Profile?.UserName)
+                    </div>
                 }
                 <label class="profile-avatar-overlay" title="Cambiar foto">
                     <i class="bi bi-camera-fill"></i>
@@ -51,8 +53,8 @@
                         <i class="bi bi-telephone"></i>@Profile!.Phone
                     </span>
                 }
-                @if ((Profile?.Role == "Empleado" || Profile?.Role == "Supervisor" || Profile?.Role == "Administracion")
-                                && !string.IsNullOrEmpty(Profile?.Position))
+                @if ((Profile?.Role == "Empleado" || Profile?.Role == "Supervisor" ||
+                                Profile?.Role == "Administracion") && !string.IsNullOrEmpty(Profile?.Position))
                 {
                     <span class="profile-meta-item">
                         <i class="bi bi-briefcase"></i>@Profile!.Position
@@ -80,26 +82,28 @@
     </div>
 }
 
+@if (_isSaving)
+{
+    <div class="d-flex align-items-center gap-2 mt-2 mx-4 small text-muted">
+        <span class="spinner-border spinner-border-sm"></span>
+        Guardando imagen...
+    </div>
+}
+
 @code {
     [Parameter] public ProfileDto? Profile { get; set; }
 
     private string? _avatarDataUrl;
     private string? _coverDataUrl;
     private string? _fileError;
+    private bool _isSaving;
 
-    private string UserId => Profile?.UserId ?? Profile?.Email ?? "anon";
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnParametersSet()
     {
-        if (!firstRender || Profile is null) return;
-        try
-        {
-            _avatarDataUrl = await JS.InvokeAsync<string?>("profileStorage.getAvatar", UserId);
-            _coverDataUrl = await JS.InvokeAsync<string?>("profileStorage.getCover", UserId);
-            if (_avatarDataUrl != null || _coverDataUrl != null)
-                StateHasChanged();
-        }
-        catch { /* profileStorage no disponible aún */ }
+        // Cargar imágenes que ya vienen en el ProfileDto (cargadas desde BD en el servidor)
+        if (Profile is null) return;
+        _avatarDataUrl = Profile.AvatarDataUrl;
+        _coverDataUrl = Profile.CoverDataUrl;
     }
 
     private async Task OnAvatarChange(InputFileChangeEventArgs e)
@@ -113,8 +117,7 @@
         await file.OpenReadStream(2 * 1024 * 1024).ReadAsync(buf);
         _avatarDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
 
-        try { await JS.InvokeVoidAsync("profileStorage.saveAvatar", UserId, _avatarDataUrl); }
-        catch { }
+        await SaveImages();
     }
 
     private async Task OnCoverChange(InputFileChangeEventArgs e)
@@ -128,12 +131,36 @@
         await file.OpenReadStream(5 * 1024 * 1024).ReadAsync(buf);
         _coverDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
 
-        try { await JS.InvokeVoidAsync("profileStorage.saveCover", UserId, _coverDataUrl); }
-        catch { }
+        await SaveImages();
     }
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-
+    private async Task SaveImages()
+    {
+        _isSaving = true;
+        StateHasChanged();
+        try
+        {
+            var result = await UserApi.SaveMyImagesAsync(_avatarDataUrl, _coverDataUrl);
+            if (result.Success)
+            {
+                // ⭐ Notifica a NavBar que el avatar cambió
+                AvatarStateService.NotifyAvatarChanged(_avatarDataUrl);
+            }
+            else
+            {
+                _fileError = $"Error al guardar: {result.Error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _fileError = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
     private static string GetInitials(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return "??";

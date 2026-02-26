@@ -1,5 +1,5 @@
-﻿using System.Net.Http.Json;
-using fs_front.DTO;
+﻿using fs_front.DTO;
+using System.Net.Http.Json;
 
 namespace fs_front.Services;
 
@@ -14,67 +14,39 @@ public class UserApiService : IUserApiService
 
     public async Task<List<UserDto>?> GetUsersAsync()
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<List<UserDto>>("api/users");
-        }
-        catch (HttpRequestException) 
-        {
-            return null;
-        }
+        try { return await _httpClient.GetFromJsonAsync<List<UserDto>>("api/users"); }
+        catch { return null; }
     }
 
     public async Task<UserDto?> GetUserByIdAsync(string id)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<UserDto>($"api/users/{id}");
-        }
-        catch (HttpRequestException)
-        {
-            return null;
-        }
+        try { return await _httpClient.GetFromJsonAsync<UserDto>($"api/users/{id}"); }
+        catch { return null; }
     }
 
-    public async Task<(bool Success, UserDto? CreatedUser, string? ErrorMessage)> CreateUserAsync(
-        UserDto user)
+    public async Task<(bool Success, UserDto? CreatedUser, string? ErrorMessage)> CreateUserAsync(UserDto user)
     {
         var response = await _httpClient.PostAsJsonAsync("api/users", user);
-
         if (response.IsSuccessStatusCode)
         {
-            var createdUser = await response.Content.ReadFromJsonAsync<UserDto>();
-            return (true, createdUser, null);
+            var created = await response.Content.ReadFromJsonAsync<UserDto>();
+            return (true, created, null);
         }
-
-        var errorContent = await response.Content.ReadAsStringAsync();
-        return (false, null, errorContent);
+        return (false, null, await response.Content.ReadAsStringAsync());
     }
 
     public async Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(string id, UserDto user)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/users/{id}", user);
-
-        if (response.IsSuccessStatusCode)
-        {
-            return (true, null);
-        }
-
-        var errorContent = await response.Content.ReadAsStringAsync();
-        return (false, errorContent);
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await response.Content.ReadAsStringAsync());
     }
 
     public async Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(string id)
     {
         var response = await _httpClient.DeleteAsync($"api/users/{id}");
-
-        if (response.IsSuccessStatusCode)
-        {
-            return (true, null);
-        }
-
-        var errorContent = await response.Content.ReadAsStringAsync();
-        return (false, errorContent);
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await response.Content.ReadAsStringAsync());
     }
 
     public async Task<ProfileDto?> GetMyProfileAsync()
@@ -96,6 +68,20 @@ public class UserApiService : IUserApiService
         if (response.IsSuccessStatusCode) return (true, null);
         return (false, await response.Content.ReadAsStringAsync());
     }
+
+    // ⭐ Guardar imágenes en el servidor
+    public async Task<(bool Success, string? Error)> SaveMyImagesAsync(
+        string? avatarDataUrl, string? coverDataUrl)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/users/me/images", new
+        {
+            AvatarDataUrl = avatarDataUrl,
+            CoverDataUrl = coverDataUrl
+        });
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await response.Content.ReadAsStringAsync());
+    }
+
 
     // public async Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(string id, ChangePasswordDto passwords)
     // {

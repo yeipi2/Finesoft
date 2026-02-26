@@ -4,9 +4,12 @@ namespace fn_backend.DTO;
 
 public class ProfileUpdateDto
 {
-    // Común
     [EmailAddress]
     public string? Email { get; set; }
+
+    // Imágenes
+    public string? AvatarDataUrl { get; set; }
+    public string? CoverDataUrl { get; set; }
 
     // Empleado
     public string? FullName { get; set; }

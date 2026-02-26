@@ -27,11 +27,22 @@ namespace fs_backend.Identity
         public DbSet<TicketActivity> TicketActivities { get; set; }
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
-        
+        public DbSet<UserProfile> UserProfiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // ⭐ UserProfile: un registro por usuario
+            modelBuilder.Entity<UserProfile>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserId).IsUnique();
+                entity.Property(e => e.UserId).IsRequired().HasMaxLength(450);
+                // Sin límite de longitud para Base64
+                entity.Property(e => e.AvatarDataUrl).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.CoverDataUrl).HasColumnType("nvarchar(max)");
+            });
 
             // ========== CONFIGURACIÓN DE RELACIONES ==========
 

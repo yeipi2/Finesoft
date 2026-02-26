@@ -7,6 +7,10 @@ public class ProfileDto
     public string UserName { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
 
+    // Imágenes (guardadas en BD)
+    public string? AvatarDataUrl { get; set; }
+    public string? CoverDataUrl { get; set; }
+
     // Empleado
     public int? EmployeeId { get; set; }
     public string FullName { get; set; } = string.Empty;

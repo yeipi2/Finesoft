@@ -174,7 +174,12 @@ public class UserService : IUserService
                 profile.MonthlyRate = client.MonthlyRate;
             }
         }
-        // Admin puro: no necesita tabla extra, solo devuelve datos de Identity
+        // ⭐ Cargar imágenes desde UserProfiles
+        var images = await GetUserImagesAsync(userId);
+        profile.AvatarDataUrl = images.avatar;
+        profile.CoverDataUrl = images.cover;
+
+        return profile;
 
         return profile;
     }
@@ -246,5 +251,37 @@ public class UserService : IUserService
             RoleName = roles.FirstOrDefault() ?? string.Empty,
             Password = null
         };
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  SAVE / GET USER IMAGES
+    // ─────────────────────────────────────────────────────────
+    public async Task<ServiceResult<bool>> SaveUserImagesAsync(
+        string userId, string? avatarDataUrl, string? coverDataUrl)
+    {
+        var profile = await _context.UserProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (profile is null)
+        {
+            profile = new fn_backend.Models.UserProfile { UserId = userId };
+            _context.UserProfiles.Add(profile);
+        }
+
+        if (avatarDataUrl != null) profile.AvatarDataUrl = avatarDataUrl;
+        if (coverDataUrl != null) profile.CoverDataUrl = coverDataUrl;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return ServiceResult<bool>.Success(true);
+    }
+
+    public async Task<(string? avatar, string? cover)> GetUserImagesAsync(string userId)
+    {
+        var profile = await _context.UserProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        return (profile?.AvatarDataUrl, profile?.CoverDataUrl);
     }
 }

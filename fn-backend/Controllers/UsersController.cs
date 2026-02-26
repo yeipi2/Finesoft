@@ -248,4 +248,16 @@ public class UsersController : ControllerBase
         var result = await _userService.ChangePasswordAsync(userId, dto);
         return result.Succeeded ? Ok(new { message = "Contraseña cambiada exitosamente" }) : BadRequest(result.Errors);
     }
+
+    /// POST: api/users/me/images
+    [HttpPost("me/images")]
+    [Authorize]
+    public async Task<IActionResult> SaveMyImages([FromBody] SaveImagesDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _userService.SaveUserImagesAsync(userId, dto.AvatarDataUrl, dto.CoverDataUrl);
+        return result.Succeeded ? Ok(new { message = "Imágenes guardadas" }) : BadRequest(result.Errors);
+    }
 }

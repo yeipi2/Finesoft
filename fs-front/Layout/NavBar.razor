@@ -2,7 +2,7 @@
 @using System.Security.Claims
 @using fs_front.Services
 @inject IJSRuntime JS
-@implements IAsyncDisposable
+@inject IUserApiService UserApi
 
 <AuthorizeView Context="authCtx">
     <Authorized>
@@ -90,38 +90,25 @@
 
     private bool _isDropdownOpen = false;
     private string? _avatarDataUrl = null;
-    private string _userId = "";
-
-    private DotNetObjectReference<NavBar>? _selfRef;
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await Provider.GetAuthenticationStateAsync();
-        var user = state.User;
-        if (user.Identity?.IsAuthenticated != true) return;
-
-        _userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? user.FindFirst("sub")?.Value
-               ?? user.FindFirst(ClaimTypes.Email)?.Value
-               ?? user.Identity.Name ?? "";
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || string.IsNullOrEmpty(_userId)) return;
+        // Carga el avatar desde el servidor al iniciar
         try
         {
-            _avatarDataUrl = await JS.InvokeAsync<string?>("profileStorage.getAvatar", _userId);
-            if (_avatarDataUrl != null) StateHasChanged();
-
-            _selfRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("profileStorage.onAvatarChanged", _selfRef, _userId);
+            var profile = await UserApi.GetMyProfileAsync();
+            if (profile?.AvatarDataUrl != null)
+            {
+                _avatarDataUrl = profile.AvatarDataUrl;
+            }
         }
-        catch { /* profileStorage no disponible aún */ }
+        catch { /* Si falla, muestra iniciales */ }
+
+        // Escuchar cambios de avatar desde ProfileHeader
+        AvatarStateService.OnAvatarChanged += HandleAvatarChanged;
     }
 
-    [JSInvokable]
-    public void OnAvatarChangedFromJs(string dataUrl)
+    private void HandleAvatarChanged(string? dataUrl)
     {
         _avatarDataUrl = dataUrl;
         InvokeAsync(StateHasChanged);
@@ -132,20 +119,16 @@
 
     private void Logout()
     {
+        AvatarStateService.OnAvatarChanged -= HandleAvatarChanged;
         var auth = (CustomAuthStateProvider)Provider;
         auth.Logout();
         Navigation.NavigateTo("/iniciar-sesion");
     }
 
-    public async ValueTask DisposeAsync()
+    // Limpieza al destruir el componente
+    public void Dispose()
     {
-        try
-        {
-            if (!string.IsNullOrEmpty(_userId))
-                await JS.InvokeVoidAsync("profileStorage.offAvatarChanged", _userId);
-        }
-        catch { }
-        _selfRef?.Dispose();
+        AvatarStateService.OnAvatarChanged -= HandleAvatarChanged;
     }
 
     private static string GetUserInitials(string? userName)
