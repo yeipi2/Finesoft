@@ -1,6 +1,4 @@
-/* ============================================================
-   34. FS-FORM-SECTION — secciones de formulario
-   ============================================================ */
+
 
 .fs-form-section {
     background: #fff;
@@ -125,7 +123,7 @@
     overflow: hidden;
 }
 
-    /* El EditForm (<form>) dentro de cualquier wrapper también debe ser flex */
+    /* El EditForm (<form>) dentro de cualquier wrapper tambiÃ©n debe ser flex */
     .ticket-form-wrapper > form,
     .quote-form-wrapper > form,
     .invoice-form-wrapper > form,
@@ -310,7 +308,7 @@
         }
 
 /* ============================================================
-   38. DARK MODE — FORM SECTIONS & DIALOG
+   38. DARK MODE â€” FORM SECTIONS & DIALOG
    ============================================================ */
 
 [data-theme="dark"] .rz-dialog-wrapper .rz-dialog-titlebar {
@@ -412,7 +410,7 @@
         background-color: #1a3a5c;
     }
 /* ============================================================
-   39. RADZEN CONFIRM DIALOG — BOTONES
+   39. RADZEN CONFIRM DIALOG â€” BOTONES
    ============================================================ */
 
 .rz-confirm .rz-dialog-content {
@@ -440,4 +438,3 @@
     flex: unset !important;
     display: inline-flex !important;
 }
-

@@ -1,7 +1,3 @@
-/* ============================================================
-   07. APP SHELL — LAYOUT PRINCIPAL
-   ============================================================ */
-
 .fs-appshell {
     height: 100vh;
     display: flex;
@@ -226,4 +222,3 @@
     background: transparent;
     z-index: 999;
 }
-
