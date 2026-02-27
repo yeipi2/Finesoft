@@ -543,13 +543,6 @@ public class TicketService : ITicketService
         return ServiceResult<bool>.Success(true);
     }
 
-    // ============================================================
-    // ACTUALIZACIÓN 2: TicketService.cs
-    // Agregar este método al final de la clase TicketService
-    // (antes del método MapToDetailDto)
-    // ============================================================
-
-    // 🆕 NUEVO MÉTODO - Agregar al final de la clase, antes de MapToDetailDto
     public async Task<ServiceResult<bool>> UpdateTicketStatusAsync(int ticketId, string newStatus, string userId)
     {
         var ticket = await _context.Tickets.FindAsync(ticketId);
@@ -603,6 +596,15 @@ public class TicketService : ITicketService
             createdByUser = await _userManager.FindByIdAsync(ticket.CreatedByUserId);
         }
 
+        // ← CAMBIO: buscar FullName en tabla Employees por UserId
+        string? assignedFullName = null;
+        if (!string.IsNullOrEmpty(ticket.AssignedToUserId))
+        {
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.UserId == ticket.AssignedToUserId);
+            assignedFullName = employee?.FullName ?? assignedUser?.UserName;
+        }
+
         var dto = new TicketDetailDto
         {
             Id = ticket.Id,
@@ -616,7 +618,7 @@ public class TicketService : ITicketService
             Status = ticket.Status,
             Priority = ticket.Priority,
             AssignedToUserId = ticket.AssignedToUserId,
-            AssignedToUserName = assignedUser?.UserName,
+            AssignedToUserName = assignedFullName, // ← CAMBIO: usa FullName en lugar de UserName
             CreatedByUserId = ticket.CreatedByUserId,
             CreatedByUserName = createdByUser?.UserName ?? string.Empty,
             CreatedAt = ticket.CreatedAt,

@@ -9,8 +9,8 @@ public class ClientDto
     public string? UserId { get; set; }
 
     [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$",
-        ErrorMessage = "Debe tener 8+ caracteres, una MAYÚSCULA, una minúscula y un número")]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$",
+        ErrorMessage = "Debe tener 8+ caracteres, una MAYÚSCULA, una minúscula, un número y un símbolo")]
     public string? Password { get; set; }
 
     [Required(ErrorMessage = "El nombre de la compañía es obligatorio")]
