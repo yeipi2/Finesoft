@@ -41,6 +41,54 @@
 <RadzenComponents />
 <RadzenNotification />
 
+<style>
+    /* Contenedor de cada notificación tiene posición relativa */
+    .rz-notification {
+        overflow: hidden;
+    }
+
+        /* La línea de progreso */
+        .rz-notification::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            width: 100%;
+            background-color: currentColor;
+            opacity: 0.5;
+            animation: fs-notify-progress 4s linear forwards;
+            transform-origin: left;
+        }
+
+    @@keyframes fs-notify-progress {
+        from {
+            width: 100%;
+        }
+
+        to {
+            width: 0%;
+        }
+    }
+
+    /* Colores por tipo */
+    .rz-notification-success::after {
+        background-color: #4caf50;
+    }
+
+    .rz-notification-error::after {
+        background-color: #f44336;
+    }
+
+    .rz-notification-warning::after {
+        background-color: #ff9800;
+    }
+
+    .rz-notification-info::after {
+        background-color: #2196f3;
+    }
+</style>
+
 @code {
     private bool _sidebarCollapsed;
     private string _currentTitle = "Panel";

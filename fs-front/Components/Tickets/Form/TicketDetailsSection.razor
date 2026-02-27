@@ -129,7 +129,7 @@
                     {
                         @foreach (var emp in Employees)
                         {
-                            <option value="@emp.Id">@emp.UserName</option>
+                            <option value="@emp.UserId">@emp.FullName</option>
                         }
                     }
                 </select>
@@ -171,7 +171,7 @@
     [Parameter] public ProjectDetailDto? SelectedProject { get; set; }
     [Parameter] public string ProjectSearchText { get; set; } = string.Empty;
     [Parameter] public bool IsLoadingUsers { get; set; }
-    [Parameter] public List<UserDto>? Employees { get; set; }
+    [Parameter] public List<EmployeeDto>? Employees { get; set; }
     [Parameter] public EventCallback<ChangeEventArgs> OnProjectSearchInput { get; set; }
     [Parameter] public EventCallback<ProjectDetailDto> OnProjectSelected { get; set; }
 

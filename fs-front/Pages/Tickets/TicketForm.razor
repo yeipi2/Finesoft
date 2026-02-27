@@ -2,10 +2,11 @@
 @using fs_front.DTO
 @using Radzen
 @using Radzen.Blazor
+@using fs_front.Repositories
 
 @inject ITicketApiService TicketApiService
 @inject IProjectApiService ProjectApiService
-@inject IUserApiService UserApiService
+@inject IEmployeeApiService EmployeeApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
@@ -74,7 +75,7 @@
     private List<ProjectDetailDto> _filteredProjects = new();
     private ProjectDetailDto? _selectedProject;
     private string _projectSearchText = string.Empty;
-    private List<UserDto>? _employees;
+    private List<EmployeeDto>? _employees;
 
     private bool _isSaving = false;
     private bool _isLoadingProjects = false;
@@ -119,14 +120,16 @@
 
             try
             {
-                var users = await UserApiService.GetUsersAsync();
-                _employees = users?.Where(u => u.RoleName?.Equals("Empleado", StringComparison.OrdinalIgnoreCase) == true).ToList()
-                             ?? new List<UserDto>();
+                var employees = await EmployeeApiService.GetEmployeesAsync();
+                _employees = employees?
+                    .Where(e => e.IsActive && e.RoleName.Equals("Empleado", StringComparison.OrdinalIgnoreCase))
+                    .ToList()
+                    ?? new List<EmployeeDto>();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al cargar usuarios: {ex.Message}");
-                _employees = new List<UserDto>();
+                Console.WriteLine($"Error al cargar empleados: {ex.Message}");
+                _employees = new List<EmployeeDto>();
             }
         }
         finally

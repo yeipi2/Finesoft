@@ -439,7 +439,7 @@ public class QuoteService : IQuoteService
                 col.Item().Row(r =>
                 {
                     r.AutoItem().Text("Estado: ").FontSize(10).Bold().FontColor(Colors.Black);
-                    r.AutoItem().Text(quote.Status).FontSize(10).Bold().FontColor(statusColor);
+                    r.AutoItem().Text(quote.Status).FontSize(10).Bold().FontColor(statusColor); // ← ya en Bold
                 });
             });
         });
@@ -452,7 +452,7 @@ public class QuoteService : IQuoteService
 
         container.PaddingVertical(20).Column(column =>
         {
-            // ── Datos cliente — solo aparece UNA vez (está en Content) ─────────────
+            // ── Datos cliente ─────────────────────────────────────────────────────
             column.Item().PaddingBottom(20).Row(row =>
             {
                 row.RelativeItem().Column(col =>
@@ -626,7 +626,8 @@ public class QuoteService : IQuoteService
                         row.RelativeItem().AlignRight().Text($"${quote.Tax:N2}").FontSize(11);
                     });
 
-                    col.Item().PaddingTop(10).BorderTop(2).BorderColor(Colors.Black).PaddingTop(10).Row(row =>
+                    // ← CAMBIO: BorderTop(1) en lugar de BorderTop(2) para línea más delgada
+                    col.Item().PaddingTop(10).BorderTop(1).BorderColor(Colors.Black).PaddingTop(10).Row(row =>
                     {
                         row.RelativeItem().Text("TOTAL:").FontSize(16).Bold().FontColor(Colors.Black);
                         row.RelativeItem().AlignRight().Text($"${quote.Total:N2}").FontSize(16).Bold()
@@ -652,32 +653,37 @@ public class QuoteService : IQuoteService
     {
         var purpleColor = "#6B46C1";
 
+        // ← La línea morada del borde superior se mantiene
         container.BorderTop(2).BorderColor(purpleColor).PaddingTop(10).Column(column =>
         {
             column.Item().Row(row =>
             {
                 row.RelativeItem().Column(col =>
                 {
-                    col.Item().Text("FINESOFT").FontSize(10).Bold().FontColor(purpleColor);
-                    col.Item().Text("Blvd. Juan de Dios Batiz #145 PTE").FontSize(8).FontColor(Colors.Grey.Medium);
-                    col.Item().Text("Teléfono: (668) 817-1400").FontSize(8).FontColor(Colors.Grey.Medium);
+                    // ← CAMBIO: todo en negro
+                    col.Item().Text("FINESOFT").FontSize(10).Bold().FontColor(Colors.Black);
+                    col.Item().Text("Blvd. Juan de Dios Batiz #145 PTE").FontSize(8).FontColor(Colors.Black);
+                    col.Item().Text("Teléfono: (668) 817-1400").FontSize(8).FontColor(Colors.Black);
                 });
 
                 row.RelativeItem().AlignCenter().Column(col =>
                 {
-                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Medium);
+                    // ← CAMBIO: negro
+                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Black);
                 });
 
                 row.RelativeItem().AlignRight().Column(col =>
                 {
-                    col.Item().Text("www.finesoft.com.mx").FontSize(8).FontColor(purpleColor).Underline();
-                    col.Item().Text("informes@finesoft.com.mx").FontSize(8).FontColor(Colors.Grey.Medium);
+                    // ← CAMBIO: negro (sin morado ni underline de color)
+                    col.Item().Text("www.finesoft.com.mx").FontSize(8).FontColor(Colors.Black).Underline();
+                    col.Item().Text("informes@finesoft.com.mx").FontSize(8).FontColor(Colors.Black);
                 });
             });
 
+            // ← CAMBIO: negro
             column.Item().PaddingTop(10).AlignCenter()
                 .Text("Este documento es una cotización y no representa un compromiso de compra hasta su confirmación formal.")
-                .FontSize(7).FontColor(Colors.Grey.Medium).Italic();
+                .FontSize(7).FontColor(Colors.Black).Italic();
         });
     }
 
