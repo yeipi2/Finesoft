@@ -45,6 +45,8 @@ public class ClientDto
 
     [Range(0, double.MaxValue, ErrorMessage = "La tarifa debe ser mayor a 0")]
     public double? MonthlyRate { get; set; }
+    public decimal MonthlyHours { get; set; } = 0;
+    public decimal MonthlyHoursUsed { get; set; } = 0;
 
     public bool IsActive { get; set; } = true;
     public int ProjectCount { get; set; } = 0;

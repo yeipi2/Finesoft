@@ -1,6 +1,8 @@
-﻿@* fs-front/Components/Tickets/Form/TicketDetailsSection.razor *@
+﻿@* fs-front/Components/Tickets/Form/TicketDetailsSection.razor — ACTUALIZADO *@
+@* Muestra alerta de póliza mensual cuando se selecciona proyecto de cliente mensual *@
 @using fs_front.DTO
 @using fs_front.Components.Shared
+
 <FormSection Title="Detalles y Asignación"
              IconClass="bi-sliders"
              IsComplete="@IsComplete">
@@ -51,6 +53,10 @@
                                     {
                                         <span class="text-muted"> — @project.Client.CompanyName</span>
                                     }
+                                    @if (project.Client?.ServiceMode == "Mensual")
+                                    {
+                                        <span class="badge bg-primary ms-1" style="font-size:.7rem">Póliza</span>
+                                    }
                                 </div>
                             }
                         </div>
@@ -78,6 +84,69 @@
                 }
             }
         </div>
+
+        @* ── ALERTA DE PÓLIZA MENSUAL ─────────────────────────────────────────── *@
+        @if (SelectedProject?.Client != null
+                && SelectedProject.Client.ServiceMode == "Mensual"
+                && SelectedProject.Client.MonthlyHours > 0)
+        {
+            var client = SelectedProject.Client;
+            var hoursLeft = client.MonthlyHours - client.MonthlyHoursUsed;
+            var pct = (double)(client.MonthlyHoursUsed / client.MonthlyHours) * 100;
+
+            var alertClass = hoursLeft <= 0 ? "alert-danger"
+            : pct >= 80 ? "alert-warning"
+            : "alert-info";
+            var iconClass = hoursLeft <= 0 ? "bi-exclamation-triangle-fill"
+            : pct >= 80 ? "bi-exclamation-circle-fill"
+            : "bi-clock-fill";
+            var barColor = hoursLeft <= 0 ? "#dc3545"
+            : pct >= 80 ? "#ffc107"
+            : "#0dcaf0";
+
+            <div class="col-12">
+                <div class="alert @alertClass py-2 mb-0" style="font-size:.88rem">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <i class="bi @iconClass me-2"></i>
+                            <strong>Póliza mensual — @client.CompanyName</strong>
+                        </div>
+                        <span>
+                            @if (hoursLeft <= 0)
+                            {
+                                <span class="fw-bold">
+                                    Excedido por @($"{Math.Abs(hoursLeft):0.0}")h
+                                </span>
+                            }
+                            else
+                            {
+                                <span>
+                                    Disponibles: <strong>@($"{hoursLeft:0.0}")h</strong>
+                                    de @client.MonthlyHours h
+                                </span>
+                            }
+                        </span>
+                    </div>
+                    <div class="mt-2" style="height:5px; border-radius:3px; background:#ffffff55; overflow:hidden">
+                        <div style="height:100%; width:@(Math.Min(pct, 100).ToString("0"))%;
+                                        background:@barColor; border-radius:3px; transition:width .3s"></div>
+                    </div>
+                    @if (hoursLeft <= 0)
+                    {
+                        <small class="d-block mt-1">
+                            Este cliente ya superó las horas incluidas en su póliza este mes.
+                            El excedente se registrará y aparecerá en la factura mensual.
+                        </small>
+                    }
+                    else if (pct >= 80)
+                    {
+                        <small class="d-block mt-1">
+                            Este cliente está cerca del límite de horas de su póliza (@pct.ToString("0")% usado).
+                        </small>
+                    }
+                </div>
+            </div>
+        }
 
         @* ── Prioridad ── *@
         <div class="col-md-4">

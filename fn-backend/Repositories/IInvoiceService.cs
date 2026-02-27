@@ -1,4 +1,5 @@
-﻿using fs_backend.DTO;
+﻿// fs-backend/Repositories/IInvoiceService.cs
+using fs_backend.DTO;
 using fs_backend.Util;
 
 namespace fs_backend.Repositories;
@@ -13,12 +14,18 @@ public interface IInvoiceService
     Task<ServiceResult<bool>> DeleteInvoiceAsync(int id);
     Task<ServiceResult<bool>> ChangeInvoiceStatusAsync(int id, string newStatus, string? reason);
     Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, RegisterInvoicePaymentDto dto, string userId);
-    Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId);
+
+    // ⭐ ACTUALIZADO: ahora recibe lista de clientIds seleccionados
+    Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null);
+
+    // ⭐ NUEVO: resumen completo de pólizas mensuales con tickets
+    Task<List<MonthlyClientSummaryDto>> GetMonthlySummaryAsync();
+
     Task<InvoiceStatsDto> GetInvoiceStatsAsync();
     Task<byte[]> GenerateInvoicePdfAsync(int id);
     Task<List<int>> GetTicketsInUseAsync();
     Task<ServiceResult<InvoicePaymentDto>> AddPaymentWithReceiptAsync(
-    int invoiceId,
-    AddInvoicePaymentWithReceiptRequest request,
-    string userId);
+        int invoiceId,
+        AddInvoicePaymentWithReceiptRequest request,
+        string userId);
 }

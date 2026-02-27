@@ -33,6 +33,7 @@ public class Client
 
     public string Address { get; set; } = string.Empty;
 
+
     [Required]
     public string ServiceMode { get; set; } = string.Empty;
 
@@ -41,6 +42,8 @@ public class Client
     /// Frecuencia de facturación: "Event" (por evento) o "Monthly" (mensual)
     /// </summary>
     public string BillingFrequency { get; set; } = "Event";
+
+    public decimal MonthlyHours { get; set; } = 0;
 
     public double? MonthlyRate { get; set; } = 0.0;
 

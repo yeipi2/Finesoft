@@ -1,4 +1,5 @@
-﻿using fs_backend.DTO;
+﻿using fn_backend.Models;
+using fs_backend.DTO;
 using fs_backend.Identity;
 using fs_backend.Models;
 using fs_backend.Repositories;
@@ -775,44 +776,100 @@ public class InvoiceService : IInvoiceService
     }
 
 
-    public async Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId)
+    // ─────────────────────────────────────────────────────────────────────────────
+    // REEMPLAZA GenerateMonthlyInvoicesAsync en InvoiceService.cs
+    // Sin cobro automático de excedente — solo notas de advertencia en la factura
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    public async Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null)
     {
         var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
 
-        // Buscar clientes con facturación mensual activa
-        var clientsWithMonthly = await _context.Clients
-            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual")
-                        && c.IsActive)
-            .ToListAsync();
+        // Obtener clientes mensuales activos
+        var query = _context.Clients
+            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual") && c.IsActive);
 
-        Console.WriteLine($"🔍 Clientes mensuales encontrados: {clientsWithMonthly.Count}");
-        foreach (var c in clientsWithMonthly)
-            Console.WriteLine($"   - {c.CompanyName} | BillingFrequency: '{c.BillingFrequency}' | MonthlyRate: {c.MonthlyRate} | IsActive: {c.IsActive}");
+        // ⭐ Filtrar por los seleccionados (si se pasó lista)
+        if (clientIds != null && clientIds.Any())
+            query = query.Where(c => clientIds.Contains(c.Id));
+
+        var clientsWithMonthly = await query.ToListAsync();
 
         if (!clientsWithMonthly.Any())
-        {
             return ServiceResult<bool>.Failure("No se encontraron clientes con facturación mensual activa");
-        }
 
         var invoicesCreated = 0;
 
         foreach (var client in clientsWithMonthly)
         {
-            // Verificar si ya existe factura para este mes
-            var existingInvoice = await _context.Invoices
-                .AnyAsync(i => i.ClientId == client.Id &&
-                              i.InvoiceType == "Monthly" &&
-                              i.InvoiceDate.Month == currentMonth.Month &&
-                              i.InvoiceDate.Year == currentMonth.Year);
+            // ── Verificar que NO tenga factura ACTIVA este mes ────────────────────
+            // (las canceladas NO bloquean)
+            var existingActiveInvoice = await _context.Invoices
+                .AnyAsync(i => i.ClientId == client.Id
+                            && i.InvoiceType == "Monthly"
+                            && i.InvoiceDate.Month == currentMonth.Month
+                            && i.InvoiceDate.Year == currentMonth.Year
+                            && i.Status != "Cancelada");
 
-            if (existingInvoice)
+            if (existingActiveInvoice)
             {
-                continue; // Ya tiene factura este mes
+                Console.WriteLine($"   ⏭ Saltando {client.CompanyName} — ya tiene factura activa este mes");
+                continue;
             }
 
+            // ── Tickets del mes para este cliente ─────────────────────────────────
+            var projectIds = await _context.Projects
+                .Where(p => p.ClientId == client.Id)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            var ticketsThisMonth = new List<fs_backend.Models.Ticket>();
+            decimal hoursUsed = 0;
+
+            if (projectIds.Any())
+            {
+                ticketsThisMonth = await _context.Tickets
+                    .Where(t => t.ProjectId.HasValue
+                             && projectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .ToListAsync();
+
+                hoursUsed = ticketsThisMonth.Sum(t => t.ActualHours);
+            }
+
+            var monthlyHours = client.MonthlyHours;
+            var subtotal = (client.MonthlyRate.HasValue && client.MonthlyRate.Value > 0)
+                                ? (decimal)client.MonthlyRate.Value
+                                : 0m;
+
+            // ── Nota de la factura ────────────────────────────────────────────────
+            string notes = $"Factura mensual - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}";
+            if (monthlyHours > 0 && hoursUsed > monthlyHours + 10)
+            {
+                var excess = hoursUsed - monthlyHours;
+                notes += $"\n⚠ AVISO: Este cliente excedió {excess:0.0}h sobre las {monthlyHours}h incluidas " +
+                         $"en su póliza. Se recomienda revisar y renegociar el costo de la póliza para el siguiente mes.";
+            }
+
+            // ── Descripción del item de póliza ────────────────────────────────────
+            string hoursInfo = "";
+            if (monthlyHours > 0)
+            {
+                var excess = hoursUsed - monthlyHours;
+                if (excess > 10)
+                    hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas | ⚠ +{excess:0.0}h excedido";
+                else if (excess > 0)
+                    hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas | +{excess:0.0}h excedido (margen aceptable)";
+                else
+                    hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas";
+            }
+
+            // ── Crear la factura ──────────────────────────────────────────────────
             var invoiceNumber = await GenerateInvoiceNumber();
 
-            var invoice = new Invoice
+            var invoice = new fs_backend.Models.Invoice
             {
                 InvoiceNumber = invoiceNumber,
                 ClientId = client.Id,
@@ -820,36 +877,155 @@ public class InvoiceService : IInvoiceService
                 DueDate = currentMonth.AddDays(30),
                 InvoiceType = "Monthly",
                 Status = "Pendiente",
+                PaymentType = "PPD",
+                PaymentMethod = string.Empty,
                 CreatedByUserId = userId,
-                Notes = $"Factura mensual - {currentMonth:MMMM yyyy}"
+                Notes = notes
             };
 
-            var subtotal = (client.MonthlyRate.HasValue && client.MonthlyRate.Value > 0)
-            ? (decimal)client.MonthlyRate.Value
-            : 0m;
+            // Item 1: Póliza mensual (precio fijo)
+            invoice.Items.Add(new fs_backend.Models.InvoiceItem
+            {
+                Description = $"Póliza mensual de servicios - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}{hoursInfo}",
+                Quantity = 1,
+                UnitPrice = subtotal,
+                Subtotal = subtotal
+            });
+
+            // ⭐ Items adicionales: uno por cada ticket del mes
+            foreach (var ticket in ticketsThisMonth)
+            {
+                invoice.Items.Add(new fs_backend.Models.InvoiceItem
+                {
+                    Description = $"Ticket #{ticket.Id} — {ticket.Title} ({ticket.ActualHours:0.0}h)",
+                    Quantity = 1,
+                    UnitPrice = 0m,  // Incluido en la póliza, precio $0
+                    Subtotal = 0m,
+                    TicketId = ticket.Id
+                });
+            }
+
             invoice.Subtotal = subtotal;
             invoice.Tax = subtotal * 0.16m;
             invoice.Total = invoice.Subtotal + invoice.Tax;
 
-            var item = new InvoiceItem
-            {
-                Description = $"Póliza mensual de servicios - {currentMonth:MMMM yyyy}",
-                Quantity = 1,
-                UnitPrice = subtotal,
-                Subtotal = subtotal
-            };
-
-            invoice.Items.Add(item);
-
             _context.Invoices.Add(invoice);
             invoicesCreated++;
+            Console.WriteLine($"   ✅ Factura generada para: {client.CompanyName} ({ticketsThisMonth.Count} tickets vinculados)");
         }
 
         await _context.SaveChangesAsync();
-
-        Console.WriteLine($"✅ Facturas mensuales generadas: {invoicesCreated}");
+        Console.WriteLine($"✅ Total facturas generadas: {invoicesCreated}");
 
         return ServiceResult<bool>.Success(true);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // AGREGA este método nuevo en InvoiceService.cs
+    // Devuelve el resumen del estado de todas las pólizas mensuales del mes actual
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    public async Task<List<MonthlyClientSummaryDto>> GetMonthlySummaryAsync()
+    {
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
+
+        var clients = await _context.Clients
+            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual") && c.IsActive)
+            .ToListAsync();
+
+        var result = new List<MonthlyClientSummaryDto>();
+
+        foreach (var client in clients)
+        {
+            // ── Proyectos del cliente ─────────────────────────────────────────────
+            var projectIds = await _context.Projects
+                .Where(p => p.ClientId == client.Id)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            // ── Tickets del mes (con horas) ───────────────────────────────────────
+            var tickets = new List<MonthlyTicketSummaryDto>();
+            decimal hoursUsed = 0;
+
+            if (projectIds.Any())
+            {
+                var rawTickets = await _context.Tickets
+                    .Include(t => t.Project)
+                    .Where(t => t.ProjectId.HasValue
+                             && projectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .OrderByDescending(t => t.ActualHours)
+                    .ToListAsync();
+
+                hoursUsed = rawTickets.Sum(t => t.ActualHours);
+
+                tickets = rawTickets.Select(t => new MonthlyTicketSummaryDto
+                {
+                    TicketId = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    ProjectName = t.Project?.Name ?? "",
+                    ActualHours = t.ActualHours,
+                    UpdatedAt = t.UpdatedAt
+                }).ToList();
+            }
+
+            // ── ¿Ya tiene factura ACTIVA (no cancelada) este mes? ─────────────────
+            var invoicesThisMonth = await _context.Invoices
+                .Where(i => i.ClientId == client.Id
+                         && i.InvoiceType == "Monthly"
+                         && i.InvoiceDate.Month == currentMonth.Month
+                         && i.InvoiceDate.Year == currentMonth.Year)
+                .ToListAsync();
+
+            // Factura activa = cualquier estado que NO sea "Cancelada"
+            var alreadyHasInvoice = invoicesThisMonth.Any(i => i.Status != "Cancelada");
+            var hasCancelledInvoice = invoicesThisMonth.Any(i => i.Status == "Cancelada");
+
+            // ── Estado de horas ───────────────────────────────────────────────────
+            var monthlyHours = client.MonthlyHours;
+            var excess = hoursUsed - monthlyHours;
+
+            string status;
+            if (monthlyHours <= 0)
+                status = "OK";
+            else if (excess > 10)
+                status = "Critical";
+            else if (excess > 0)
+                status = "Exceeded";
+            else if (monthlyHours > 0 && hoursUsed / monthlyHours >= 0.8m)
+                status = "Warning";
+            else
+                status = "OK";
+
+            result.Add(new MonthlyClientSummaryDto
+            {
+                ClientId = client.Id,
+                CompanyName = client.CompanyName,
+                MonthlyRate = client.MonthlyRate.HasValue ? (decimal)client.MonthlyRate.Value : 0m,
+                MonthlyHours = monthlyHours,
+                HoursUsed = hoursUsed,
+                AlreadyHasInvoice = alreadyHasInvoice,
+                HasCancelledInvoice = hasCancelledInvoice,
+                HoursStatus = status,
+                Tickets = tickets
+            });
+        }
+
+        // Orden: críticos primero → excedidos → advertencia → ok → ya generadas
+        return result
+            .OrderBy(r => r.AlreadyHasInvoice ? 1 : 0)
+            .ThenBy(r => r.HoursStatus switch
+            {
+                "Critical" => 0,
+                "Exceeded" => 1,
+                "Warning" => 2,
+                _ => 3
+            })
+            .ToList();
     }
 
     public async Task<InvoiceStatsDto> GetInvoiceStatsAsync()

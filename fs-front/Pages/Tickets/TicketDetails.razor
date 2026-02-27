@@ -1,4 +1,6 @@
-﻿@page "/tickets/{TicketId:int}"
+﻿@* fs-front/Pages/Tickets/TicketDetail.razor — ACTUALIZADO *@
+@* Agrega card de póliza mensual en el sidebar cuando el ticket tiene proyecto de cliente mensual *@
+@page "/tickets/{TicketId:int}"
 @using fs_front.DTO
 @using Microsoft.AspNetCore.Components.Authorization
 
@@ -96,6 +98,95 @@
 
             @* ── Sidebar ── *@
             <div class="col-lg-4">
+
+                @* ── ⭐ CARD DE PÓLIZA MENSUAL (si el cliente tiene póliza) ── *@
+                @if (_policyClient != null && _policyClient.MonthlyHours > 0)
+                {
+                    var hoursLeft = _policyClient.MonthlyHours - _policyClient.MonthlyHoursUsed;
+                    var pct = _policyClient.MonthlyHours > 0
+                    ? Math.Min((double)(_policyClient.MonthlyHoursUsed / _policyClient.MonthlyHours) * 100, 100)
+                    : 0;
+
+                    // ⭐ CORREGIDO: cardBorder22 y cardBorder44 reemplazados por strings CSS válidos
+                    var cardBorder = hoursLeft <= 0 ? "#dc3545"
+                    : pct >= 80 ? "#ffc107"
+                    : "#0d6efd";
+
+                    // Versiones con transparencia para el header del card
+                    var cardBorderLight = hoursLeft <= 0 ? "#f8d7da"   // rojo claro
+                    : pct >= 80 ? "#fff3cd"                    // amarillo claro
+                    : "#cfe2ff";                   // azul claro
+
+                    var cardBorderDivider = hoursLeft <= 0 ? "#f1aeb5"
+                    : pct >= 80 ? "#ffda6a"
+                    : "#9ec5fe";
+
+                    var barColor = cardBorder;
+
+                    <div class="card mb-3" style="border-left: 4px solid @cardBorder">
+                        <div class="card-header py-2 d-flex align-items-center gap-2"
+                             style="background:@cardBorderLight; border-bottom:1px solid @cardBorderDivider">
+                            <i class="bi bi-shield-check" style="color:@cardBorder"></i>
+                            <span class="fw-semibold small">Póliza Mensual</span>
+                            @if (hoursLeft <= 0)
+                            {
+                                <span class="badge bg-danger ms-auto" style="font-size:.72rem">Excedida</span>
+                            }
+                            else if (pct >= 80)
+                            {
+                                <span class="badge bg-warning text-dark ms-auto" style="font-size:.72rem">Cerca del límite</span>
+                            }
+                        </div>
+                        <div class="card-body py-2 px-3">
+                            <div class="text-muted small mb-1">@_policyClient.CompanyName</div>
+
+                            @* Barra de progreso *@
+                            <div style="height:8px; border-radius:4px; background:#e9ecef; overflow:hidden; margin-bottom:6px">
+                                <div style="height:100%; width:@pct.ToString("0")%;
+                                                    background:@barColor; border-radius:4px; transition:width .4s">
+                                </div>
+                            </div>
+
+                            @* Texto de horas *@
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    Usadas: <strong>@($"{_policyClient.MonthlyHoursUsed:0.0}")h</strong>
+                                    / @_policyClient.MonthlyHours h
+                                </small>
+                                @if (hoursLeft <= 0)
+                                {
+                                    <small class="text-danger fw-bold">
+                                        +@($"{Math.Abs(hoursLeft):0.0}")h excedido
+                                    </small>
+                                }
+                                else
+                                {
+                                    <small class="@(pct >= 80 ? "text-warning fw-semibold" : "text-success")">
+                                        @($"{hoursLeft:0.0}")h disp.
+                                    </small>
+                                }
+                            </div>
+
+                            @* Mensaje contextual *@
+                            @if (hoursLeft <= 0)
+                            {
+                                <div class="alert alert-danger py-1 px-2 mt-2 mb-0" style="font-size:.78rem">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    El cliente superó las horas de su póliza este mes.
+                                    El excedente aparecerá en la factura mensual.
+                                </div>
+                            }
+                            else if (pct >= 80)
+                            {
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0" style="font-size:.78rem">
+                                    <i class="bi bi-exclamation-circle me-1"></i>
+                                    Cerca del límite (@pct.ToString("0")% utilizado).
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
                 <TicketSidebarCards Ticket="@_ticket" />
             </div>
         </div>
@@ -118,6 +209,7 @@
 </div>
 
 @inject ITicketApiService TicketApiService
+@inject IClientApiService ClientApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
@@ -127,6 +219,7 @@
     [Parameter] public int TicketId { get; set; }
 
     private TicketDetailDto? _ticket;
+    private ClientDto? _policyClient;          // ⭐ cliente con póliza mensual, si aplica
     private TicketCommentDto _newComment = new();
     private bool _isLoading = false;
     private bool _isAddingComment = false;
@@ -137,19 +230,14 @@
     private bool ActivitiesAreLocked =>
         _ticket?.Status == "En Progreso" || _ticket?.Status == "En Revisión";
 
-    // ── Permisos base (del servidor) ─────────────────────────────────────────
     private bool _canEditTicket = false;
     private bool _canDeleteTicket = false;
     private bool _canManageActivities = false;
     private bool _canComment = false;
 
-    // ── Visibilidad de botones: permiso + estado del ticket ──────────────────
-    //   Editar  → visible en Abierto, En Progreso y En Revisión (no en Cerrado)
-    //   Eliminar → visible solo en Abierto
     private bool ShowEditButton => _canEditTicket && _ticket?.Status != "Cerrado";
     private bool ShowDeleteButton => _canDeleteTicket && _ticket?.Status == "Abierto";
 
-    // ── Ciclo de vida ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         await LoadPermissions();
@@ -183,6 +271,9 @@
                           || ticket.CreatedByUserId == _currentUserId;
 
                 _ticket = ticket;
+
+                // ⭐ Cargar info de póliza si el ticket tiene proyecto con cliente mensual
+                await LoadPolicyInfo(ticket);
             }
         }
         catch (Exception ex)
@@ -195,10 +286,39 @@
         }
     }
 
+    // ⭐ Carga la info del cliente con póliza mensual para mostrar en sidebar
+    private async Task LoadPolicyInfo(TicketDetailDto ticket)
+    {
+        try
+        {
+            // ⭐ CORREGIDO: ticket.ClientId ahora existe en TicketDetailDto
+            if (ticket.ClientId.HasValue && ticket.ClientId > 0)
+            {
+                var allClients = await ClientApiService.GetClientsAsync();
+                var client = allClients?.FirstOrDefault(c => c.Id == ticket.ClientId.Value);
+
+                if (client != null && client.ServiceMode == "Mensual" && client.MonthlyHours > 0)
+                {
+                    _policyClient = client;
+                }
+            }
+        }
+        catch
+        {
+            // Si falla, simplemente no mostramos la card de póliza
+            _policyClient = null;
+        }
+    }
+
     private async Task LoadTicket()
     {
         _isLoading = true;
-        try { _ticket = await TicketApiService.GetTicketByIdAsync(TicketId); }
+        try
+        {
+            _ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
+            if (_ticket != null)
+                await LoadPolicyInfo(_ticket);
+        }
         catch (Exception ex) { Notify("Error", $"Error al cargar el ticket: {ex.Message}", NotificationSeverity.Error); }
         finally { _isLoading = false; }
     }
@@ -255,21 +375,40 @@
 
         var result = await DialogService.OpenAsync("Agregar Actividad", ds =>
             @<div>
-    <EditForm Model="newActivity" OnValidSubmit="async () => await AddActivity(newActivity, ds)">
-        <DataAnnotationsValidator />
-        <div class="mb-3">
-            <label class="form-label fw-bold">Descripción de la Actividad *</label>
-            <InputTextArea class="form-control" rows="3" @bind-Value="newActivity.Description"
-                           placeholder="Ej: Revisar la base de datos, Implementar autenticación..." />
-            <ValidationMessage For="@(() => newActivity.Description)" />
-            <small class="text-muted">Describe claramente qué se debe hacer en esta actividad.</small>
-        </div>
-        <div class="mb-3">
-            <label class="form-label fw-bold">Horas Estimadas *</label>
-            <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent" placeholder="0.00" step="0.25" min="0" />
-            <ValidationMessage For="@(() => newActivity.HoursSpent)" />
-            <small class="text-muted">Tiempo estimado para completar esta actividad (en horas).</small>
-        </div>
+                <EditForm Model="newActivity" OnValidSubmit="async () => await AddActivity(newActivity, ds)">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descripción de la Actividad *</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="newActivity.Description"
+                                       placeholder="Ej: Revisar la base de datos, Implementar autenticación..." />
+                        <ValidationMessage For="@(() => newActivity.Description)" />
+                        <small class="text-muted">Describe claramente qué se debe hacer en esta actividad.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Horas Estimadas *</label>
+                        <InputNumber class="form-control" @bind-Value="newActivity.HoursSpent" placeholder="0.00" step="0.25" min="0" />
+                        <ValidationMessage For="@(() => newActivity.HoursSpent)" />
+                        <small class="text-muted">Tiempo estimado para completar esta actividad (en horas).</small>
+                    </div>
+                    @* ⭐ Advertencia de póliza dentro del modal *@
+                    @if (_policyClient != null && _policyClient.MonthlyHours > 0)
+                    {
+                        var hoursLeft = _policyClient.MonthlyHours - _policyClient.MonthlyHoursUsed;
+                        @if (hoursLeft <= 0)
+                        {
+                            <div class="alert alert-danger py-2 mb-3">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                <strong>Póliza excedida.</strong> @_policyClient.CompanyName ya superó sus @_policyClient.MonthlyHours h este mes.
+                            </div>
+                        }
+                        else if (newActivity.HoursSpent > hoursLeft)
+                        {
+                            <div class="alert alert-warning py-2 mb-3">
+                                <i class="bi bi-exclamation-circle me-1"></i>
+                                Esta actividad usaría @newActivity.HoursSpent h pero solo quedan @($"{hoursLeft:0.0}")h en la póliza.
+                            </div>
+                        }
+                    }
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="() => ds.Close(false)">Cancelar</button>
             <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Agregar Actividad</button>

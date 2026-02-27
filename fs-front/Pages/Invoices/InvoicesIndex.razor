@@ -1,4 +1,5 @@
-﻿@page "/facturas"
+﻿@* fs-front/Pages/Invoices/InvoicesIndex.razor — ACTUALIZADO *@
+@page "/facturas"
 @using fs_front.DTO
 @using fs_front.Repositories
 @using fs_front.Components.Invoices.Index
@@ -8,7 +9,6 @@
 
 <PageTitle>Facturación</PageTitle>
 
-@* ── Estado: verificando acceso ── *@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
@@ -25,13 +25,11 @@ else
 {
     <section class="px-xl-5 py-4">
 
-        @* ── Header ── *@
         <InvoicesHeader CanCreate="@_canCreate"
                         IsGenerating="@_isGenerating"
                         OnNew="OpenNewInvoiceDialog"
-                        OnGenerate="GenerateMonthlyInvoices" />
+                        OnGenerate="OpenMonthlyPanel" />
 
-        @* ── Estadísticas ── *@
         @if (_stats != null)
         {
             <StatGrid class="mb-5">
@@ -61,7 +59,6 @@ else
             </StatGrid>
         }
 
-        @* ── Filtros ── *@
         <FilterBar Class="mb-5"
                    SearchPlaceholder="Buscar facturas..."
                    SearchValue="@_searchTerm"
@@ -91,7 +88,6 @@ else
             </Filters>
         </FilterBar>
 
-        @* ── Tabla ── *@
         <div class="card">
             <InvoicesTable Items="@_sortedInvoices"
                            IsLoading="@_isLoading"
@@ -114,21 +110,17 @@ else
 @inject PermissionService PermissionService
 
 @code {
-    // ── Data ──
     private List<InvoiceDetailDto>? _invoices;
     private List<InvoiceDetailDto>? _filtered;
     private InvoiceStatsDto? _stats;
 
-    // ── Filters ──
     private string _searchTerm = "";
     private string _selectedStatus = "";
     private string _selectedType = "";
 
-    // ── Sort ──
     private string _sortField = "date";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
-    // ── UI flags ──
     private bool _isLoading = true;
     private bool _isGenerating = false;
     private bool _checkingAccess = true;
@@ -136,10 +128,6 @@ else
     private bool _canCreate;
     private bool _canEdit;
     private bool _canDelete;
-
-    // ────────────────────────────────
-    //  Lifecycle
-    // ────────────────────────────────
 
     protected override async Task OnInitializedAsync()
     {
@@ -168,32 +156,21 @@ else
         {
             var invoicesTask = InvoiceApiService.GetInvoicesAsync();
             var statsTask = InvoiceApiService.GetInvoiceStatsAsync();
-
             await Task.WhenAll(invoicesTask, statsTask);
-
             _invoices = await invoicesTask;
             _stats = await statsTask;
-
             ApplyFilters();
         }
         catch (Exception ex)
         {
             Notify("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
         }
-        finally
-        {
-            _isLoading = false;
-        }
+        finally { _isLoading = false; }
     }
-
-    // ────────────────────────────────
-    //  Filtering & Sorting
-    // ────────────────────────────────
 
     private void ApplyFilters()
     {
         if (_invoices == null) { _filtered = new(); return; }
-
         _filtered = _invoices.Where(i =>
             (string.IsNullOrEmpty(_searchTerm) ||
              i.InvoiceNumber.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
@@ -206,9 +183,7 @@ else
 
     private void ClearFilters()
     {
-        _searchTerm = "";
-        _selectedStatus = "";
-        _selectedType = "";
+        _searchTerm = ""; _selectedStatus = ""; _selectedType = "";
         ApplyFilters();
     }
 
@@ -245,10 +220,6 @@ else
             _ => q.OrderByDescending(x => x.InvoiceDate)
         };
 
-    // ────────────────────────────────
-    //  Actions
-    // ────────────────────────────────
-
     private void ViewDetails(int invoiceId) =>
         NavigationManager.NavigateTo($"/facturas/{invoiceId}");
 
@@ -268,52 +239,38 @@ else
         if (result == true) await LoadData();
     }
 
-    private async Task GenerateMonthlyInvoices()
+    // ⭐ NUEVO: abre el panel de pólizas mensuales como dialog
+    private async Task OpenMonthlyPanel()
     {
-        var confirmed = await DialogService.Confirm(
-            "¿Desea generar las facturas mensuales para todos los clientes con póliza mensual?",
-            "Confirmar Generación",
-            new ConfirmOptions { OkButtonText = "Sí, generar", CancelButtonText = "Cancelar" });
-
-        if (confirmed != true) return;
-
         _isGenerating = true;
         StateHasChanged();
 
         try
         {
-            var (success, errorMessage) = await InvoiceApiService.GenerateMonthlyInvoicesAsync();
+            var result = await DialogService.OpenAsync<MonthlyPolicySummaryDialog>(
+                "Pólizas Mensuales — Generar Facturas",
+                new Dictionary<string, object>(),
+                new DialogOptions
+                {
+                    Width = "960px",
+                    Height = "88vh",
+                    Resizable = false,
+                    Draggable = false,
+                    CloseDialogOnOverlayClick = false,
+                    ShowClose = true
+                });
 
-            if (success)
+            if (result?.ToString() == "generated")
             {
                 Notify("Éxito", "Facturas mensuales generadas correctamente.", NotificationSeverity.Success);
                 await LoadData();
             }
-            else
+            else if (result != null && result.ToString() != "generated")
             {
-                var msg = errorMessage ?? "Error desconocido";
-                var isNoClients = msg.Contains("No se encontraron") ||
-                                  msg.Contains("no hay", StringComparison.OrdinalIgnoreCase) ||
-                                  msg.Contains("Sin clientes") ||
-                                  msg.Contains("No hay");
-
-                Notify(
-                    isNoClients ? "Información" : "Error",
-                    isNoClients
-                        ? "No hay clientes con modalidad mensual activos o ya tienen factura para este mes."
-                        : msg,
-                    isNoClients ? NotificationSeverity.Info : NotificationSeverity.Error);
+                // El dialog cerró con un mensaje de error
+                Notify("Error", result.ToString() ?? "Error al generar facturas.", NotificationSeverity.Error);
             }
-        }
-        catch (HttpRequestException)
-        {
-            Notify("Error de Conexión",
-                "No se pudo conectar con el servidor.",
-                NotificationSeverity.Error);
-        }
-        catch (Exception ex)
-        {
-            Notify("Error", $"Error inesperado: {ex.Message}", NotificationSeverity.Error);
+            // Si result es null el usuario canceló — no hacer nada
         }
         finally
         {

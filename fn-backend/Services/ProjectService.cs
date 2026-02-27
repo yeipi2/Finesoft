@@ -1,4 +1,7 @@
-﻿using fn_backend.DTO;
+﻿// fs-backend/Services/ProjectService.cs — COMPLETO ACTUALIZADO
+// Calcula MonthlyHoursUsed en el cliente para que el form de tickets muestre horas disponibles
+
+using fn_backend.DTO;
 using fn_backend.Models;
 using fs_backend.Identity;
 using fs_backend.Util;
@@ -17,39 +20,103 @@ public class ProjectService : IProjectService
 
     public async Task<IEnumerable<ProjectDetailDto>> GetProjectsAsync()
     {
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
+
         var projects = await _context.Projects
             .Include(p => p.Client)
-            // CÓDIGO FUTURO - Include de servicios deshabilitado
-            // .Include(p => p.Services)
-            // .ThenInclude(s => s.TypeService)
-            // .Include(p => p.Services)
-            // .ThenInclude(s => s.TypeActivity)
             .ToListAsync();
 
-        return projects.Select(MapToDetailDto);
+        // ── Calcular horas usadas por cliente mensual en una sola query ────────
+        var monthlyClientIds = projects
+            .Where(p => p.Client?.ServiceMode == "Mensual" || p.Client?.BillingFrequency == "Monthly")
+            .Select(p => p.ClientId)
+            .Distinct()
+            .ToList();
+
+        // Mapa clientId → lista de projectIds
+        var clientProjectMap = projects
+            .GroupBy(p => p.ClientId)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.Id).ToList());
+
+        // Una sola query de tickets para todos los proyectos mensuales
+        var hoursPerProject = new Dictionary<int, decimal>();
+        if (monthlyClientIds.Any())
+        {
+            var allMonthlyProjectIds = clientProjectMap
+                .Where(kv => monthlyClientIds.Contains(kv.Key))
+                .SelectMany(kv => kv.Value)
+                .ToList();
+
+            if (allMonthlyProjectIds.Any())
+            {
+                var hoursSums = await _context.Tickets
+                    .Where(t => t.ProjectId.HasValue
+                             && allMonthlyProjectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .GroupBy(t => t.ProjectId!.Value)
+                    .Select(g => new { ProjectId = g.Key, Hours = g.Sum(t => t.ActualHours) })
+                    .ToListAsync();
+
+                foreach (var h in hoursSums)
+                    hoursPerProject[h.ProjectId] = h.Hours;
+            }
+        }
+
+        // Suma de horas por cliente
+        var hoursPerClient = new Dictionary<int, decimal>();
+        foreach (var clientId in monthlyClientIds)
+        {
+            if (clientProjectMap.TryGetValue(clientId, out var pIds))
+            {
+                hoursPerClient[clientId] = pIds
+                    .Sum(pid => hoursPerProject.GetValueOrDefault(pid, 0));
+            }
+        }
+
+        return projects.Select(p =>
+            MapToDetailDto(p, hoursPerClient.GetValueOrDefault(p.ClientId, 0)));
     }
 
     public async Task<ProjectDetailDto?> GetProjectByIdAsync(int id)
     {
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
+
         var project = await _context.Projects
             .Include(p => p.Client)
-            // CÓDIGO FUTURO - Include de servicios deshabilitado
-            // .Include(p => p.Services)
-            // .ThenInclude(s => s.TypeService)
-            // .Include(p => p.Services)
-            // .ThenInclude(s => s.TypeActivity)
             .FirstOrDefaultAsync(p => p.Id == id);
 
-        return project == null ? null : MapToDetailDto(project);
+        if (project == null) return null;
+
+        decimal hoursUsed = 0;
+        if (project.Client?.ServiceMode == "Mensual" || project.Client?.BillingFrequency == "Monthly")
+        {
+            var clientProjectIds = await _context.Projects
+                .Where(p => p.ClientId == project.ClientId)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            if (clientProjectIds.Any())
+            {
+                hoursUsed = await _context.Tickets
+                    .Where(t => t.ProjectId.HasValue
+                             && clientProjectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .SumAsync(t => t.ActualHours);
+            }
+        }
+
+        return MapToDetailDto(project, hoursUsed);
     }
 
     public async Task<ServiceResult<Project>> CreateProjectAsync(ProjectDto projectDto)
     {
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == projectDto.ClientId);
         if (!clientExists)
-        {
             return ServiceResult<Project>.Failure("El cliente especificado no existe");
-        }
 
         var project = new Project
         {
@@ -69,15 +136,11 @@ public class ProjectService : IProjectService
     {
         var project = await _context.Projects.FindAsync(id);
         if (project == null)
-        {
             return ServiceResult<bool>.Failure("Proyecto no encontrado");
-        }
 
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == updateProjectDto.ClientId);
         if (!clientExists)
-        {
             return ServiceResult<bool>.Failure("El cliente especificado no existe");
-        }
 
         project.Name = updateProjectDto.Name;
         project.Description = updateProjectDto.Description;
@@ -94,9 +157,7 @@ public class ProjectService : IProjectService
     {
         var project = await _context.Projects.FindAsync(id);
         if (project == null)
-        {
             return ServiceResult<bool>.Failure("Proyecto no encontrado");
-        }
 
         _context.Projects.Remove(project);
         await _context.SaveChangesAsync();
@@ -104,7 +165,8 @@ public class ProjectService : IProjectService
         return ServiceResult<bool>.Success(true);
     }
 
-    private ProjectDetailDto MapToDetailDto(Project project)
+    // ── Mapper con MonthlyHoursUsed ───────────────────────────────────────────
+    private static ProjectDetailDto MapToDetailDto(Project project, decimal monthlyHoursUsed = 0)
     {
         return new ProjectDetailDto
         {
@@ -126,25 +188,10 @@ public class ProjectService : IProjectService
                     Address = project.Client.Address,
                     ServiceMode = project.Client.ServiceMode,
                     MonthlyRate = project.Client.MonthlyRate,
+                    MonthlyHours = project.Client.MonthlyHours,       // ⭐ NUEVO
+                    MonthlyHoursUsed = monthlyHoursUsed,               // ⭐ NUEVO calculado
                     IsActive = project.Client.IsActive
                 }
-                // CÓDIGO FUTURO - Mapeo de servicios deshabilitado
-                /*
-                ,Services = project.Services?.Select(s => new ServiceDetailDto
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Description = s.Description,
-                    HourlyRate = s.HourlyRate,
-                    IsActive = s.IsActive,
-                    ProjectId = s.ProjectId,
-                    ProjectName = project.Name,
-                    TypeServiceId = s.TypeServiceId,
-                    TypeServiceName = s.TypeService?.Name ?? string.Empty,
-                    TypeActivityId = s.TypeActivityId,
-                    TypeActivityName = s.TypeActivity?.Name ?? string.Empty
-                }).ToList()
-                */
         };
     }
 }

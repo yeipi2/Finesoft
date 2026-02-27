@@ -1,0 +1,953 @@
+﻿@* fs-front/Components/Invoices/Shared/MonthlyPolicySummaryDialog.razor *@
+@using fs_front.DTO
+@using fs_front.Services
+@using Radzen
+@inject IInvoiceApiService InvoiceApiService
+@inject DialogService DialogService
+
+<style>
+    /* ── Forzar dialog de Radzen a no cortar ── */
+    .rz-dialog-content {
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .rz-dialog {
+        max-height: 90vh !important;
+    }
+
+    /* ══════════════════════════════════════════
+           VARIABLES DE TEMA — se aplican al wrapper
+           ══════════════════════════════════════════ */
+    .mpd {
+        /* Modo claro (default) */
+        --mpd-bg: #ffffff;
+        --mpd-surface: #ffffff;
+        --mpd-surface-2: #f8fafc;
+        --mpd-border: #e2e8f0;
+        --mpd-border-2: #cbd5e1;
+        --mpd-text: #0f172a;
+        --mpd-text-2: #374151;
+        --mpd-muted: #64748b;
+        --mpd-muted-2: #94a3b8;
+        --mpd-pill-bg: #dbeafe;
+        --mpd-pill-color: #1d4ed8;
+        --mpd-sel-bg: #eff6ff;
+        --mpd-done-bg: #f8fafc;
+        --mpd-toolbar-bg: #ffffff;
+        --mpd-footer-bg: #ffffff;
+        --mpd-alert-bg: #fef2f2;
+        --mpd-alert-color: #991b1b;
+        --mpd-t-item-bg: #f8fafc;
+        --mpd-center-bg: #ffffff;
+        --mpd-bar-track: #e2e8f0;
+        --mpd-list-bg: #f8fafc;
+        --mpd-btn-sec-bg: #f1f5f9;
+        --mpd-btn-sec-col: #475569;
+        --mpd-btn-sec-hov: #e2e8f0;
+        --mpd-b-ok-bg: #dcfce7;
+        --mpd-b-ok-col: #166534;
+        --mpd-b-warn-bg: #fef9c3;
+        --mpd-b-warn-col: #854d0e;
+        --mpd-b-exc-bg: #ffedd5;
+        --mpd-b-exc-col: #9a3412;
+        --mpd-b-crit-bg: #fee2e2;
+        --mpd-b-crit-col: #991b1b;
+        --mpd-b-done-bg: #f1f5f9;
+        --mpd-b-done-col: #64748b;
+        --mpd-b-can-bg: #fef3c7;
+        --mpd-b-can-col: #92400e;
+        --mpd-ial-d-bg: #fef2f2;
+        --mpd-ial-d-col: #b91c1c;
+        --mpd-ial-w-bg: #fffbeb;
+        --mpd-ial-w-col: #92400e;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        background: var(--mpd-surface);
+        overflow: hidden;
+    }
+
+    /* Modo oscuro — sobreescribe variables */
+    [data-theme="dark"] .mpd {
+        --mpd-bg: #0f0f1a;
+        --mpd-surface: #1e1e35;
+        --mpd-surface-2: #252545;
+        --mpd-border: #2d2d4e;
+        --mpd-border-2: #3d3d6e;
+        --mpd-text: #f1f1f1;
+        --mpd-text-2: #e2e8f0;
+        --mpd-muted: #a0aec0;
+        --mpd-muted-2: #6b7280;
+        --mpd-pill-bg: #1e3a5f;
+        --mpd-pill-color: #93c5fd;
+        --mpd-sel-bg: #1a2540;
+        --mpd-done-bg: #16162a;
+        --mpd-toolbar-bg: #1e1e35;
+        --mpd-footer-bg: #1e1e35;
+        --mpd-alert-bg: rgba(239,68,68,.12);
+        --mpd-alert-color: #fca5a5;
+        --mpd-t-item-bg: #252545;
+        --mpd-center-bg: #1e1e35;
+        --mpd-bar-track: #2d2d4e;
+        --mpd-list-bg: #16162a;
+        --mpd-btn-sec-bg: #252545;
+        --mpd-btn-sec-col: #a0aec0;
+        --mpd-btn-sec-hov: #2d2d4e;
+        --mpd-b-ok-bg: rgba(22,163,74,.18);
+        --mpd-b-ok-col: #86efac;
+        --mpd-b-warn-bg: rgba(234,179,8,.15);
+        --mpd-b-warn-col: #fde047;
+        --mpd-b-exc-bg: rgba(249,115,22,.15);
+        --mpd-b-exc-col: #fdba74;
+        --mpd-b-crit-bg: rgba(239,68,68,.15);
+        --mpd-b-crit-col: #fca5a5;
+        --mpd-b-done-bg: #252545;
+        --mpd-b-done-col: #a0aec0;
+        --mpd-b-can-bg: rgba(245,158,11,.15);
+        --mpd-b-can-col: #fcd34d;
+        --mpd-ial-d-bg: rgba(239,68,68,.12);
+        --mpd-ial-d-col: #fca5a5;
+        --mpd-ial-w-bg: rgba(245,158,11,.12);
+        --mpd-ial-w-col: #fcd34d;
+    }
+
+    /* ── Dashboard ── */
+    .mpd-dash {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding: 16px 20px;
+        background: var(--mpd-surface);
+        border-bottom: 1px solid var(--mpd-border);
+    }
+
+    .mpd-stat {
+        background: var(--mpd-surface-2);
+        border: 1px solid var(--mpd-border);
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+
+    .mpd-stat-lbl {
+        font-size: .7rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--mpd-muted);
+        margin-bottom: 4px;
+    }
+
+    .mpd-stat-num {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--mpd-text);
+        line-height: 1.1;
+    }
+
+    .mpd-stat-sub {
+        font-size: .75rem;
+        color: var(--mpd-muted-2);
+    }
+
+    .mpd-stat.s-period {
+        border-color: rgba(167,139,250,.4);
+    }
+
+    .mpd-stat.s-pending {
+        border-color: rgba(96,165,250,.4);
+    }
+
+    .mpd-stat.s-done {
+        border-color: rgba(52,211,153,.4);
+    }
+
+    .mpd-stat.s-crit {
+        border-color: rgba(248,113,113,.4);
+    }
+
+    .mpd-stat.s-period .mpd-stat-num {
+        color: #7c3aed;
+    }
+
+    .mpd-stat.s-pending .mpd-stat-num {
+        color: #2563eb;
+    }
+
+    .mpd-stat.s-done .mpd-stat-num {
+        color: #16a34a;
+    }
+
+    .mpd-stat.s-crit .mpd-stat-num {
+        color: #dc2626;
+    }
+
+    /* ── Alerta crítica ── */
+    .mpd-alert-crit {
+        background: var(--mpd-alert-bg);
+        border-left: 3px solid #ef4444;
+        color: var(--mpd-alert-color);
+        font-size: .78rem;
+        padding: 10px 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 7px;
+        flex-shrink: 0;
+    }
+
+    /* ── Toolbar ── */
+    .mpd-toolbar {
+        background: var(--mpd-toolbar-bg);
+        border-bottom: 1px solid var(--mpd-border);
+        padding: 9px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .mpd-sel-all {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: .8rem;
+        font-weight: 600;
+        color: var(--mpd-muted);
+        cursor: pointer;
+        user-select: none;
+    }
+
+        .mpd-sel-all input {
+            width: 15px;
+            height: 15px;
+            accent-color: #2563eb;
+            cursor: pointer;
+        }
+
+    .mpd-count-pill {
+        background: var(--mpd-pill-bg);
+        color: var(--mpd-pill-color);
+        font-size: .7rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+
+    /* ── Lista scrollable ── */
+    .mpd-list {
+        overflow-y: auto;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        max-height: calc(90vh - 310px);
+        min-height: 180px;
+        background: var(--mpd-list-bg);
+    }
+
+    /* Scrollbar en dark */
+    [data-theme="dark"] .mpd-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    [data-theme="dark"] .mpd-list::-webkit-scrollbar-track {
+        background: #1e1e35;
+    }
+
+    [data-theme="dark"] .mpd-list::-webkit-scrollbar-thumb {
+        background: #2d2d4e;
+        border-radius: 3px;
+    }
+
+    /* ── Card ── */
+    .mpd-card {
+        background: var(--mpd-surface);
+        border: 1.5px solid var(--mpd-border);
+        border-radius: 10px;
+        padding: 12px 14px;
+        cursor: pointer;
+        transition: border-color .12s, box-shadow .12s;
+    }
+
+        .mpd-card:hover:not(.mpd-card-done) {
+            border-color: var(--mpd-border-2);
+            box-shadow: 0 1px 6px rgba(0,0,0,.08);
+        }
+
+        .mpd-card.mpd-card-sel {
+            border-color: #2563eb;
+            background: var(--mpd-sel-bg);
+            box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+        }
+
+        .mpd-card.mpd-card-done {
+            opacity: .5;
+            cursor: default;
+            background: var(--mpd-done-bg);
+        }
+
+        .mpd-card.mpd-card-cancelled {
+            border-left: 3px solid #f59e0b;
+        }
+
+    .mpd-card-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mpd-card-name {
+        flex: 1;
+        font-weight: 700;
+        font-size: .86rem;
+        color: var(--mpd-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mpd-card-rate {
+        font-size: .78rem;
+        font-weight: 700;
+        color: var(--mpd-text-2);
+        flex-shrink: 0;
+    }
+
+    /* ── Badges ── */
+    .mpd-b {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: .63rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        flex-shrink: 0;
+    }
+
+    .b-ok {
+        background: var(--mpd-b-ok-bg);
+        color: var(--mpd-b-ok-col);
+    }
+
+    .b-warn {
+        background: var(--mpd-b-warn-bg);
+        color: var(--mpd-b-warn-col);
+    }
+
+    .b-exc {
+        background: var(--mpd-b-exc-bg);
+        color: var(--mpd-b-exc-col);
+    }
+
+    .b-crit {
+        background: var(--mpd-b-crit-bg);
+        color: var(--mpd-b-crit-col);
+    }
+
+    .b-done {
+        background: var(--mpd-b-done-bg);
+        color: var(--mpd-b-done-col);
+    }
+
+    .b-can {
+        background: var(--mpd-b-can-bg);
+        color: var(--mpd-b-can-col);
+    }
+
+    /* ── Hours bar ── */
+    .mpd-bar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 9px;
+    }
+
+    .mpd-bar {
+        flex: 1;
+        height: 5px;
+        background: var(--mpd-bar-track);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .mpd-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width .3s ease;
+    }
+
+    .mpd-bar-label {
+        font-size: .71rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--mpd-muted);
+        min-width: 110px;
+        text-align: right;
+    }
+
+        .mpd-bar-label.over {
+            color: #ef4444;
+        }
+
+    /* ── Inline alerts ── */
+    .mpd-inline-alert {
+        font-size: .73rem;
+        padding: 6px 9px;
+        border-radius: 6px;
+        margin-top: 7px;
+        display: flex;
+        gap: 5px;
+        align-items: flex-start;
+    }
+
+    .ial-danger {
+        background: var(--mpd-ial-d-bg);
+        color: var(--mpd-ial-d-col);
+        border-left: 2px solid #ef4444;
+    }
+
+    .ial-warning {
+        background: var(--mpd-ial-w-bg);
+        color: var(--mpd-ial-w-col);
+        border-left: 2px solid #f59e0b;
+    }
+
+    /* ── Tickets ── */
+    .mpd-tickets {
+        margin-top: 8px;
+    }
+
+        .mpd-tickets summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: .73rem;
+            font-weight: 600;
+            color: #3b82f6;
+            padding: 3px 0;
+        }
+
+            .mpd-tickets summary::-webkit-details-marker {
+                display: none;
+            }
+
+    .mpd-t-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: .72rem;
+        padding: 4px 6px;
+        border-radius: 5px;
+        background: var(--mpd-t-item-bg);
+        margin-top: 3px;
+        border: 1px solid var(--mpd-border);
+    }
+
+    .mpd-t-id {
+        color: #3b82f6;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .mpd-t-title {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--mpd-text-2);
+    }
+
+    .mpd-t-proj {
+        color: var(--mpd-muted-2);
+        font-size: .65rem;
+        flex-shrink: 0;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mpd-t-st {
+        font-size: .62rem;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: var(--mpd-surface-2);
+        color: var(--mpd-muted);
+        flex-shrink: 0;
+    }
+
+    .mpd-t-hrs {
+        font-weight: 700;
+        color: var(--mpd-muted);
+        flex-shrink: 0;
+        font-size: .7rem;
+    }
+
+    .mpd-no-tickets {
+        font-size: .71rem;
+        color: var(--mpd-muted-2);
+        margin-top: 7px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* ── Footer ── */
+    .mpd-footer {
+        background: var(--mpd-footer-bg);
+        border-top: 1px solid var(--mpd-border);
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .mpd-legend {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .mpd-btns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* ── Botones ── */
+    .mpd-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: .8rem;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 7px;
+        border: none;
+        cursor: pointer;
+        transition: all .12s;
+        white-space: nowrap;
+    }
+
+        .mpd-btn:active:not(:disabled) {
+            transform: scale(.97);
+        }
+
+        .mpd-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+    .mpd-btn-sec {
+        background: var(--mpd-btn-sec-bg);
+        color: var(--mpd-btn-sec-col);
+    }
+
+        .mpd-btn-sec:hover:not(:disabled) {
+            background: var(--mpd-btn-sec-hov);
+        }
+
+    .mpd-btn-pri {
+        background: #2563eb;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(37,99,235,.35);
+    }
+
+        .mpd-btn-pri:hover:not(:disabled) {
+            background: #1d4ed8;
+            box-shadow: 0 3px 10px rgba(37,99,235,.4);
+        }
+
+    /* ── Spinners ── */
+    .mpd-spin {
+        width: 13px;
+        height: 13px;
+        border: 2px solid rgba(255,255,255,.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: _spin .6s linear infinite;
+        flex-shrink: 0;
+    }
+
+    @@keyframes _spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .mpd-spin-lg {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--mpd-bar-track);
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: _spin .7s linear infinite;
+    }
+
+    /* ── Estado vacío / cargando ── */
+    .mpd-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 20px;
+        gap: 10px;
+        color: var(--mpd-muted-2);
+        text-align: center;
+        background: var(--mpd-center-bg);
+    }
+
+        .mpd-center strong {
+            color: var(--mpd-text);
+        }
+</style>
+
+@if (_isLoading)
+{
+    <div class="mpd">
+        <div class="mpd-center" style="min-height:320px">
+            <div class="mpd-spin-lg"></div>
+            <span style="font-size:.82rem">Cargando pólizas del mes...</span>
+        </div>
+    </div>
+}
+else if (_summary == null || !_summary.Any())
+{
+    <div class="mpd">
+        <div class="mpd-center" style="min-height:280px">
+            <i class="bi bi-check2-circle" style="font-size:2.4rem;color:#10b981;opacity:.7"></i>
+            <strong style="font-size:.95rem">¡Todo al día!</strong>
+            <span style="font-size:.8rem">No hay clientes con póliza mensual pendientes.</span>
+        </div>
+        <div class="mpd-footer" style="justify-content:flex-end">
+            <button class="mpd-btn mpd-btn-sec" @onclick="Cancel">
+                <i class="bi bi-x-lg"></i> Cerrar
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="mpd">
+
+        @* ── Dashboard ── *@
+        <div class="mpd-dash">
+            <div class="mpd-stat s-period">
+                <div class="mpd-stat-lbl">Período</div>
+                <div class="mpd-stat-num">
+                    @DateTime.Now.ToString("MMM yyyy", new System.Globalization.CultureInfo("es-MX")).ToUpper()
+                </div>
+                <div class="mpd-stat-sub">Pólizas mensuales</div>
+            </div>
+            <div class="mpd-stat s-pending">
+                <div class="mpd-stat-lbl">Disponibles</div>
+                <div class="mpd-stat-num">@_availableCount</div>
+                <div class="mpd-stat-sub">por generar</div>
+            </div>
+            <div class="mpd-stat s-done">
+                <div class="mpd-stat-lbl">Generadas</div>
+                <div class="mpd-stat-num">@_alreadyCount</div>
+                <div class="mpd-stat-sub">este mes</div>
+            </div>
+            <div class="mpd-stat s-crit">
+                <div class="mpd-stat-lbl">Críticos</div>
+                <div class="mpd-stat-num">@_criticalCount</div>
+                <div class="mpd-stat-sub">exceden +10h</div>
+            </div>
+        </div>
+
+        @* ── Alerta crítica ── *@
+        @if (_criticalCount > 0)
+        {
+            <div class="mpd-alert-crit">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0" style="margin-top:1px"></i>
+                <span>
+                    <strong>@_criticalCount cliente(s)</strong> superaron más de 10h.
+                    La factura se generará con el precio actual e incluirá nota de renegociación.
+                </span>
+            </div>
+        }
+
+        @* ── Toolbar ── *@
+        <div class="mpd-toolbar">
+            @if (_availableCount > 1)
+            {
+                <label class="mpd-sel-all">
+                    <input type="checkbox"
+                           checked="@_allSelected"
+                           @onchange="ToggleAll"
+                           @onclick:stopPropagation="true" />
+                    @(_allSelected ? "Deseleccionar todos" : "Seleccionar todos")
+                </label>
+            }
+            <span style="flex:1"></span>
+            @if (_selectedIds.Count > 0)
+            {
+                <span class="mpd-count-pill">
+                    <i class="bi bi-check2"></i>
+                    @_selectedIds.Count / @_availableCount seleccionado@(_selectedIds.Count == 1 ? "" : "s")
+                </span>
+            }
+            else if (_availableCount > 0)
+            {
+                <span style="font-size:.74rem;color:var(--mpd-muted-2)">Selecciona los clientes a facturar</span>
+            }
+        </div>
+
+        @* ── Lista ── *@
+        <div class="mpd-list">
+            @foreach (var c in _summary)
+            {
+                var avail = !c.AlreadyHasInvoice;
+                var sel = _selectedIds.Contains(c.ClientId);
+                var pct = Math.Min(c.UsagePercent, 100);
+                var barColor = c.HoursStatus switch
+                {
+                                "Critical" => "#ef4444",
+                                "Exceeded" => "#f97316",
+                                "Warning" => "#eab308",
+                    _ => "#10b981"
+                };
+
+                var cardCls = "mpd-card"
+                + (!avail ? " mpd-card-done" : "")
+                + (avail && sel ? " mpd-card-sel" : "")
+                + (avail && c.HasCancelledInvoice ? " mpd-card-cancelled" : "");
+
+                <div class="@cardCls"
+                     @onclick="() => { if (avail) ToggleClient(c.ClientId); }">
+
+                    <div class="mpd-card-top">
+                        @if (avail)
+                        {
+                            <input type="checkbox"
+                                   style="width:15px;height:15px;accent-color:#2563eb;cursor:pointer;flex-shrink:0"
+                                   checked="@sel"
+                                   @onchange="() => ToggleClient(c.ClientId)"
+                                   @onclick:stopPropagation="true" />
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-circle-fill flex-shrink-0"
+                               style="color:#10b981;font-size:.95rem"></i>
+                        }
+
+                        <span class="mpd-card-name">@c.CompanyName</span>
+
+                        @if (c.HasCancelledInvoice && avail)
+                        {
+                            <span class="mpd-b b-can">
+                                <i class="bi bi-arrow-counterclockwise"></i> Cancelada
+                            </span>
+                        }
+
+                        @switch (c.HoursStatus)
+                        {
+                            case "Critical":
+                                <span class="mpd-b b-crit">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Crítico
+                                </span>
+                                break;
+                            case "Exceeded":
+                                <span class="mpd-b b-exc">
+                                    <i class="bi bi-arrow-up-circle"></i> Excedido
+                                </span>
+                                break;
+                            case "Warning":
+                                <span class="mpd-b b-warn">
+                                    <i class="bi bi-exclamation-circle"></i> Advertencia
+                                </span>
+                                break;
+                            default:
+                                @if (avail)
+                                {
+                                    <span class="mpd-b b-ok"><i class="bi bi-check"></i> Normal</span>
+                                }
+                                break;
+                        }
+
+                        @if (!avail)
+                        {
+                            <span class="mpd-b b-done">Ya generada</span>
+                        }
+
+                        <span class="mpd-card-rate">
+                            @c.MonthlyRate.ToString("C0", new System.Globalization.CultureInfo("en-US"))/mes
+                        </span>
+                    </div>
+
+                    @if (c.MonthlyHours > 0)
+                    {
+                        <div class="mpd-bar-row">
+                            <div class="mpd-bar">
+                                <div class="mpd-bar-fill"
+                                     style="width:@pct.ToString("0")%; background:@barColor">
+                                </div>
+                            </div>
+                            <span class="mpd-bar-label @(c.HoursUsed > c.MonthlyHours ? "over" : "")">
+                                @($"{c.HoursUsed:0.0}")h / @c.MonthlyHours h
+                                @if (c.ExcessHours > 0)
+                                {
+                                    <span>(+@($"{c.ExcessHours:0.0}")h)</span>
+                                }
+                            </span>
+                        </div>
+
+                        @if (c.HoursStatus == "Critical" && avail)
+                        {
+                            <div class="mpd-inline-alert ial-danger">
+                                <i class="bi bi-exclamation-triangle-fill flex-shrink-0" style="margin-top:1px"></i>
+                                Excedió <strong style="margin:0 2px">@($"{c.ExcessHours:0.0}")h</strong>
+                                sobre las @c.MonthlyHours h incluidas. Se generará con nota de renegociación.
+                            </div>
+                        }
+                        else if (c.HoursStatus == "Exceeded" && avail)
+                        {
+                            <div class="mpd-inline-alert ial-warning">
+                                <i class="bi bi-exclamation-circle flex-shrink-0" style="margin-top:1px"></i>
+                                Excedió <strong style="margin:0 2px">@($"{c.ExcessHours:0.0}")h</strong>
+                                — dentro del margen aceptable de 10h.
+                            </div>
+                        }
+                    }
+
+                    @if (c.Tickets.Any())
+                    {
+                        <details class="mpd-tickets" @onclick:stopPropagation="true">
+                            <summary>
+                                <i class="bi bi-ticket-detailed-fill"></i>
+                                @c.Tickets.Count ticket@(c.Tickets.Count == 1 ? "" : "s") del mes —
+                                <span style="color:#3b82f6">@($"{c.Tickets.Sum(t => t.ActualHours):0.0}")h totales</span>
+                                <i class="bi bi-chevron-down" style="margin-left:auto;font-size:.6rem;color:var(--mpd-muted-2)"></i>
+                            </summary>
+                            <div>
+                                @foreach (var t in c.Tickets)
+                                {
+                                    <div class="mpd-t-item">
+                                        <span class="mpd-t-id">#@t.TicketId</span>
+                                        <span class="mpd-t-title">@t.Title</span>
+                                        <span class="mpd-t-proj">@t.ProjectName</span>
+                                        <span class="mpd-t-st">@t.Status</span>
+                                        <span class="mpd-t-hrs">@($"{t.ActualHours:0.0}")h</span>
+                                    </div>
+                                }
+                            </div>
+                        </details>
+                    }
+                    else if (avail)
+                    {
+                        <div class="mpd-no-tickets">
+                            <i class="bi bi-info-circle"></i>
+                            Sin tickets registrados este mes
+                        </div>
+                    }
+
+                </div>
+            }
+        </div>
+
+        @* ── Footer ── *@
+        <div class="mpd-footer">
+            <div class="mpd-legend">
+                <span class="mpd-b b-ok">Normal</span>
+                <span class="mpd-b b-warn">Advert. &gt;80%</span>
+                <span class="mpd-b b-exc">Excedido ≤10h</span>
+                <span class="mpd-b b-crit">Crítico &gt;10h</span>
+                <span class="mpd-b b-can">Cancelada</span>
+            </div>
+            <div class="mpd-btns">
+                <button class="mpd-btn mpd-btn-sec"
+                        @onclick="Cancel"
+                        disabled="@_isGenerating">
+                    <i class="bi bi-x-lg"></i> Cancelar
+                </button>
+                <button class="mpd-btn mpd-btn-pri"
+                        @onclick="Generate"
+                        disabled="@(_isGenerating || _selectedIds.Count == 0)">
+                    @if (_isGenerating)
+                    {
+                        <span class="mpd-spin"></span>
+                        <span>Generando...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-lightning-fill"></i>
+                        <span>Generar @_selectedIds.Count factura@(_selectedIds.Count == 1 ? "" : "s")</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+    </div>
+}
+
+@code {
+    private List<MonthlyClientSummaryDto>? _summary;
+    private HashSet<int> _selectedIds = new();
+    private bool _isLoading = true;
+    private bool _isGenerating = false;
+
+    private int _availableCount => _summary?.Count(s => !s.AlreadyHasInvoice) ?? 0;
+    private int _alreadyCount => _summary?.Count(s => s.AlreadyHasInvoice) ?? 0;
+    private int _cancelledCount => _summary?.Count(s => !s.AlreadyHasInvoice && s.HasCancelledInvoice) ?? 0;
+    private int _criticalCount => _summary?.Count(s => !s.AlreadyHasInvoice && s.HoursStatus == "Critical") ?? 0;
+    private bool _allSelected => _availableCount > 0 && _selectedIds.Count >= _availableCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _summary = await InvoiceApiService.GetMonthlySummaryAsync();
+            if (_summary != null)
+                _selectedIds = _summary
+                    .Where(s => !s.AlreadyHasInvoice)
+                    .Select(s => s.ClientId)
+                    .ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            _summary = new();
+        }
+        finally { _isLoading = false; }
+    }
+
+    private void ToggleClient(int id)
+    {
+        if (!_selectedIds.Remove(id)) _selectedIds.Add(id);
+    }
+
+    private void ToggleAll()
+    {
+        if (_allSelected)
+            _selectedIds.Clear();
+        else
+            _selectedIds = _summary!
+                .Where(s => !s.AlreadyHasInvoice)
+                .Select(s => s.ClientId)
+                .ToHashSet();
+    }
+
+    private async Task Generate()
+    {
+        if (_selectedIds.Count == 0) return;
+        _isGenerating = true;
+        StateHasChanged();
+        try
+        {
+            var (ok, err) = await InvoiceApiService.GenerateMonthlyInvoicesAsync(_selectedIds.ToList());
+            DialogService.Close(ok ? "generated" : err);
+        }
+        finally { _isGenerating = false; }
+    }
+
+    private void Cancel() => DialogService.Close(null);
+}

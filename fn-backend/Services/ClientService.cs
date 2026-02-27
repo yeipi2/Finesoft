@@ -69,6 +69,7 @@ public class ClientService : IClientService
             BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event", // ⭐ AGREGAR
             MonthlyRate = dto.MonthlyRate,
             IsActive = dto.IsActive,
+            MonthlyHours = dto.MonthlyHours,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -96,9 +97,32 @@ public class ClientService : IClientService
     // ClientService.cs — GetClientsAsync
     public async Task<IEnumerable<ClientDto>> GetClientsAsync()
     {
-        return await _context.Clients
-            .Include(c => c.Projects)  // ⭐ necesario para que Projects no sea null
-            .Select(c => new ClientDto
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
+
+        var clients = await _context.Clients
+            .Include(c => c.Projects)
+            .ToListAsync();
+
+        var result = new List<ClientDto>();
+
+        foreach (var c in clients)
+        {
+            // Sumar ActualHours de tickets del mes actual para este cliente
+            var projectIds = c.Projects?.Select(p => p.Id).ToList() ?? new List<int>();
+
+            decimal hoursUsed = 0;
+            if (projectIds.Any())
+            {
+                hoursUsed = await _context.Tickets
+                    .Where(t => t.ProjectId.HasValue
+                             && projectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .SumAsync(t => t.ActualHours);
+            }
+
+            result.Add(new ClientDto
             {
                 Id = c.Id,
                 UserId = c.UserId,
@@ -110,10 +134,14 @@ public class ClientService : IClientService
                 Address = c.Address,
                 ServiceMode = c.ServiceMode,
                 MonthlyRate = c.MonthlyRate,
+                MonthlyHours = c.MonthlyHours,
+                MonthlyHoursUsed = hoursUsed,
                 IsActive = c.IsActive,
-                ProjectCount = c.Projects.Count  // EF lo traduce a COUNT(*) en SQL
-            })
-            .ToListAsync();
+                ProjectCount = c.Projects?.Count ?? 0
+            });
+        }
+
+        return result;
     }
 
     public async Task<Client?> GetClientByIdAsync(int id)
@@ -141,6 +169,7 @@ public class ClientService : IClientService
         client.BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event"; 
         client.MonthlyRate = dto.MonthlyRate;
         client.IsActive = dto.IsActive;
+        client.MonthlyHours = dto.MonthlyHours;
         client.UpdatedAt = DateTime.UtcNow;
 
         // ✅ Actualizar email del usuario si existe
