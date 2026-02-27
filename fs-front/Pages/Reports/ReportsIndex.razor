@@ -12,7 +12,7 @@
 <PageTitle>Finesoft - Reportes</PageTitle>
 
 @* ── Estilos compartidos de todos los sub-componentes ── *@
-<Reportsstyles />
+<ReportsStyles />
 
 @* ── Guard de acceso ── *@
 @if (_checkingAccess)
@@ -29,7 +29,7 @@ else if (!_hasAccess)
 }
 else
 {
-    <container class="container px-xl-5 py-4">
+    <div class="container px-xl-5 py-4">
         <section class="container-fluid p-xl-5">
 
             @* ── Header con fechas ── *@
@@ -99,7 +99,7 @@ else
             }
 
         </section>
-    </container>
+    </div>
 }
 
 @code {
