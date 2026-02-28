@@ -1,4 +1,3 @@
-﻿using fn_backend.Models;
 using fs_backend.DTO;
 using fs_backend.Identity;
 using fs_backend.Models;
@@ -6,10 +5,6 @@ using fs_backend.Repositories;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
-using System.Globalization;
 
 
 namespace fs_backend.Services;
@@ -18,60 +13,32 @@ public class InvoiceService : IInvoiceService
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
-    private readonly IWebHostEnvironment _environment;
-    private static decimal Round2(decimal value)
-    => Math.Round(value, 2, MidpointRounding.AwayFromZero);
-
-    private static bool IsZero(decimal value)
-        => Math.Abs(value) < 0.01m;
-
-    private static string NormalizePayType(string? value)
-    {
-        var v = (value ?? "PPD").Trim().ToUpperInvariant();
-        return (v is "PUE" or "PPD") ? v : "PPD";
-    }
-
-    private static readonly Dictionary<string, string> PaymentMethodMap =
-    new(StringComparer.OrdinalIgnoreCase)
-    {
-        // entradas “humanas”
-        ["transferencia"] = "Transferencia",
-        ["efectivo"] = "Efectivo",
-        ["tarjeta"] = "Tarjeta",
-        ["cheque"] = "Cheque",
-        ["deposito"] = "Depósito",
-        ["depósito"] = "Depósito",
-
-        // entradas canónicas (por si ya vienen así)
-        ["Transferencia"] = "Transferencia",
-        ["Efectivo"] = "Efectivo",
-        ["Tarjeta"] = "Tarjeta",
-        ["Cheque"] = "Cheque",
-        ["Depósito"] = "Depósito",
-        ["Deposito"] = "Depósito",
-    };
-
-    private static string NormalizePaymentMethodOrThrow(string? value)
-    {
-        var raw = (value ?? string.Empty).Trim();
-        if (string.IsNullOrEmpty(raw))
-            return string.Empty;
-
-        // Opcional: tolerar un punto al final
-        raw = raw.TrimEnd('.');
-
-        if (PaymentMethodMap.TryGetValue(raw, out var canonical))
-            return canonical;
-
-        throw new ArgumentException("PaymentMethod inválido. Usa: Transferencia, Efectivo, Tarjeta, Cheque o Depósito.");
-    }
+    private readonly IPaymentPolicy _paymentPolicy;
+    private readonly IReceiptStorageService _receiptStorageService;
+    private readonly IInvoiceStatusService _invoiceStatusService;
+    private readonly IInvoicePdfGenerator _invoicePdfGenerator;
+    private readonly IInvoiceMapper _invoiceMapper;
+    private readonly IMonthlyBillingService _monthlyBillingService;
+    private readonly IInvoiceNumberService _invoiceNumberService;
 
     public InvoiceService(ApplicationDbContext context, UserManager<IdentityUser> userManager,
-        IWebHostEnvironment environment)
+        IPaymentPolicy paymentPolicy,
+        IReceiptStorageService receiptStorageService,
+        IInvoiceStatusService invoiceStatusService,
+        IInvoicePdfGenerator invoicePdfGenerator,
+        IInvoiceMapper invoiceMapper,
+        IMonthlyBillingService monthlyBillingService,
+        IInvoiceNumberService invoiceNumberService)
     {
         _context = context;
         _userManager = userManager;
-        _environment = environment;
+        _paymentPolicy = paymentPolicy;
+        _receiptStorageService = receiptStorageService;
+        _invoiceStatusService = invoiceStatusService;
+        _invoicePdfGenerator = invoicePdfGenerator;
+        _invoiceMapper = invoiceMapper;
+        _monthlyBillingService = monthlyBillingService;
+        _invoiceNumberService = invoiceNumberService;
     }
 
     public async Task<IEnumerable<InvoiceDetailDto>> GetInvoicesAsync(string? status = null,
@@ -85,6 +52,8 @@ public class InvoiceService : IInvoiceService
                         .ThenInclude(p => p!.Client)
             .Include(i => i.Payments)
             .Include(i => i.Quote)
+            .AsNoTracking()
+            .AsSplitQuery()
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
@@ -107,7 +76,7 @@ public class InvoiceService : IInvoiceService
         var invoiceDtos = new List<InvoiceDetailDto>();
         foreach (var invoice in invoices)
         {
-            invoiceDtos.Add(await MapToDetailDto(invoice));
+            invoiceDtos.Add(await _invoiceMapper.MapToDetailDtoAsync(invoice));
         }
 
         return invoiceDtos;
@@ -123,9 +92,11 @@ public class InvoiceService : IInvoiceService
                         .ThenInclude(p => p!.Client)
             .Include(i => i.Payments)
             .Include(i => i.Quote)
+            .AsNoTracking()
+            .AsSplitQuery()
             .FirstOrDefaultAsync(i => i.Id == id);
 
-        return invoice == null ? null : await MapToDetailDto(invoice);
+        return invoice == null ? null : await _invoiceMapper.MapToDetailDtoAsync(invoice);
     }
 
     public async Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceAsync(InvoiceDto invoiceDto,
@@ -142,22 +113,31 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("La factura debe tener al menos un elemento");
         }
 
-        // ✅ Normalizar PaymentType
-        invoiceDto.PaymentType = string.IsNullOrWhiteSpace(invoiceDto.PaymentType)
-            ? "PPD"
-            : invoiceDto.PaymentType.Trim().ToUpperInvariant();
-
-        if (invoiceDto.PaymentType is not ("PUE" or "PPD"))
+        if (!_paymentPolicy.TryNormalizePayType(invoiceDto.PaymentType, out var normalizedPaymentType))
             return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
 
-        // ✅ Reglas: PUE requiere método. PPD lo define en pagos
-        if (invoiceDto.PaymentType == "PUE" && string.IsNullOrWhiteSpace(invoiceDto.PaymentMethod))
-            return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+        invoiceDto.PaymentType = normalizedPaymentType;
 
-        if (invoiceDto.PaymentType == "PPD")
+        if (invoiceDto.PaymentType == InvoiceConstants.PaymentType.Pue)
+        {
+            try
+            {
+                invoiceDto.PaymentMethod = _paymentPolicy.NormalizePaymentMethodOrThrow(invoiceDto.PaymentMethod);
+            }
+            catch (ArgumentException ex)
+            {
+                return ServiceResult<InvoiceDetailDto>.Failure(ex.Message);
+            }
+
+            if (string.IsNullOrWhiteSpace(invoiceDto.PaymentMethod))
+                return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+        }
+        else
+        {
             invoiceDto.PaymentMethod = string.Empty;
+        }
 
-        var invoiceNumber = await GenerateInvoiceNumber();
+        var invoiceNumber = await _invoiceNumberService.GenerateAsync();
 
         var invoice = new Invoice
         {
@@ -216,7 +196,7 @@ public class InvoiceService : IInvoiceService
             }
         }
 
-        return ServiceResult<InvoiceDetailDto>.Success(await MapToDetailDto(invoice));
+        return ServiceResult<InvoiceDetailDto>.Success(await _invoiceMapper.MapToDetailDtoAsync(invoice));
     }
 
     // ⭐ MÉTODO CORREGIDO: CreateInvoiceFromQuoteAsync
@@ -249,14 +229,12 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("Esta cotización ya tiene una factura asociada");
         }
 
-        dto.PaymentType = string.IsNullOrWhiteSpace(dto.PaymentType)
-    ? "PPD"
-    : dto.PaymentType.Trim().ToUpperInvariant();
-
-        if (dto.PaymentType is not ("PUE" or "PPD"))
+        if (!_paymentPolicy.TryNormalizePayType(dto.PaymentType, out var normalizedPaymentType))
             return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
 
-        if (dto.PaymentType == "PPD")
+        dto.PaymentType = normalizedPaymentType;
+
+        if (dto.PaymentType == InvoiceConstants.PaymentType.Ppd)
         {
             dto.PaymentMethod = string.Empty;
         }
@@ -264,7 +242,7 @@ public class InvoiceService : IInvoiceService
         {
             try
             {
-                dto.PaymentMethod = NormalizePaymentMethodOrThrow(dto.PaymentMethod);
+                dto.PaymentMethod = _paymentPolicy.NormalizePaymentMethodOrThrow(dto.PaymentMethod);
             }
             catch (ArgumentException ex)
             {
@@ -275,7 +253,7 @@ public class InvoiceService : IInvoiceService
                 return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
         }
 
-        var invoiceNumber = await GenerateInvoiceNumber();
+        var invoiceNumber = await _invoiceNumberService.GenerateAsync();
 
         var invoice = new Invoice
         {
@@ -284,8 +262,8 @@ public class InvoiceService : IInvoiceService
             QuoteId = quote.Id,
             InvoiceDate = dto.InvoiceDate ?? DateTime.UtcNow,
             DueDate = dto.DueDate,
-            InvoiceType = "Event",
-            Status = "Pendiente",
+            InvoiceType = InvoiceConstants.InvoiceType.Event,
+            Status = InvoiceConstants.Status.Pending,
             PaymentType = dto.PaymentType,
             PaymentMethod = dto.PaymentMethod ?? string.Empty,
             CreatedByUserId = createdByUserId,
@@ -330,7 +308,7 @@ public class InvoiceService : IInvoiceService
             }
         }
 
-        return ServiceResult<InvoiceDetailDto>.Success(await MapToDetailDto(invoice));
+        return ServiceResult<InvoiceDetailDto>.Success(await _invoiceMapper.MapToDetailDtoAsync(invoice));
     }
 
     public async Task<ServiceResult<InvoiceDetailDto>> UpdateInvoiceAsync(int id, InvoiceDto invoiceDto)
@@ -355,27 +333,36 @@ public class InvoiceService : IInvoiceService
             return ServiceResult<InvoiceDetailDto>.Failure("La factura debe tener al menos un elemento");
         }
 
-        if (invoice.Status is "Cancelada" or "Pagada")
+        if (invoice.Status is InvoiceConstants.Status.Cancelled or InvoiceConstants.Status.Paid)
         {
             return ServiceResult<InvoiceDetailDto>.Failure(
                 $"No se puede editar una factura {invoice.Status.ToLower()}");
         }
 
 
-        // ✅ Normalizar PaymentType
-        invoiceDto.PaymentType = string.IsNullOrWhiteSpace(invoiceDto.PaymentType)
-            ? "PPD"
-            : invoiceDto.PaymentType.Trim().ToUpperInvariant();
-
-        if (invoiceDto.PaymentType is not ("PUE" or "PPD"))
+        if (!_paymentPolicy.TryNormalizePayType(invoiceDto.PaymentType, out var normalizedPaymentType))
             return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
 
-        // ✅ Reglas: PUE requiere método. PPD lo define en pagos
-        if (invoiceDto.PaymentType == "PUE" && string.IsNullOrWhiteSpace(invoiceDto.PaymentMethod))
-            return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+        invoiceDto.PaymentType = normalizedPaymentType;
 
-        if (invoiceDto.PaymentType == "PPD")
+        if (invoiceDto.PaymentType == InvoiceConstants.PaymentType.Pue)
+        {
+            try
+            {
+                invoiceDto.PaymentMethod = _paymentPolicy.NormalizePaymentMethodOrThrow(invoiceDto.PaymentMethod);
+            }
+            catch (ArgumentException ex)
+            {
+                return ServiceResult<InvoiceDetailDto>.Failure(ex.Message);
+            }
+
+            if (string.IsNullOrWhiteSpace(invoiceDto.PaymentMethod))
+                return ServiceResult<InvoiceDetailDto>.Failure("Para PUE debes especificar el método de pago.");
+        }
+        else
+        {
             invoiceDto.PaymentMethod = string.Empty;
+        }
 
         invoice.ClientId = invoiceDto.ClientId;
         invoice.InvoiceDate = invoiceDto.InvoiceDate ?? invoice.InvoiceDate;
@@ -432,7 +419,7 @@ public class InvoiceService : IInvoiceService
             }
         }
 
-        return ServiceResult<InvoiceDetailDto>.Success(await MapToDetailDto(invoice));
+        return ServiceResult<InvoiceDetailDto>.Success(await _invoiceMapper.MapToDetailDtoAsync(invoice));
     }
 
     public async Task<ServiceResult<bool>> DeleteInvoiceAsync(int id)
@@ -455,14 +442,19 @@ public class InvoiceService : IInvoiceService
         if (invoice == null)
             return ServiceResult<bool>.Failure("Factura no encontrada");
 
-        if (invoice.Status is "Cancelada" or "Pagada")
+        if (invoice.Status is InvoiceConstants.Status.Cancelled or InvoiceConstants.Status.Paid)
             return ServiceResult<bool>.Failure("La factura no puede modificarse en este estado");
 
-        var validStatuses = new[] { "Pendiente", "Pagada", "Cancelada" };
+        var validStatuses = new[]
+        {
+            InvoiceConstants.Status.Pending,
+            InvoiceConstants.Status.Paid,
+            InvoiceConstants.Status.Cancelled
+        };
         if (!validStatuses.Contains(newStatus))
             return ServiceResult<bool>.Failure("Estado no válido");
 
-        if (newStatus == "Cancelada")
+        if (newStatus == InvoiceConstants.Status.Cancelled)
         {
             if (string.IsNullOrWhiteSpace(reason))
                 return ServiceResult<bool>.Failure("Debes especificar el motivo de cancelación");
@@ -471,7 +463,7 @@ public class InvoiceService : IInvoiceService
             invoice.CancelledDate = DateTime.UtcNow;
         }
 
-        if (newStatus == "Pagada")
+        if (newStatus == InvoiceConstants.Status.Paid)
         {
             invoice.PaidDate = DateTime.UtcNow;
         }
@@ -494,127 +486,43 @@ public class InvoiceService : IInvoiceService
         if (invoice == null)
             return ServiceResult<InvoicePaymentDto>.Failure("Factura no encontrada");
 
-        if (invoice.Status is "Cancelada" or "Pagada")
+        if (invoice.Status is InvoiceConstants.Status.Cancelled or InvoiceConstants.Status.Paid)
             return ServiceResult<InvoicePaymentDto>.Failure("La factura no puede registrar pagos en este estado");
 
-        // ✅ Normaliza montos
-        var total = Round2(invoice.Total);
-        var alreadyPaid = Round2(invoice.Payments.Sum(p => p.Amount));
-        var balance = Round2(total - alreadyPaid);
+        var validation = _paymentPolicy.ValidateInvoicePayment(invoice, dto.Amount, dto.PaymentMethod);
+        if (!validation.Succeeded)
+            return ServiceResult<InvoicePaymentDto>.Failure(validation.Errors);
 
-        if (balance <= 0)
-            return ServiceResult<InvoicePaymentDto>.Failure("Esta factura ya está saldada");
+        var paymentInfo = validation.Data!;
+        dto.PaymentMethod = paymentInfo.PaymentMethod;
 
-        var amount = Round2(dto.Amount);
-        if (amount <= 0)
-            return ServiceResult<InvoicePaymentDto>.Failure("El monto debe ser mayor a 0");
+        var receiptResult = await _receiptStorageService.SaveOptionalAsync(invoiceId, dto.Receipt);
+        if (!receiptResult.Succeeded)
+            return ServiceResult<InvoicePaymentDto>.Failure(receiptResult.Errors);
 
-        // ✅ Reglas PUE/PPD
-        var paymentType = NormalizePayType(invoice.PaymentType);
-
-        if (paymentType == "PUE")
-        {
-            // Debe liquidar exactamente el saldo
-            if (!IsZero(balance - amount))
-                return ServiceResult<InvoicePaymentDto>.Failure($"Para PUE el monto debe ser exactamente {balance:N2}");
-
-            // Método viene de la factura (si está definido)
-            if (!string.IsNullOrWhiteSpace(invoice.PaymentMethod))
-            {
-                dto.PaymentMethod = invoice.PaymentMethod;
-            }
-
-            if (string.IsNullOrWhiteSpace(dto.PaymentMethod))
-                return ServiceResult<InvoicePaymentDto>.Failure("Para PUE debes tener método de pago definido (en factura o en el pago)");
-        }
-        else // PPD
-        {
-            // No permitir exceder saldo
-            if (amount > balance)
-                return ServiceResult<InvoicePaymentDto>.Failure($"No puedes registrar un pago mayor al saldo pendiente ({balance:N2})");
-
-            if (string.IsNullOrWhiteSpace(dto.PaymentMethod))
-                return ServiceResult<InvoicePaymentDto>.Failure("El método de pago es obligatorio");
-        }
-
-        try
-        {
-            dto.PaymentMethod = NormalizePaymentMethodOrThrow(dto.PaymentMethod);
-        }
-        catch (ArgumentException ex)
-        {
-            return ServiceResult<InvoicePaymentDto>.Failure(ex.Message);
-        }
-
-        // ✅ Validar archivo (si viene)
-        string? receiptPath = null;
-        string? receiptFileName = null;
-        string? receiptContentType = null;
-        long? receiptSize = null;
-
-        if (dto.Receipt != null && dto.Receipt.Length > 0)
-        {
-            var allowed = new[] { "application/pdf", "image/jpeg", "image/png" };
-            if (!allowed.Contains(dto.Receipt.ContentType))
-                return ServiceResult<InvoicePaymentDto>.Failure("Tipo de archivo no permitido (solo PDF/JPG/PNG)");
-
-            var folderRelative = Path.Combine("uploads", "invoices", invoiceId.ToString(), "payments");
-            var folderPhysical = Path.Combine(_environment.WebRootPath, folderRelative);
-
-            Directory.CreateDirectory(folderPhysical);
-
-            var ext = Path.GetExtension(dto.Receipt.FileName);
-            var safeExt = string.IsNullOrWhiteSpace(ext) ? ".bin" : ext.ToLowerInvariant();
-
-            var storedFileName = $"receipt_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{safeExt}";
-            var filePhysicalPath = Path.Combine(folderPhysical, storedFileName);
-
-            await using (var stream = new FileStream(filePhysicalPath, FileMode.Create))
-            {
-                await dto.Receipt.CopyToAsync(stream);
-            }
-
-            receiptPath = Path.Combine(folderRelative, storedFileName).Replace("\\", "/");
-            receiptFileName = dto.Receipt.FileName;
-            receiptContentType = dto.Receipt.ContentType;
-            receiptSize = dto.Receipt.Length;
-        }
+        var receipt = receiptResult.Data;
 
         var payment = new InvoicePayment
         {
             InvoiceId = invoiceId,
-            Amount = amount,
+            Amount = paymentInfo.Amount,
             PaymentDate = dto.PaymentDate,
             PaymentMethod = dto.PaymentMethod,
             Reference = dto.Reference,
             Notes = dto.Notes,
             RecordedByUserId = userId,
 
-            ReceiptPath = receiptPath,
-            ReceiptFileName = receiptFileName,
-            ReceiptContentType = receiptContentType,
-            ReceiptSize = receiptSize,
-            ReceiptUploadedAt = receiptPath != null ? DateTime.UtcNow : null
+            ReceiptPath = receipt?.Path,
+            ReceiptFileName = receipt?.FileName,
+            ReceiptContentType = receipt?.ContentType,
+            ReceiptSize = receipt?.Size,
+            ReceiptUploadedAt = receipt?.UploadedAt
         };
 
         _context.InvoicePayments.Add(payment);
 
-        // ✅ Recalcular y actualizar status
-        var newPaid = Round2(alreadyPaid + amount);
-        var newBalance = Round2(total - newPaid);
-
-        if (newBalance <= 0 || IsZero(newBalance))
-        {
-            invoice.Status = "Pagada";
-            invoice.PaidDate ??= DateTime.UtcNow;
-        }
-        else
-        {
-            // Si quieres conservar Vencida:
-            // invoice.Status = invoice.DueDate.HasValue && invoice.DueDate.Value.Date < DateTime.UtcNow.Date ? "Vencida" : "Pendiente";
-            invoice.Status = "Pendiente";
-            invoice.PaidDate = null;
-        }
+        var newBalance = paymentInfo.BalanceBefore - paymentInfo.Amount;
+        _invoiceStatusService.ApplyAfterPayment(invoice, newBalance);
 
         await _context.SaveChangesAsync();
 
@@ -651,107 +559,43 @@ public class InvoiceService : IInvoiceService
         if (invoice == null)
             return ServiceResult<InvoicePaymentDto>.Failure("Factura no encontrada");
 
-        if (invoice.Status is "Cancelada" or "Pagada")
+        if (invoice.Status is InvoiceConstants.Status.Cancelled or InvoiceConstants.Status.Paid)
             return ServiceResult<InvoicePaymentDto>.Failure("No se puede registrar pago en este estado");
 
-        var total = Round2(invoice.Total);
-        var alreadyPaid = Round2(invoice.Payments.Sum(p => p.Amount));
-        var balance = Round2(total - alreadyPaid);
+        var validation = _paymentPolicy.ValidateInvoicePayment(invoice, request.Amount, request.PaymentMethod);
+        if (!validation.Succeeded)
+            return ServiceResult<InvoicePaymentDto>.Failure(validation.Errors);
 
-        if (balance <= 0)
-            return ServiceResult<InvoicePaymentDto>.Failure("Esta factura ya está saldada");
+        var paymentInfo = validation.Data!;
+        request.PaymentMethod = paymentInfo.PaymentMethod;
 
-        var amount = Round2(request.Amount);
-        if (amount <= 0)
-            return ServiceResult<InvoicePaymentDto>.Failure("El monto debe ser mayor a 0");
+        var receiptResult = await _receiptStorageService.SaveRequiredAsync(invoiceId, request.Receipt);
+        if (!receiptResult.Succeeded)
+            return ServiceResult<InvoicePaymentDto>.Failure(receiptResult.Errors);
 
-        // ✅ Reglas PUE/PPD
-        var paymentType = NormalizePayType(invoice.PaymentType);
-
-        if (paymentType == "PUE")
-        {
-            if (!IsZero(balance - amount))
-                return ServiceResult<InvoicePaymentDto>.Failure($"Para PUE el monto debe ser exactamente {balance:N2}");
-
-            if (!string.IsNullOrWhiteSpace(invoice.PaymentMethod))
-            {
-                request.PaymentMethod = invoice.PaymentMethod;
-            }
-
-            if (string.IsNullOrWhiteSpace(request.PaymentMethod))
-                return ServiceResult<InvoicePaymentDto>.Failure("Para PUE debes tener método de pago definido (en factura o en el pago)");
-        }
-        else // PPD
-        {
-            if (amount > balance)
-                return ServiceResult<InvoicePaymentDto>.Failure($"No puedes registrar un pago mayor al saldo pendiente ({balance:N2})");
-
-            if (string.IsNullOrWhiteSpace(request.PaymentMethod))
-                return ServiceResult<InvoicePaymentDto>.Failure("El método de pago es obligatorio");
-        }
-
-        request.PaymentMethod = NormalizePaymentMethodOrThrow(request.PaymentMethod);
-
-        // ✅ Validar archivo (obligatorio aquí)
-        var file = request.Receipt;
-        if (file == null || file.Length == 0)
-            return ServiceResult<InvoicePaymentDto>.Failure("Debes subir un comprobante");
-
-        var allowed = file.ContentType.StartsWith("image/") || file.ContentType == "application/pdf";
-        if (!allowed)
-            return ServiceResult<InvoicePaymentDto>.Failure("Solo se permite PDF o imagen");
-
-        if (file.Length > 10 * 1024 * 1024)
-            return ServiceResult<InvoicePaymentDto>.Failure("El archivo excede 10MB");
-
-        // Guardar archivo en wwwroot/receipts/invoices/{invoiceId}/...
-        var folder = Path.Combine(_environment.WebRootPath, "receipts", "invoices", invoiceId.ToString());
-        Directory.CreateDirectory(folder);
-
-        var safeExt = Path.GetExtension(file.FileName);
-        var storedName = $"{Guid.NewGuid():N}{safeExt}";
-        var storedPath = Path.Combine(folder, storedName);
-
-        await using (var stream = File.Create(storedPath))
-            await file.CopyToAsync(stream);
-
-        var relativePath = $"/receipts/invoices/{invoiceId}/{storedName}";
+        var receipt = receiptResult.Data!;
 
         var payment = new InvoicePayment
         {
             InvoiceId = invoiceId,
-            Amount = amount,
+            Amount = paymentInfo.Amount,
             PaymentDate = request.PaymentDate,
             PaymentMethod = request.PaymentMethod,
             Reference = request.Reference,
             Notes = request.Notes,
             RecordedByUserId = userId,
 
-            ReceiptFileName = file.FileName,
-            ReceiptContentType = file.ContentType,
-            ReceiptSize = file.Length,
-            ReceiptPath = relativePath,
-            ReceiptUploadedAt = DateTime.UtcNow
+            ReceiptFileName = receipt.FileName,
+            ReceiptContentType = receipt.ContentType,
+            ReceiptSize = receipt.Size,
+            ReceiptPath = receipt.Path,
+            ReceiptUploadedAt = receipt.UploadedAt
         };
 
         _context.InvoicePayments.Add(payment);
 
-        // ✅ Recalcular y actualizar status
-        var newPaid = Round2(alreadyPaid + amount);
-        var newBalance = Round2(total - newPaid);
-
-        if (newBalance <= 0 || IsZero(newBalance))
-        {
-            invoice.Status = "Pagada";
-            invoice.PaidDate ??= DateTime.UtcNow;
-        }
-        else
-        {
-            // Si quieres conservar Vencida:
-            // invoice.Status = invoice.DueDate.HasValue && invoice.DueDate.Value.Date < DateTime.UtcNow.Date ? "Vencida" : "Pendiente";
-            invoice.Status = "Pendiente";
-            invoice.PaidDate = null;
-        }
+        var newBalance = paymentInfo.BalanceBefore - paymentInfo.Amount;
+        _invoiceStatusService.ApplyAfterPayment(invoice, newBalance);
 
         await _context.SaveChangesAsync();
 
@@ -776,256 +620,14 @@ public class InvoiceService : IInvoiceService
     }
 
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // REEMPLAZA GenerateMonthlyInvoicesAsync en InvoiceService.cs
-    // Sin cobro automático de excedente — solo notas de advertencia en la factura
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    public async Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null)
+    public Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null)
     {
-        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var nextMonth = currentMonth.AddMonths(1);
-
-        // Obtener clientes mensuales activos
-        var query = _context.Clients
-            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual") && c.IsActive);
-
-        // ⭐ Filtrar por los seleccionados (si se pasó lista)
-        if (clientIds != null && clientIds.Any())
-            query = query.Where(c => clientIds.Contains(c.Id));
-
-        var clientsWithMonthly = await query.ToListAsync();
-
-        if (!clientsWithMonthly.Any())
-            return ServiceResult<bool>.Failure("No se encontraron clientes con facturación mensual activa");
-
-        var invoicesCreated = 0;
-
-        foreach (var client in clientsWithMonthly)
-        {
-            // ── Verificar que NO tenga factura ACTIVA este mes ────────────────────
-            // (las canceladas NO bloquean)
-            var existingActiveInvoice = await _context.Invoices
-                .AnyAsync(i => i.ClientId == client.Id
-                            && i.InvoiceType == "Monthly"
-                            && i.InvoiceDate.Month == currentMonth.Month
-                            && i.InvoiceDate.Year == currentMonth.Year
-                            && i.Status != "Cancelada");
-
-            if (existingActiveInvoice)
-            {
-                Console.WriteLine($"   ⏭ Saltando {client.CompanyName} — ya tiene factura activa este mes");
-                continue;
-            }
-
-            // ── Tickets del mes para este cliente ─────────────────────────────────
-            var projectIds = await _context.Projects
-                .Where(p => p.ClientId == client.Id)
-                .Select(p => p.Id)
-                .ToListAsync();
-
-            var ticketsThisMonth = new List<fs_backend.Models.Ticket>();
-            decimal hoursUsed = 0;
-
-            if (projectIds.Any())
-            {
-                ticketsThisMonth = await _context.Tickets
-                    .Where(t => t.ProjectId.HasValue
-                             && projectIds.Contains(t.ProjectId.Value)
-                             && t.UpdatedAt >= currentMonth
-                             && t.UpdatedAt < nextMonth)
-                    .ToListAsync();
-
-                hoursUsed = ticketsThisMonth.Sum(t => t.ActualHours);
-            }
-
-            var monthlyHours = client.MonthlyHours;
-            var subtotal = (client.MonthlyRate.HasValue && client.MonthlyRate.Value > 0)
-                                ? (decimal)client.MonthlyRate.Value
-                                : 0m;
-
-            // ── Nota de la factura ────────────────────────────────────────────────
-            string notes = $"Factura mensual - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}";
-            if (monthlyHours > 0 && hoursUsed > monthlyHours + 10)
-            {
-                var excess = hoursUsed - monthlyHours;
-                notes += $"\n⚠ AVISO: Este cliente excedió {excess:0.0}h sobre las {monthlyHours}h incluidas " +
-                         $"en su póliza. Se recomienda revisar y renegociar el costo de la póliza para el siguiente mes.";
-            }
-
-            // ── Descripción del item de póliza ────────────────────────────────────
-            string hoursInfo = "";
-            if (monthlyHours > 0)
-            {
-                var excess = hoursUsed - monthlyHours;
-                if (excess > 10)
-                    hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas | ⚠ +{excess:0.0}h excedido";
-                else if (excess > 0)
-                    hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas | +{excess:0.0}h excedido (margen aceptable)";
-                else
-                    hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas";
-            }
-
-            // ── Crear la factura ──────────────────────────────────────────────────
-            var invoiceNumber = await GenerateInvoiceNumber();
-
-            var invoice = new fs_backend.Models.Invoice
-            {
-                InvoiceNumber = invoiceNumber,
-                ClientId = client.Id,
-                InvoiceDate = currentMonth,
-                DueDate = currentMonth.AddDays(30),
-                InvoiceType = "Monthly",
-                Status = "Pendiente",
-                PaymentType = "PPD",
-                PaymentMethod = string.Empty,
-                CreatedByUserId = userId,
-                Notes = notes
-            };
-
-            // Item 1: Póliza mensual (precio fijo)
-            invoice.Items.Add(new fs_backend.Models.InvoiceItem
-            {
-                Description = $"Póliza mensual de servicios - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}{hoursInfo}",
-                Quantity = 1,
-                UnitPrice = subtotal,
-                Subtotal = subtotal
-            });
-
-            // ⭐ Items adicionales: uno por cada ticket del mes
-            foreach (var ticket in ticketsThisMonth)
-            {
-                invoice.Items.Add(new fs_backend.Models.InvoiceItem
-                {
-                    Description = $"Ticket #{ticket.Id} — {ticket.Title} ({ticket.ActualHours:0.0}h)",
-                    Quantity = 1,
-                    UnitPrice = 0m,  // Incluido en la póliza, precio $0
-                    Subtotal = 0m,
-                    TicketId = ticket.Id
-                });
-            }
-
-            invoice.Subtotal = subtotal;
-            invoice.Tax = subtotal * 0.16m;
-            invoice.Total = invoice.Subtotal + invoice.Tax;
-
-            _context.Invoices.Add(invoice);
-            invoicesCreated++;
-            Console.WriteLine($"   ✅ Factura generada para: {client.CompanyName} ({ticketsThisMonth.Count} tickets vinculados)");
-        }
-
-        await _context.SaveChangesAsync();
-        Console.WriteLine($"✅ Total facturas generadas: {invoicesCreated}");
-
-        return ServiceResult<bool>.Success(true);
+        return _monthlyBillingService.GenerateMonthlyInvoicesAsync(userId, clientIds);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // AGREGA este método nuevo en InvoiceService.cs
-    // Devuelve el resumen del estado de todas las pólizas mensuales del mes actual
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    public async Task<List<MonthlyClientSummaryDto>> GetMonthlySummaryAsync()
+    public Task<List<MonthlyClientSummaryDto>> GetMonthlySummaryAsync()
     {
-        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var nextMonth = currentMonth.AddMonths(1);
-
-        var clients = await _context.Clients
-            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual") && c.IsActive)
-            .ToListAsync();
-
-        var result = new List<MonthlyClientSummaryDto>();
-
-        foreach (var client in clients)
-        {
-            // ── Proyectos del cliente ─────────────────────────────────────────────
-            var projectIds = await _context.Projects
-                .Where(p => p.ClientId == client.Id)
-                .Select(p => p.Id)
-                .ToListAsync();
-
-            // ── Tickets del mes (con horas) ───────────────────────────────────────
-            var tickets = new List<MonthlyTicketSummaryDto>();
-            decimal hoursUsed = 0;
-
-            if (projectIds.Any())
-            {
-                var rawTickets = await _context.Tickets
-                    .Include(t => t.Project)
-                    .Where(t => t.ProjectId.HasValue
-                             && projectIds.Contains(t.ProjectId.Value)
-                             && t.UpdatedAt >= currentMonth
-                             && t.UpdatedAt < nextMonth)
-                    .OrderByDescending(t => t.ActualHours)
-                    .ToListAsync();
-
-                hoursUsed = rawTickets.Sum(t => t.ActualHours);
-
-                tickets = rawTickets.Select(t => new MonthlyTicketSummaryDto
-                {
-                    TicketId = t.Id,
-                    Title = t.Title,
-                    Status = t.Status,
-                    Priority = t.Priority,
-                    ProjectName = t.Project?.Name ?? "",
-                    ActualHours = t.ActualHours,
-                    UpdatedAt = t.UpdatedAt
-                }).ToList();
-            }
-
-            // ── ¿Ya tiene factura ACTIVA (no cancelada) este mes? ─────────────────
-            var invoicesThisMonth = await _context.Invoices
-                .Where(i => i.ClientId == client.Id
-                         && i.InvoiceType == "Monthly"
-                         && i.InvoiceDate.Month == currentMonth.Month
-                         && i.InvoiceDate.Year == currentMonth.Year)
-                .ToListAsync();
-
-            // Factura activa = cualquier estado que NO sea "Cancelada"
-            var alreadyHasInvoice = invoicesThisMonth.Any(i => i.Status != "Cancelada");
-            var hasCancelledInvoice = invoicesThisMonth.Any(i => i.Status == "Cancelada");
-
-            // ── Estado de horas ───────────────────────────────────────────────────
-            var monthlyHours = client.MonthlyHours;
-            var excess = hoursUsed - monthlyHours;
-
-            string status;
-            if (monthlyHours <= 0)
-                status = "OK";
-            else if (excess > 10)
-                status = "Critical";
-            else if (excess > 0)
-                status = "Exceeded";
-            else if (monthlyHours > 0 && hoursUsed / monthlyHours >= 0.8m)
-                status = "Warning";
-            else
-                status = "OK";
-
-            result.Add(new MonthlyClientSummaryDto
-            {
-                ClientId = client.Id,
-                CompanyName = client.CompanyName,
-                MonthlyRate = client.MonthlyRate.HasValue ? (decimal)client.MonthlyRate.Value : 0m,
-                MonthlyHours = monthlyHours,
-                HoursUsed = hoursUsed,
-                AlreadyHasInvoice = alreadyHasInvoice,
-                HasCancelledInvoice = hasCancelledInvoice,
-                HoursStatus = status,
-                Tickets = tickets
-            });
-        }
-
-        // Orden: críticos primero → excedidos → advertencia → ok → ya generadas
-        return result
-            .OrderBy(r => r.AlreadyHasInvoice ? 1 : 0)
-            .ThenBy(r => r.HoursStatus switch
-            {
-                "Critical" => 0,
-                "Exceeded" => 1,
-                "Warning" => 2,
-                _ => 3
-            })
-            .ToList();
+        return _monthlyBillingService.GetMonthlySummaryAsync();
     }
 
     public async Task<InvoiceStatsDto> GetInvoiceStatsAsync()
@@ -1034,12 +636,12 @@ public class InvoiceService : IInvoiceService
 
         var stats = new InvoiceStatsDto
         {
-            PaidInvoices = invoices.Count(i => i.Status == "Pagada"),
-            TotalPaid = invoices.Where(i => i.Status == "Pagada").Sum(i => (decimal?)i.Total) ?? 0,
-            PendingInvoices = invoices.Count(i => i.Status == "Pendiente"),
-            TotalPending = invoices.Where(i => i.Status == "Pendiente").Sum(i => (decimal?)i.Total) ?? 0,
-            OverdueInvoices = invoices.Count(i => i.Status == "Vencida"),
-            TotalOverdue = invoices.Where(i => i.Status == "Vencida").Sum(i => (decimal?)i.Total) ?? 0,
+            PaidInvoices = invoices.Count(i => i.Status == InvoiceConstants.Status.Paid),
+            TotalPaid = invoices.Where(i => i.Status == InvoiceConstants.Status.Paid).Sum(i => (decimal?)i.Total) ?? 0,
+            PendingInvoices = invoices.Count(i => i.Status == InvoiceConstants.Status.Pending),
+            TotalPending = invoices.Where(i => i.Status == InvoiceConstants.Status.Pending).Sum(i => (decimal?)i.Total) ?? 0,
+            OverdueInvoices = invoices.Count(i => i.Status == InvoiceConstants.Status.Overdue),
+            TotalOverdue = invoices.Where(i => i.Status == InvoiceConstants.Status.Overdue).Sum(i => (decimal?)i.Total) ?? 0,
             TotalInvoices = invoices.Count,
             TotalBilled = invoices.Sum(i => (decimal?)i.Total) ?? 0
         };
@@ -1047,413 +649,24 @@ public class InvoiceService : IInvoiceService
         return stats;
     }
 
-    // ⭐ MÉTODO CORREGIDO: GenerateInvoicePdfAsync con tickets
     public async Task<byte[]> GenerateInvoicePdfAsync(int id)
     {
-        try
-        {
-            var invoice = await _context.Invoices
-                .Include(i => i.Client)
-                .Include(i => i.Items)
-                    .ThenInclude(item => item.Ticket)
-                        .ThenInclude(t => t!.Project)
-                            .ThenInclude(p => p!.Client)
-                .Include(i => i.Payments)
-                .AsNoTracking()
-                .AsSplitQuery()
-                .FirstOrDefaultAsync(i => i.Id == id);
+        var invoice = await _context.Invoices
+            .Include(i => i.Client)
+            .Include(i => i.Items)
+                .ThenInclude(item => item.Ticket)
+                    .ThenInclude(t => t!.Project)
+                        .ThenInclude(p => p!.Client)
+            .Include(i => i.Payments)
+            .AsNoTracking()
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(i => i.Id == id);
 
-            if (invoice == null)
-            {
-                throw new Exception("Factura no encontrada");
-            }
+        if (invoice == null)
+            throw new Exception("Factura no encontrada");
 
-            var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
-
-            Console.WriteLine("✅ Iniciando generación del PDF de factura...");
-
-            var document = Document.Create(container =>
-            {
-                container.Page(page =>
-                {
-                    page.Size(PageSizes.Letter);
-                    page.Margin(40);
-                    page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(10));
-
-                    page.Header().Element(c => ComposeHeader(c, invoice));
-                    page.Content().Element(c => ComposeContent(c, invoice));
-                    page.Footer().Element(c => ComposeFooter(c, user?.UserName ?? "Sistema"));
-                });
-            });
-
-            Console.WriteLine("✅ Documento creado, generando PDF bytes...");
-            var pdfBytes = document.GeneratePdf();
-            Console.WriteLine($"✅ PDF generado exitosamente: {pdfBytes.Length} bytes");
-
-            return pdfBytes;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ ERROR en GenerateInvoicePdfAsync: {ex.Message}");
-            Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
-            throw;
-        }
-    }
-
-    private void ComposeHeader(IContainer container, Invoice invoice)
-    {
-        var purpleColor = new Color(0xFF6B46C1);
-
-        // Solo logo + título + número + fechas + estado — esto SÍ se repite en pág 2
-        container.BorderBottom(3).BorderColor(purpleColor).PaddingBottom(10).Row(row =>
-        {
-            row.ConstantItem(120).Column(logoCol =>
-            {
-                var logoPath = Path.Combine(_environment.WebRootPath, "images", "LogoFinesoft.png");
-                if (File.Exists(logoPath))
-                    logoCol.Item().Image(logoPath).FitWidth();
-                else
-                    logoCol.Item().Text("FINESOFT").FontSize(24).Bold().FontColor(purpleColor);
-            });
-
-            row.RelativeItem().PaddingLeft(20).Column(col =>
-            {
-                col.Item().Text("FACTURA").FontSize(28).Bold().FontColor(purpleColor);
-                col.Item().Text(invoice.InvoiceNumber).FontSize(16).FontColor(Colors.Grey.Darken2);
-            });
-
-            row.RelativeItem().AlignRight().Column(col =>
-            {
-                col.Item().Text($"Fecha: {invoice.InvoiceDate:dd/MM/yyyy}").FontSize(10);
-                if (invoice.DueDate.HasValue)
-                    col.Item().Text($"Vencimiento: {invoice.DueDate.Value:dd/MM/yyyy}").FontSize(10);
-
-                var statusColor = invoice.Status switch
-                {
-                    "Pagada" => Colors.Green.Medium,
-                    "Cancelada" => Colors.Red.Medium,
-                    "Vencida" => Colors.Red.Darken1,
-                    "Pendiente" => Colors.Grey.Medium,
-                    _ => Colors.Grey.Medium
-                };
-
-                col.Item().Row(r =>
-                {
-                    r.AutoItem().Text("Estado: ").FontSize(10).Bold().FontColor(Colors.Black);
-                    r.AutoItem().Text(invoice.Status).FontSize(10).Bold().FontColor(statusColor);
-                });
-            });
-        });
-    }
-
-    private void ComposeContent(IContainer container, Invoice invoice)
-    {
-        var purpleColor = "#6B46C1";
-        var infoColor = "#6B46C1";
-
-        container.PaddingVertical(20).Column(column =>
-        {
-            // ── Datos cliente/facturación — solo aparece UNA vez (está en Content) ──
-            column.Item().PaddingBottom(20).Row(row =>
-            {
-                row.RelativeItem().Column(col =>
-                {
-                    col.Item().Background(purpleColor).Padding(5)
-                        .Text("INFORMACIÓN DEL CLIENTE").FontSize(11).Bold().FontColor(Colors.White);
-                    col.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                    col.Item().PaddingTop(5).Text($"Empresa: {invoice.Client?.CompanyName}").FontSize(10);
-                    col.Item().Text($"RFC: {invoice.Client?.RFC}").FontSize(10);
-                    col.Item().Text($"Email: {invoice.Client?.Email}").FontSize(10);
-                    col.Item().Text($"Teléfono: {invoice.Client?.Phone}").FontSize(10);
-                });
-
-                row.ConstantItem(20);
-
-                row.RelativeItem().AlignRight().Column(col =>
-                {
-                    col.Item().Background(purpleColor).Padding(5)
-                        .Text("DATOS DE FACTURACIÓN").FontSize(11).Bold().FontColor(Colors.White);
-                    col.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                    col.Item().PaddingTop(5).Text($"Tipo: {invoice.InvoiceType}").FontSize(10);
-                    col.Item().Text($"Dirección: {invoice.Client?.Address}").FontSize(10);
-                    if (!string.IsNullOrEmpty(invoice.PaymentMethod))
-                        col.Item().Text($"Método de pago: {invoice.PaymentMethod}").FontSize(10);
-                });
-            });
-
-            // ── Tickets asociados ──────────────────────────────────────────────────
-            var ticketItems = invoice.Items?
-                .Where(i => i.TicketId.HasValue && i.Ticket != null)
-                .ToList() ?? new List<InvoiceItem>();
-
-            if (ticketItems.Any())
-            {
-                column.Item().Text("TICKETS ASOCIADOS").FontSize(14).Bold().FontColor(infoColor);
-                column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(infoColor);
-
-                foreach (var item in ticketItems)
-                {
-                    try
-                    {
-                        var ticket = item.Ticket!;
-                        var clientName = ticket.Project?.Client?.CompanyName ?? "N/A";
-                        var projectName = ticket.Project?.Name ?? "N/A";
-                        var hours = ticket.ActualHours;
-                        var hourlyRate = ticket.Project?.HourlyRate ?? 0;
-                        var description = ticket.Description ?? string.Empty;
-                        var ticketTitle = ticket.Title ?? "Sin título";
-
-                        column.Item().PaddingVertical(10).Border(1).BorderColor(Colors.Grey.Lighten2)
-                            .Background(Colors.Grey.Lighten4).Padding(15).Column(ticketCol =>
-                            {
-                                ticketCol.Item().Row(row =>
-                                {
-                                    row.ConstantItem(80).Text($"Ticket #{ticket.Id}").FontSize(12).Bold()
-                                        .FontColor(infoColor);
-                                    row.RelativeItem().Text(ticketTitle).FontSize(12).Bold();
-                                });
-
-                                ticketCol.Item().PaddingVertical(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-
-                                ticketCol.Item().Row(row =>
-                                {
-                                    row.RelativeItem().Column(leftCol =>
-                                    {
-                                        leftCol.Item().PaddingBottom(8).Row(infoRow =>
-                                        {
-                                            infoRow.ConstantItem(70).AlignLeft().Text("Cliente:").FontSize(10).Bold();
-                                            infoRow.RelativeItem().AlignLeft().Text(clientName).FontSize(10);
-                                        });
-                                        leftCol.Item().PaddingBottom(8).Row(infoRow =>
-                                        {
-                                            infoRow.ConstantItem(70).AlignLeft().Text("Proyecto:").FontSize(10).Bold();
-                                            infoRow.RelativeItem().AlignLeft().Text(projectName).FontSize(10);
-                                        });
-                                    });
-
-                                    row.ConstantItem(20);
-
-                                    row.RelativeItem().Column(rightCol =>
-                                    {
-                                        rightCol.Item().PaddingBottom(8).Row(infoRow =>
-                                        {
-                                            infoRow.ConstantItem(70).AlignLeft().Text("Horas:").FontSize(10).Bold();
-                                            infoRow.RelativeItem().AlignLeft().Text($"{hours:0.0} h").FontSize(10);
-                                        });
-                                        if (hourlyRate > 0)
-                                        {
-                                            var ticketCost = hours * hourlyRate;
-                                            rightCol.Item().PaddingBottom(8).Row(infoRow =>
-                                            {
-                                                infoRow.ConstantItem(70).AlignLeft().Text("Costo:").FontSize(10).Bold();
-                                                infoRow.RelativeItem().AlignLeft().Text($"${ticketCost:N2}")
-                                                    .FontSize(10).FontColor(Colors.Green.Medium);
-                                            });
-                                        }
-                                    });
-                                });
-
-                                if (!string.IsNullOrWhiteSpace(description))
-                                {
-                                    ticketCol.Item().PaddingTop(8).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                                    ticketCol.Item().PaddingTop(8).Column(descCol =>
-                                    {
-                                        descCol.Item().Text("Descripción:").FontSize(10).Bold();
-                                        descCol.Item().PaddingTop(4).Text(description).FontSize(9)
-                                            .FontColor(Colors.Grey.Darken1);
-                                    });
-                                }
-                            });
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error renderizando ticket {item.TicketId}: {ex.Message}");
-                    }
-                }
-
-                column.Item().PaddingTop(20);
-            }
-
-            // ── Artículos ──────────────────────────────────────────────────────────
-            column.Item().Text("ARTÍCULOS").FontSize(14).Bold().FontColor(purpleColor);
-            column.Item().PaddingBottom(10).LineHorizontal(2).LineColor(purpleColor);
-
-            column.Item().Table(table =>
-            {
-                table.ColumnsDefinition(columns =>
-                {
-                    columns.RelativeColumn(3);
-                    columns.RelativeColumn(1);
-                    columns.RelativeColumn(1);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
-                });
-
-                table.Header(header =>
-                {
-                    header.Cell().Background(purpleColor).Padding(8).Text("Descripción")
-                        .FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Ticket")
-                        .FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignCenter().Text("Cantidad")
-                        .FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Precio Unit.")
-                        .FontColor(Colors.White).Bold();
-                    header.Cell().Background(purpleColor).Padding(8).AlignRight().Text("Subtotal")
-                        .FontColor(Colors.White).Bold();
-                });
-
-                var isAlternate = false;
-                foreach (var item in invoice.Items ?? new List<InvoiceItem>())
-                {
-                    var bgColor = isAlternate ? Colors.Grey.Lighten4 : Colors.White;
-                    var description = item.Description ?? "Sin descripción";
-                    var ticketText = item.TicketId.HasValue ? $"#{item.TicketId}" : "-";
-
-                    table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).Text(description);
-                    table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).AlignCenter().Text(ticketText).FontSize(9).FontColor(infoColor);
-                    table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).AlignCenter().Text(item.Quantity.ToString("0"));
-                    table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).AlignRight().Text($"${item.UnitPrice:N2}");
-                    table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                        .Padding(8).AlignRight().Text($"${item.Subtotal:N2}");
-
-                    isAlternate = !isAlternate;
-                }
-            });
-
-            // ── Totales ────────────────────────────────────────────────────────────
-            column.Item().PaddingTop(20).AlignRight().Column(totalsColumn =>
-            {
-                totalsColumn.Item().Border(2).BorderColor(purpleColor).Padding(15).Column(col =>
-                {
-                    col.Item().Row(row =>
-                    {
-                        row.RelativeItem().Text("Subtotal:").Bold().FontSize(11);
-                        row.RelativeItem().AlignRight().Text($"${invoice.Subtotal:N2}").FontSize(11);
-                    });
-
-                    col.Item().PaddingTop(8).Row(row =>
-                    {
-                        row.RelativeItem().Text("IVA (16%):").Bold().FontSize(11);
-                        row.RelativeItem().AlignRight().Text($"${invoice.Tax:N2}").FontSize(11);
-                    });
-
-                    col.Item().PaddingTop(10).BorderTop(2).BorderColor(Colors.Black).PaddingTop(10).Row(row =>
-                    {
-                        row.RelativeItem().Text("TOTAL:").FontSize(16).Bold().FontColor(Colors.Black);
-                        row.RelativeItem().AlignRight().Text($"${invoice.Total:N2}").FontSize(16).Bold()
-                            .FontColor(Colors.Black);
-                    });
-
-                    if (invoice.Payments.Any())
-                    {
-                        var totalPaid = invoice.Payments.Sum(p => p.Amount);
-                        var balance = invoice.Total - totalPaid;
-
-                        col.Item().PaddingTop(10).Row(row =>
-                        {
-                            row.RelativeItem().Text("Pagado:").FontSize(11).FontColor(Colors.Green.Medium);
-                            row.RelativeItem().AlignRight().Text($"${totalPaid:N2}").FontSize(11)
-                                .FontColor(Colors.Green.Medium);
-                        });
-
-                        col.Item().PaddingTop(5).Row(row =>
-                        {
-                            row.RelativeItem().Text("Saldo:").Bold().FontSize(11);
-                            row.RelativeItem().AlignRight().Text($"${balance:N2}").Bold().FontSize(11);
-                        });
-                    }
-                });
-            });
-
-            // ── Historial de pagos ─────────────────────────────────────────────────
-            if (invoice.Payments.Any())
-            {
-                column.Item().PaddingTop(20).Column(paymentsCol =>
-                {
-                    paymentsCol.Item().Text("Historial de Pagos").FontSize(14).Bold().FontColor(purpleColor);
-                    paymentsCol.Item().PaddingTop(10).Table(table =>
-                    {
-                        table.ColumnsDefinition(cols =>
-                        {
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(1.5f);
-                            cols.RelativeColumn(2);
-                        });
-
-                        table.Header(header =>
-                        {
-                            header.Cell().Background(purpleColor).Padding(5).Text("Fecha")
-                                .FontColor(Colors.White).FontSize(9).Bold();
-                            header.Cell().Background(purpleColor).Padding(5).Text("Método")
-                                .FontColor(Colors.White).FontSize(9).Bold();
-                            header.Cell().Background(purpleColor).Padding(5).AlignRight().Text("Monto")
-                                .FontColor(Colors.White).FontSize(9).Bold();
-                            header.Cell().Background(purpleColor).Padding(5).Text("Referencia")
-                                .FontColor(Colors.White).FontSize(9).Bold();
-                        });
-
-                        foreach (var payment in invoice.Payments)
-                        {
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
-                                .Text($"{payment.PaymentDate:dd/MM/yyyy}").FontSize(8);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
-                                .Text(payment.PaymentMethod).FontSize(8);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight()
-                                .Text($"${payment.Amount:N2}").FontSize(8);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5)
-                                .Text(payment.Reference ?? "-").FontSize(8);
-                        }
-                    });
-                });
-            }
-
-            // ── Notas ──────────────────────────────────────────────────────────────
-            if (!string.IsNullOrEmpty(invoice.Notes))
-            {
-                column.Item().PaddingTop(20).Border(1).BorderColor(purpleColor).Background("#F5F0FF")
-                    .Padding(15).Column(col =>
-                    {
-                        col.Item().Text("Notas:").Bold().FontColor(purpleColor).FontSize(12);
-                        col.Item().PaddingTop(5).Text(invoice.Notes).FontSize(10);
-                    });
-            }
-        });
-    }
-
-    private void ComposeFooter(IContainer container, string createdBy)
-    {
-        var purpleColor = "#6B46C1";
-
-        container.BorderTop(2).BorderColor(purpleColor).PaddingTop(10).Column(column =>
-        {
-            column.Item().Row(row =>
-            {
-                row.RelativeItem().Column(col =>
-                {
-                    col.Item().Text("FINESOFT").FontSize(10).Bold().FontColor(purpleColor);
-                    col.Item().Text("Blvd. Juan de Dios Batiz #145 PTE").FontSize(8).FontColor(Colors.Grey.Medium);
-                    col.Item().Text("Teléfono: (668) 817-0400").FontSize(8).FontColor(Colors.Grey.Medium);
-                });
-
-                row.RelativeItem().AlignCenter().Column(col =>
-                {
-                    col.Item().Text($"{DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Medium);
-                });
-
-                row.RelativeItem().AlignRight().Column(col =>
-                {
-                    col.Item().Text("www.finesoft.com.mx").FontSize(8).FontColor(purpleColor).Underline();
-                    col.Item().Text("informes@finesoft.com.mx").FontSize(8).FontColor(Colors.Grey.Medium);
-                });
-            });
-        });
+        var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
+        return _invoicePdfGenerator.Generate(invoice, user?.UserName ?? "Sistema");
     }
 
     public async Task<List<int>> GetTicketsInUseAsync()
@@ -1463,139 +676,5 @@ public class InvoiceService : IInvoiceService
             .Select(ii => ii.TicketId!.Value)
             .Distinct()
             .ToListAsync();
-    }
-
-    private async Task<string> GenerateInvoiceNumber()
-    {
-        var year = DateTime.UtcNow.Year;
-        var lastInvoice = await _context.Invoices
-            .Where(i => i.InvoiceNumber.StartsWith($"INV-{year}"))
-            .OrderByDescending(i => i.Id)
-            .FirstOrDefaultAsync();
-
-        int nextNumber = 1;
-        if (lastInvoice != null)
-        {
-            var parts = lastInvoice.InvoiceNumber.Split('-');
-            if (parts.Length == 3 && int.TryParse(parts[2], out int lastNumber))
-            {
-                nextNumber = lastNumber + 1;
-            }
-        }
-
-        return $"INV-{year}-{nextNumber:D4}";
-    }
-
-    // ⭐ MÉTODO CORREGIDO: MapToDetailDto con información completa de tickets
-    private async Task<InvoiceDetailDto> MapToDetailDto(Invoice invoice)
-    {
-        var user = await _userManager.FindByIdAsync(invoice.CreatedByUserId);
-
-        var totalPaid = invoice.Payments?.Sum(p => p.Amount) ?? 0m;
-
-        // Reglas de negocio:
-        // - Pagada: saldo 0
-        // - Cancelada: saldo 0 (irrelevante cobrar)
-        // - Pendiente: total - pagado
-        var balance = invoice.Status switch
-        {
-            "Pagada" => 0m,
-            "Cancelada" => 0m,
-            _ => invoice.Total - totalPaid
-        };
-
-        var dto = new InvoiceDetailDto
-        {
-            Id = invoice.Id,
-            InvoiceNumber = invoice.InvoiceNumber,
-
-            ClientId = invoice.ClientId,
-            ClientName = invoice.Client?.CompanyName ?? string.Empty,
-            ClientEmail = invoice.Client?.Email ?? string.Empty,
-            ClientRFC = invoice.Client?.RFC ?? string.Empty,
-
-            QuoteId = invoice.QuoteId,
-            QuoteNumber = invoice.Quote?.QuoteNumber,
-
-            InvoiceDate = invoice.InvoiceDate,
-            DueDate = invoice.DueDate,
-
-            InvoiceType = invoice.InvoiceType,
-            Status = invoice.Status,
-            PaymentMethod = invoice.PaymentMethod,
-            PaymentType = invoice.PaymentType,
-
-            CreatedByUserId = invoice.CreatedByUserId,
-            CreatedByUserName = user?.UserName ?? string.Empty,
-
-            Subtotal = invoice.Subtotal,
-            Tax = invoice.Tax,
-            Total = invoice.Total,
-            TicketCount = invoice.Items?.Count(i => i.TicketId.HasValue && i.TicketId > 0) ?? 0,
-
-            // Si está pagada, muestra el total como pagado; si no, lo acumulado.
-            PaidAmount = invoice.Status == "Pagada" ? invoice.Total : totalPaid,
-
-            Balance = balance,
-            PaidDate = invoice.PaidDate,
-
-            Notes = invoice.Notes,
-
-            // NUEVO: cancelación
-            CancellationReason = invoice.CancellationReason,
-            CancelledDate = invoice.CancelledDate
-        };
-
-        if (invoice.Items != null && invoice.Items.Any())
-        {
-            dto.Items = invoice.Items.Select(i => new InvoiceItemDetailDto
-            {
-                Id = i.Id,
-                Description = i.Description,
-                Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice,
-                Subtotal = i.Subtotal,
-                ServiceId = null,
-                ServiceName = null,
-
-                TicketId = i.TicketId,
-                TicketTitle = i.Ticket?.Title,
-                TicketDescription = i.Ticket?.Description,
-                TicketClientName = i.Ticket?.Project?.Client?.CompanyName,
-                TicketProjectName = i.Ticket?.Project?.Name,
-                TicketActualHours = i.Ticket?.ActualHours,
-                TicketHourlyRate = i.Ticket?.Project?.HourlyRate
-            }).ToList();
-        }
-
-        if (invoice.Payments != null && invoice.Payments.Any())
-        {
-            foreach (var payment in invoice.Payments)
-            {
-                var paymentUser = await _userManager.FindByIdAsync(payment.RecordedByUserId);
-
-                dto.Payments.Add(new InvoicePaymentDto
-                {
-                    Id = payment.Id,
-                    Amount = payment.Amount,
-                    PaymentDate = payment.PaymentDate,
-                    PaymentMethod = payment.PaymentMethod,
-                    Reference = payment.Reference,
-                    Notes = payment.Notes,
-                    RecordedByUserId = payment.RecordedByUserId,
-                    RecordedByUserName = paymentUser?.UserName,
-
-                    // ✅ AGREGAR ESTO
-                    ReceiptPath = payment.ReceiptPath,
-                    ReceiptFileName = payment.ReceiptFileName,
-                    ReceiptContentType = payment.ReceiptContentType,
-                    ReceiptSize = payment.ReceiptSize,
-                    ReceiptUploadedAt = payment.ReceiptUploadedAt
-                });
-
-            }
-        }
-
-        return dto;
     }
 }
