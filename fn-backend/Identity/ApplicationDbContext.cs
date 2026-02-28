@@ -94,6 +94,10 @@ namespace fs_backend.Identity
                 .HasForeignKey(i => i.QuoteId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => i.InvoiceNumber)
+                .IsUnique();
+
             modelBuilder.Entity<InvoiceItem>()
                 .HasOne(ii => ii.Invoice)
                 .WithMany(i => i.Items)
