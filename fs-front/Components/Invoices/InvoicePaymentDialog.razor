@@ -54,13 +54,6 @@
                                 <div class="input-group input-group-sm">
                                     <InputNumber class="form-control form-control-sm"                                                 @bind-Value="_model.Amount"
                                                  disabled="@_lockAmount" />
-                                    @if (!IsPUE)
-                                    {
-                                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                @onclick="UseBalance">
-                                            Usar saldo
-                                        </button>
-                                    }
                                 </div>
 
                                 @if (!IsPUE && InvoiceBalance > 0 && _model.Amount > InvoiceBalance)
@@ -226,15 +219,9 @@
         else
         {
             _lockAmount = false;
-            _model.Amount = 0;
+            _model.Amount = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
             _model.PaymentMethod = string.Empty;
         }
-    }
-
-    private void UseBalance()
-    {
-        var amount = InvoiceBalance > 0 ? InvoiceBalance : InvoiceTotal;
-        _model.Amount = amount;
     }
 
     private class PaymentFormModel
