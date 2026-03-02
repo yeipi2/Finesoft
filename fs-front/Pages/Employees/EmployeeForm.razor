@@ -69,7 +69,7 @@ else
                     <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
                         Cancelar
                     </button>
-                    <button type="submit" class="btn btn-primary btn-sm" disabled="@_isSaving">
+                    <button type="submit" class="btn btn-primary btn-sm" disabled="@(_isSaving || !_allSectionsComplete)">
                         @if (_isSaving)
                         {
                             <span class="spinner-border spinner-border-sm me-2"></span>

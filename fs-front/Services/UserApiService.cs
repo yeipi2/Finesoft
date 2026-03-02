@@ -1,29 +1,24 @@
 ﻿using fs_front.DTO;
 using System.Net.Http.Json;
-
 namespace fs_front.Services;
 
 public class UserApiService : IUserApiService
 {
     private readonly HttpClient _httpClient;
-
     public UserApiService(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
-
     public async Task<List<UserDto>?> GetUsersAsync()
     {
         try { return await _httpClient.GetFromJsonAsync<List<UserDto>>("api/users"); }
         catch { return null; }
     }
-
     public async Task<UserDto?> GetUserByIdAsync(string id)
     {
         try { return await _httpClient.GetFromJsonAsync<UserDto>($"api/users/{id}"); }
         catch { return null; }
     }
-
     public async Task<(bool Success, UserDto? CreatedUser, string? ErrorMessage)> CreateUserAsync(UserDto user)
     {
         var response = await _httpClient.PostAsJsonAsync("api/users", user);
@@ -34,42 +29,35 @@ public class UserApiService : IUserApiService
         }
         return (false, null, await response.Content.ReadAsStringAsync());
     }
-
     public async Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(string id, UserDto user)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/users/{id}", user);
         if (response.IsSuccessStatusCode) return (true, null);
         return (false, await response.Content.ReadAsStringAsync());
     }
-
     public async Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(string id)
     {
         var response = await _httpClient.DeleteAsync($"api/users/{id}");
         if (response.IsSuccessStatusCode) return (true, null);
         return (false, await response.Content.ReadAsStringAsync());
     }
-
     public async Task<ProfileDto?> GetMyProfileAsync()
     {
         try { return await _httpClient.GetFromJsonAsync<ProfileDto>("api/users/me"); }
         catch { return null; }
     }
-
     public async Task<(bool Success, string? Error)> UpdateMyProfileAsync(ProfileUpdateDto dto)
     {
         var response = await _httpClient.PutAsJsonAsync("api/users/me", dto);
         if (response.IsSuccessStatusCode) return (true, null);
         return (false, await response.Content.ReadAsStringAsync());
     }
-
     public async Task<(bool Success, string? Error)> ChangeMyPasswordAsync(ChangePasswordDto dto)
     {
         var response = await _httpClient.PostAsJsonAsync("api/users/me/change-password", dto);
         if (response.IsSuccessStatusCode) return (true, null);
         return (false, await response.Content.ReadAsStringAsync());
     }
-
-    // ⭐ Guardar imágenes en el servidor
     public async Task<(bool Success, string? Error)> SaveMyImagesAsync(
         string? avatarDataUrl, string? coverDataUrl)
     {
@@ -81,6 +69,28 @@ public class UserApiService : IUserApiService
         if (response.IsSuccessStatusCode) return (true, null);
         return (false, await response.Content.ReadAsStringAsync());
     }
+
+    // ⭐ Verifica si el email está disponible llamando al endpoint del backend
+    // excludeUserId: pasar Model.UserId / Employee.UserId al editar para no bloquearse a sí mismo
+    public async Task<bool> IsEmailAvailableAsync(string email, string? excludeUserId = null)
+    {
+        try
+        {
+            var url = $"api/users/check-email?email={Uri.EscapeDataString(email)}";
+            if (!string.IsNullOrEmpty(excludeUserId))
+                url += $"&excludeUserId={Uri.EscapeDataString(excludeUserId)}";
+
+            var result = await _httpClient.GetFromJsonAsync<EmailCheckResponse>(url);
+            return result?.Available ?? true; // Si falla, dejamos pasar — el backend lo rechaza en submit
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    // Record privado para deserializar { "available": true/false }
+    private record EmailCheckResponse(bool Available);
 
 
     // public async Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(string id, ChangePasswordDto passwords)

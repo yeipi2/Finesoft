@@ -1,29 +1,49 @@
 ﻿@* fs-front/Components/Employees/Form/AccessDataSection.razor *@
 @using fs_front.DTO
 @using fs_front.Components.Shared
+@using fs_front.Services
+@inject IUserApiService UserApiService
 
 <FormSection Title="Datos de Acceso al Sistema"
              IconClass="bi-person-circle"
              IsComplete="@IsComplete">
     <div class="row g-3">
 
-        @* ── Email ── *@
         <div class="col-md-6">
             <label for="Email" class="form-label small fw-bold">
                 Email / Usuario <span class="text-danger">*</span>
             </label>
-            <InputText id="Email"
-                       type="email"
-                       class="form-control form-control-sm"
-                       placeholder="correo@empresa.com"
-                       Value="@Employee.Email"
-                       ValueChanged="@(v => { Employee.Email = v; OnChanged?.Invoke(); })"
-                       ValueExpression="@(() => Employee.Email)" />
+            <div class="input-group input-group-sm">
+                <InputText id="Email"
+                           type="email"
+                           class="@GetEmailCssClass()"
+                           placeholder="correo@empresa.com"
+                           Value="@Employee.Email"
+                           ValueChanged="@(async v => { Employee.Email = v; await OnEmailChanged(); })"
+                           ValueExpression="@(() => Employee.Email)" />
+                @if (_emailChecking)
+                {
+                    <span class="input-group-text bg-white">
+                        <span class="spinner-border spinner-border-sm text-warning" title="Verificando..."></span>
+                    </span>
+                }
+                else if (_emailAvailable == true && !string.IsNullOrWhiteSpace(Employee.Email))
+                {
+                    <span class="input-group-text bg-white text-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </span>
+                }
+            </div>
             <small class="text-muted">Usuario de acceso al sistema</small>
+            @if (_emailAvailable == false)
+            {
+                <div class="text-danger small mt-1">
+                    <i class="bi bi-exclamation-circle me-1"></i>Este correo ya está registrado en el sistema
+                </div>
+            }
             <ValidationMessage For="@(() => Employee.Email)" />
         </div>
 
-        @* ── Contraseña (en crear O cuando el usuario fue eliminado) ── *@
         @if (!IsEditMode || UserWasDeleted)
         {
             <div class="col-md-6">
@@ -55,7 +75,7 @@
                 {
                     <small class="text-danger d-block mt-1">
                         <i class="bi bi-info-circle me-1"></i>
-                        El usuario de acceso fue eliminado. Asigna una nueva contraseña para reactivarlo.
+                        El usuario fue eliminado. Asigna una nueva contraseña para reactivarlo.
                     </small>
                 }
                 else
@@ -68,7 +88,6 @@
             </div>
         }
 
-        @* ── Rol ── *@
         <div class="col-md-6">
             <label for="RoleName" class="form-label small fw-bold">
                 Rol en el Sistema <span class="text-danger">*</span>
@@ -94,10 +113,74 @@
     [Parameter] public EmployeeDto Employee { get; set; } = new();
     [Parameter] public bool IsEditMode { get; set; }
     [Parameter] public bool IsComplete { get; set; }
-    [Parameter] public bool UserWasDeleted { get; set; }  // ⭐ NUEVO
+    [Parameter] public bool UserWasDeleted { get; set; }
     [Parameter] public List<string> Roles { get; set; } = new();
     [Parameter] public Action? OnChanged { get; set; }
 
     private bool _showPassword = false;
+    private bool _emailChecking = false;
+    private bool? _emailAvailable = null;
+    private string _lastCheckedEmail = "";
+    private CancellationTokenSource? _debounce;
+
     private void TogglePassword() => _showPassword = !_showPassword;
+
+    private string GetEmailCssClass()
+    {
+        var baseClass = "form-control form-control-sm";
+        if (_emailChecking) return $"{baseClass} border-warning";
+        if (_emailAvailable == false) return $"{baseClass} border-danger is-invalid";
+        if (_emailAvailable == true && !string.IsNullOrWhiteSpace(Employee.Email))
+            return $"{baseClass} border-success";
+        return baseClass;
+    }
+
+    private async Task OnEmailChanged()
+    {
+        var email = (Employee.Email ?? "").Trim();
+
+        if (email == _lastCheckedEmail) { OnChanged?.Invoke(); return; }
+
+        _debounce?.Cancel();
+        _debounce = new CancellationTokenSource();
+        var token = _debounce.Token;
+
+        _emailAvailable = null;
+
+        var formatOk = System.Text.RegularExpressions.Regex.IsMatch(
+            email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+
+        if (string.IsNullOrWhiteSpace(email) || !formatOk) { OnChanged?.Invoke(); return; }
+
+        try
+        {
+            await Task.Delay(500, token);
+            if (token.IsCancellationRequested) return;
+
+            _emailChecking = true;
+            StateHasChanged();
+
+            var available = await UserApiService.IsEmailAvailableAsync(email, Employee.UserId);
+
+            if (!token.IsCancellationRequested)
+            {
+                _emailAvailable = available;
+                _lastCheckedEmail = email;
+            }
+        }
+        catch (TaskCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error verificando email: {ex.Message}");
+            _emailAvailable = null;
+        }
+        finally
+        {
+            _emailChecking = false;
+            OnChanged?.Invoke();
+            StateHasChanged();
+        }
+    }
+
+    public bool IsEmailInvalid => _emailAvailable == false || _emailChecking;
 }

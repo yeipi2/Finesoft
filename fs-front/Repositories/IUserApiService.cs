@@ -13,6 +13,7 @@ public interface IUserApiService
     Task<(bool Success, string? Error)> UpdateMyProfileAsync(ProfileUpdateDto dto);
     Task<(bool Success, string? Error)> ChangeMyPasswordAsync(ChangePasswordDto dto);
 
-    // ⭐ Nuevo
+    Task<bool> IsEmailAvailableAsync(string email, string? excludeUserId = null);
+
     Task<(bool Success, string? Error)> SaveMyImagesAsync(string? avatarDataUrl, string? coverDataUrl);
 }

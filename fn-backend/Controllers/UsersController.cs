@@ -260,4 +260,19 @@ public class UsersController : ControllerBase
         var result = await _userService.SaveUserImagesAsync(userId, dto.AvatarDataUrl, dto.CoverDataUrl);
         return result.Succeeded ? Ok(new { message = "Imágenes guardadas" }) : BadRequest(result.Errors);
     }
+
+    // UsersController.cs — agregar al final de la clase
+
+    /// GET: api/users/check-email?email=xxx&excludeUserId=yyy
+    /// Verifica si un email ya está registrado en Identity (clientes + empleados comparten el mismo pool)
+    [HttpGet("check-email")]
+    [AllowAnonymous] // El frontend lo llama antes de autenticarse en el form de creación
+    public async Task<IActionResult> CheckEmail([FromQuery] string email, [FromQuery] string? excludeUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest(new { message = "Email requerido" });
+
+        var existingUser = await _userService.IsEmailTakenAsync(email, excludeUserId);
+        return Ok(new { available = !existingUser });
+    }
 }

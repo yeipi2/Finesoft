@@ -17,4 +17,6 @@ public interface IUserService
     // ⭐ NUEVOS
     Task<ServiceResult<bool>> SaveUserImagesAsync(string userId, string? avatarDataUrl, string? coverDataUrl);
     Task<(string? avatar, string? cover)> GetUserImagesAsync(string userId);
+
+    Task<bool> IsEmailTakenAsync(string email, string? excludeUserId = null);
 }

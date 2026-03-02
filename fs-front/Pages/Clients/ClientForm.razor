@@ -70,7 +70,9 @@ else
                     <button type="button" class="btn btn-secondary btn-sm" @onclick="Cancel">
                         Cancelar
                     </button>
-                    <button type="submit" class="btn btn-primary btn-sm" disabled="@_isSaving">
+                    <button type="submit"
+                            class="btn btn-primary btn-sm"
+                            disabled="@(_isSaving || !_allSectionsComplete || _emailChecking)">
                         @if (_isSaving)
                         {
                             <span class="spinner-border spinner-border-sm me-2"></span>
@@ -91,6 +93,7 @@ else
     private bool _isSaving = false;
     private bool _isLoading = false;
     private string? _errorMessage;
+    private bool _emailChecking = false;
     private bool _isEditMode => UserId > 0;
     private Dictionary<string, string> _validationErrors = new();
 

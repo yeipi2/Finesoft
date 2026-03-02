@@ -284,4 +284,19 @@ public class UserService : IUserService
 
         return (profile?.AvatarDataUrl, profile?.CoverDataUrl);
     }
+
+    // UserService.cs — agregar este método a la clase
+    public async Task<bool> IsEmailTakenAsync(string email, string? excludeUserId = null)
+    {
+        var user = await _userManager.FindByEmailAsync(email.Trim().ToLower());
+
+        if (user == null)
+            return false; // Email libre
+
+        // Si estamos editando, el email puede pertenecer al mismo usuario → no es conflicto
+        if (!string.IsNullOrEmpty(excludeUserId) && user.Id == excludeUserId)
+            return false;
+
+        return true; // Email ya está tomado por otro usuario
+    }
 }

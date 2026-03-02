@@ -1,14 +1,15 @@
 using fn_backend.Services;
+using fs_backend.Hubs;
 using fs_backend.Identity;
 using fs_backend.Repositories;
 using fs_backend.Services;
+using fs_front.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using QuestPDF.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using QuestPDF.Infrastructure;
 using System.Text;
-using fs_backend.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
