@@ -29,9 +29,20 @@ else
                     </div>
                 }
 
+                @* ⭐ Alerta visible cuando el usuario fue eliminado *@
+                @if (_userWasDeleted)
+                {
+                    <div class="alert alert-warning mb-3 py-2">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Este empleado no tiene usuario de acceso.</strong>
+                        Asigna un email y contraseña para reactivar su acceso al sistema.
+                    </div>
+                }
+
                 <AccessDataSection Employee="_employeeModel"
                                    IsEditMode="_isEditMode"
                                    IsComplete="_section1Complete"
+                                   UserWasDeleted="_userWasDeleted"
                                    Roles="_employeeRoles"
                                    OnChanged="ValidateSections" />
 
@@ -81,6 +92,7 @@ else
 
     private bool _isSaving = false;
     private bool _isLoading = false;
+    private bool _userWasDeleted = false;  // ⭐ NUEVO
     private string? _errorMessage;
     private bool _isEditMode => EmployeeId.HasValue && EmployeeId.Value > 0;
 
@@ -98,10 +110,16 @@ else
             {
                 var employee = await EmployeeApiService.GetEmployeeByIdAsync(EmployeeId!.Value);
                 if (employee == null)
+                {
                     _errorMessage = "No se pudo encontrar el empleado para editar.";
+                }
                 else
                 {
                     _employeeModel = employee;
+
+                    // ⭐ Si el email viene vacío, el usuario de Identity fue eliminado
+                    _userWasDeleted = string.IsNullOrWhiteSpace(employee.Email);
+
                     ValidateSections();
                 }
             }
@@ -116,6 +134,7 @@ else
         }
         else
         {
+            _userWasDeleted = false;
             _employeeModel = new EmployeeDto
             {
                 IsActive = true,
@@ -127,12 +146,17 @@ else
 
     private void ValidateSections()
     {
-        _section1Complete = _isEditMode
-            ? !string.IsNullOrWhiteSpace(_employeeModel.Email) && !string.IsNullOrWhiteSpace(_employeeModel.RoleName)
-            : !string.IsNullOrWhiteSpace(_employeeModel.Email) && !string.IsNullOrWhiteSpace(_employeeModel.Password) && !string.IsNullOrWhiteSpace(_employeeModel.RoleName);
+        // ⭐ Requiere contraseña si es nuevo O si el usuario fue eliminado
+        bool requiresPassword = !_isEditMode || _userWasDeleted;
+
+        _section1Complete = requiresPassword
+            ? !string.IsNullOrWhiteSpace(_employeeModel.Email)
+              && !string.IsNullOrWhiteSpace(_employeeModel.Password)
+              && !string.IsNullOrWhiteSpace(_employeeModel.RoleName)
+            : !string.IsNullOrWhiteSpace(_employeeModel.Email)
+              && !string.IsNullOrWhiteSpace(_employeeModel.RoleName);
 
         _section2Complete = !string.IsNullOrWhiteSpace(_employeeModel.FullName);
-
         _section3Complete = !string.IsNullOrWhiteSpace(_employeeModel.Position);
 
         StateHasChanged();

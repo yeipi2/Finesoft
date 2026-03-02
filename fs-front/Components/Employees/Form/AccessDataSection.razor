@@ -23,12 +23,18 @@
             <ValidationMessage For="@(() => Employee.Email)" />
         </div>
 
-        @* ── Contraseña (solo en crear) ── *@
-        @if (!IsEditMode)
+        @* ── Contraseña (en crear O cuando el usuario fue eliminado) ── *@
+        @if (!IsEditMode || UserWasDeleted)
         {
             <div class="col-md-6">
                 <label for="Password" class="form-label small fw-bold">
                     Contraseña <span class="text-danger">*</span>
+                    @if (UserWasDeleted)
+                    {
+                        <span class="badge bg-danger ms-1" style="font-size:.7rem">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Usuario eliminado
+                        </span>
+                    }
                 </label>
                 <div class="input-group input-group-sm">
                     <InputText id="Password"
@@ -45,9 +51,19 @@
                         <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")"></i>
                     </button>
                 </div>
-                <small class="text-muted d-block mt-1">
-                    Debe contener: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial
-                </small>
+                @if (UserWasDeleted)
+                {
+                    <small class="text-danger d-block mt-1">
+                        <i class="bi bi-info-circle me-1"></i>
+                        El usuario de acceso fue eliminado. Asigna una nueva contraseña para reactivarlo.
+                    </small>
+                }
+                else
+                {
+                    <small class="text-muted d-block mt-1">
+                        Debe contener: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial
+                    </small>
+                }
                 <ValidationMessage For="@(() => Employee.Password)" />
             </div>
         }
@@ -78,6 +94,7 @@
     [Parameter] public EmployeeDto Employee { get; set; } = new();
     [Parameter] public bool IsEditMode { get; set; }
     [Parameter] public bool IsComplete { get; set; }
+    [Parameter] public bool UserWasDeleted { get; set; }  // ⭐ NUEVO
     [Parameter] public List<string> Roles { get; set; } = new();
     [Parameter] public Action? OnChanged { get; set; }
 

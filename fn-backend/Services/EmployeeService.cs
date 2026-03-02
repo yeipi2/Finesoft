@@ -201,11 +201,21 @@ public class EmployeeService : IEmployeeService
         employee.UpdatedAt = DateTime.UtcNow;
 
         var user = await _userManager.FindByIdAsync(employee.UserId);
+
         if (user != null)
         {
+            // ── Usuario existente: actualizar email, rol y contraseña ─────────────
             user.Email = dto.Email;
             user.UserName = dto.Email;
             await _userManager.UpdateAsync(user);
+
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var pwResult = await _userManager.ResetPasswordAsync(user, token, dto.Password);
+                if (!pwResult.Succeeded)
+                    return ServiceResult<bool>.Failure(pwResult.Errors.Select(e => e.Description));
+            }
 
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (currentRoles.FirstOrDefault() != dto.RoleName)
@@ -213,6 +223,45 @@ public class EmployeeService : IEmployeeService
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 await _userManager.AddToRoleAsync(user, dto.RoleName);
             }
+        }
+        else
+        {
+            // ── Usuario fue eliminado — crear uno nuevo y relinkear ───────────────
+            if (string.IsNullOrWhiteSpace(dto.Email))
+                return ServiceResult<bool>.Failure("Se requiere un email para reactivar el acceso");
+
+            if (string.IsNullOrWhiteSpace(dto.Password))
+                return ServiceResult<bool>.Failure("Se requiere una contraseña ya que el usuario fue eliminado");
+
+            var existingByEmail = await _userManager.FindByEmailAsync(dto.Email);
+            if (existingByEmail != null)
+                return ServiceResult<bool>.Failure($"El email '{dto.Email}' ya está en uso");
+
+            var newUser = new IdentityUser
+            {
+                UserName = dto.Email,
+                Email = dto.Email,
+                EmailConfirmed = true
+            };
+
+            var createResult = await _userManager.CreateAsync(newUser, dto.Password);
+            if (!createResult.Succeeded)
+                return ServiceResult<bool>.Failure(createResult.Errors.Select(e => e.Description));
+
+            var validRoles = new[] { "Empleado", "Supervisor", "Administracion" };
+            var roleToAssign = validRoles.Contains(dto.RoleName) ? dto.RoleName : "Empleado";
+
+            var roleResult = await _userManager.AddToRoleAsync(newUser, roleToAssign);
+            if (!roleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(newUser);
+                return ServiceResult<bool>.Failure(roleResult.Errors.Select(e => e.Description));
+            }
+
+            // ⭐ Esto es clave: actualizar el UserId del empleado con el nuevo usuario
+            employee.UserId = newUser.Id;
+
+            _logger.LogInformation("🔄 Usuario recreado para empleado {Id}: nuevo UserId={UserId}", id, newUser.Id);
         }
 
         _context.Employees.Update(employee);

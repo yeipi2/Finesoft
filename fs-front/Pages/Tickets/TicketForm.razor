@@ -1,4 +1,5 @@
-﻿@* Modal de creación/edición de ticket. *@
+﻿@* fs-front/Pages/Tickets/TicketForm.razor — ACTUALIZADO *@
+@* Auto-prioridad basada en tipo de cliente y estado de póliza *@
 @using fs_front.DTO
 @using Radzen
 @using Radzen.Blazor
@@ -19,6 +20,32 @@
             {
                 <div class="alert alert-danger mb-3" role="alert">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>@_errorMessage
+                </div>
+            }
+
+            @* Aviso de prioridad auto-asignada *@
+            @if (!string.IsNullOrEmpty(_priorityReason) && _selectedProject != null)
+            {
+                var alertCls = _ticketDto.Priority switch
+                {
+                                    "Urgente" => "alert-danger",
+                                    "Alta" => "alert-warning",
+                                    "Baja" => "alert-secondary",
+                    _ => "alert-info"
+                };
+                var iconCls = _ticketDto.Priority switch
+                {
+                                    "Urgente" => "bi-exclamation-triangle-fill text-danger",
+                                    "Alta" => "bi-exclamation-circle-fill text-warning",
+                                    "Baja" => "bi-arrow-down-circle-fill text-secondary",
+                    _ => "bi-info-circle-fill text-info"
+                };
+                <div class="alert @alertCls py-2 mb-3 d-flex align-items-center gap-2" style="font-size:.87rem">
+                    <i class="bi @iconCls"></i>
+                    <span>
+                        <strong>Prioridad asignada automáticamente: @_ticketDto.Priority</strong>
+                        &mdash; @_priorityReason
+                    </span>
                 </div>
             }
 
@@ -81,11 +108,16 @@
     private bool _isLoadingProjects = false;
     private bool _isLoadingUsers = false;
     private string? _errorMessage;
+    private string? _priorityReason;   // texto explicativo de por que se asigno esa prioridad
 
     private bool _isEditMode => TicketId.HasValue;
     private bool _section1Complete = false;
     private bool _section2Complete => _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0;
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
+
+    // Umbral de tarifa mensual para Urgente vs Alta
+    // >= $10,000/mes -> Urgente  |  < $10,000 -> Alta
+    private const decimal UrgentThreshold = 10_000m;
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,6 +197,7 @@
                 {
                     _selectedProject = _projects?.FirstOrDefault(p => p.Id == _ticketDto.ProjectId.Value);
                     _projectSearchText = _selectedProject?.Name ?? string.Empty;
+                    // En edicion no recalculamos — respetamos la prioridad guardada
                 }
             }
         }
@@ -180,6 +213,8 @@
             _filteredProjects = _projects ?? new List<ProjectDetailDto>();
             _selectedProject = null;
             _ticketDto.ProjectId = null;
+            _ticketDto.Priority = "Media";
+            _priorityReason = null;
         }
         else
         {
@@ -195,6 +230,8 @@
             {
                 _selectedProject = null;
                 _ticketDto.ProjectId = null;
+                _ticketDto.Priority = "Media";
+                _priorityReason = null;
             }
         }
         ValidateSections();
@@ -206,7 +243,73 @@
         _ticketDto.ProjectId = project.Id;
         _ticketDto.ServiceId = null;
         _projectSearchText = project.Name;
+
+        // Auto-prioridad solo en creacion, no en edicion
+        if (!_isEditMode)
+            ApplyAutoPriority(project);
+
         ValidateSections();
+    }
+
+    // -------------------------------------------------------------------------
+    // LOGICA DE AUTO-PRIORIDAD
+    //
+    // Reglas (en orden de precedencia):
+    //   1. Cliente "Por Evento"          -> Media   (siempre)
+    //   2. Cliente "Mensual" excedido    -> Baja    (horasUsadas > horasPoliza)
+    //   3. Cliente "Mensual" tarifa alta -> Urgente (MonthlyRate >= UrgentThreshold)
+    //   4. Cliente "Mensual" tarifa baja -> Alta
+    // -------------------------------------------------------------------------
+    private void ApplyAutoPriority(ProjectDetailDto project)
+    {
+        var client = project.Client;
+
+        if (client == null)
+        {
+            _ticketDto.Priority = "Media";
+            _priorityReason = null;
+            return;
+        }
+
+        var isMonthly = client.ServiceMode == "Mensual" || client.ServiceMode == "Monthly";
+
+        if (!isMonthly)
+        {
+            // Regla 1: Por Evento -> siempre Media
+            _ticketDto.Priority = "Media";
+            _priorityReason = "Cliente con servicio por evento.";
+            return;
+        }
+
+        // --- Poliza mensual ---
+        var hoursUsed = client.MonthlyHoursUsed;
+        var hoursLimit = client.MonthlyHours;
+        var rate = client.MonthlyRate.HasValue ? (decimal)client.MonthlyRate.Value : 0m;
+
+        // Regla 2: Poliza excedida -> Baja
+        if (hoursLimit > 0 && hoursUsed > hoursLimit)
+        {
+            var excess = hoursUsed - hoursLimit;
+            _ticketDto.Priority = "Baja";
+            _priorityReason = $"Poliza excedida +{excess:0.0}h sobre las {hoursLimit}h incluidas este mes.";
+            return;
+        }
+
+        // Regla 3: Tarifa alta -> Urgente
+        if (rate >= UrgentThreshold)
+        {
+            var rateStr = rate.ToString("C0", new System.Globalization.CultureInfo("en-US"));
+            _ticketDto.Priority = "Urgente";
+            _priorityReason = $"Poliza mensual de alto valor ({rateStr}/mes).";
+            return;
+        }
+
+        // Regla 4: Tarifa baja o sin tarifa -> Alta
+        var rateInfo = rate > 0
+            ? rate.ToString("C0", new System.Globalization.CultureInfo("en-US")) + "/mes"
+            : "tarifa no configurada";
+        _ticketDto.Priority = "Alta";
+        _priorityReason = $"Poliza mensual activa ({rateInfo}).";
     }
 
     private void ValidateSections()
@@ -220,7 +323,7 @@
     {
         if (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0)
         {
-            _errorMessage = "Debe seleccionar un proyecto válido de la lista.";
+            _errorMessage = "Debe seleccionar un proyecto valido de la lista.";
             StateHasChanged();
             return;
         }
@@ -234,19 +337,19 @@
             if (_isEditMode)
             {
                 var result = await TicketApiService.UpdateTicketAsync(TicketId!.Value, _ticketDto);
-                if (result.Success) { Notify("Éxito", "Ticket actualizado correctamente.", NotificationSeverity.Success); DialogService.Close(true); }
+                if (result.Success) { Notify("Exito", "Ticket actualizado correctamente.", NotificationSeverity.Success); DialogService.Close(true); }
                 else _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el ticket.";
             }
             else
             {
                 var result = await TicketApiService.CreateTicketAsync(_ticketDto);
-                if (result.Success) { Notify("Éxito", "Ticket creado correctamente.", NotificationSeverity.Success); DialogService.Close(true); }
+                if (result.Success) { Notify("Exito", "Ticket creado correctamente.", NotificationSeverity.Success); DialogService.Close(true); }
                 else _errorMessage = result.ErrorMessage ?? "No se pudo crear el ticket.";
             }
         }
         catch (HttpRequestException httpEx) when (httpEx.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            _errorMessage = "No tienes permisos para realizar esta acción.";
+            _errorMessage = "No tienes permisos para realizar esta accion.";
         }
         catch (Exception ex) { _errorMessage = $"Error: {ex.Message}"; }
         finally { _isSaving = false; StateHasChanged(); }
