@@ -1,61 +1,91 @@
-﻿@* Barra de acciones del header de QuoteDetails:
-   Enviar Email, Aceptar/Rechazar, Convertir a Factura, PDF, Editar, Eliminar *@
-<div class="d-flex gap-2 align-items-center">
-    @* Enviar por email (solo Borrador) *@
+<div class="quote-actions d-flex align-items-center gap-2 flex-wrap justify-content-end">
     @if (Status == "Borrador")
     {
-        <button class="btn btn-primary btn-sm" @onclick="OnSendEmail" disabled="@IsSendingEmail" title="Enviar por Email">
+        <button class="btn btn-primary btn-sm" @onclick="OnSendEmail" disabled="@IsSendingEmail">
             @if (IsSendingEmail)
             {
-                <span class="spinner-border spinner-border-sm"></span>
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <span>Enviando...</span>
             }
             else
             {
-                <i class="bi bi-envelope-fill"></i>
-                <span class="ms-1">Enviar Email</span>
+                <i class="bi bi-envelope-fill me-1"></i>
+                <span>Enviar email</span>
             }
         </button>
     }
-    @* Aceptar / Rechazar (solo Enviada) *@
-    @if (Status == "Enviada")
+    else if (Status == "Enviada")
     {
-        <button class="btn btn-success btn-sm px-3" @onclick='() => OnChangeStatus.InvokeAsync("Aceptada")' title="Aceptar Cotización">
+        <button class="btn btn-success btn-sm" @onclick='() => OnChangeStatus.InvokeAsync("Aceptada")'>
             <i class="bi bi-check-circle me-1"></i> Aceptar
         </button>
-        <button class="btn btn-danger btn-sm px-3" @onclick='() => OnChangeStatus.InvokeAsync("Rechazada")' title="Rechazar Cotización">
-            <i class="bi bi-x-circle me-1"></i> Rechazar
-        </button>
     }
-    @* Convertir a factura (solo Aceptada sin factura) *@
-    @if (Status == "Aceptada" && !HasInvoice)
+    else if (Status == "Aceptada" && !HasInvoice)
     {
-        <button class="btn btn-warning btn-sm" @onclick="OnConvertToInvoice" title="Convertir a Factura">
-            <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Convertir a Factura
+        <button class="btn btn-warning btn-sm" @onclick="OnConvertToInvoice">
+            <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Facturar
         </button>
     }
 
-    @* Separador solo si hay algo a la izquierda *@
-    @if (Status == "Borrador" || Status == "Enviada" || (Status == "Aceptada" && !HasInvoice))
-    {
-        <div class="vr" style="height: 32px;"></div>
-    }
-
-    @* PDF siempre visible *@
-    <button class="btn btn-outline-success btn-sm" @onclick="OnDownloadPdf" title="Descargar PDF">
-        <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
-    </button>
-
-    @* Editar y Eliminar solo en Borrador *@
-    @if (Status == "Borrador")
-    {
-        <button class="btn btn-outline-primary btn-sm" @onclick="OnEdit" title="Editar">
-            <i class="bi bi-pencil-fill fs-5"></i>
+    <div class="dropdown">
+        <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots me-1"></i> Acciones
         </button>
-        <button class="btn btn-outline-danger btn-sm" @onclick="OnDelete" title="Eliminar">
-            <i class="bi bi-trash-fill fs-5"></i>
-        </button>
-    }
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            @if (Status == "Enviada")
+            {
+                <li>
+                    <button class="dropdown-item text-danger" type="button" @onclick='() => OnChangeStatus.InvokeAsync("Rechazada")'>
+                        <i class="bi bi-x-circle me-2"></i> Rechazar cotización
+                    </button>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+            }
+
+            @if (Status == "Borrador")
+            {
+                <li>
+                    <button class="dropdown-item" type="button" @onclick="OnEdit">
+                        <i class="bi bi-pencil-fill me-2"></i> Editar cotización
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item text-danger" type="button" @onclick="OnDelete">
+                        <i class="bi bi-trash-fill me-2"></i> Eliminar cotización
+                    </button>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+            }
+
+            @if (Status == "Aceptada" && !HasInvoice)
+            {
+                <li>
+                    <button class="dropdown-item" type="button" @onclick="OnConvertToInvoice">
+                        <i class="bi bi-file-earmark-arrow-up-fill me-2"></i> Convertir a factura
+                    </button>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+            }
+
+            <li>
+                <button class="dropdown-item" type="button" @onclick="OnDownloadPdf">
+                    <i class="bi bi-file-earmark-pdf-fill me-2"></i> Descargar PDF
+                </button>
+            </li>
+            <li>
+                <button class="dropdown-item" type="button" @onclick="OnGoBack">
+                    <i class="bi bi-arrow-left me-2"></i> Volver al listado
+                </button>
+            </li>
+        </ul>
+    </div>
 </div>
+
+<style>
+    .quote-actions .btn {
+        white-space: nowrap;
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
@@ -66,5 +96,6 @@
     [Parameter] public EventCallback OnDownloadPdf { get; set; }
     [Parameter] public EventCallback OnEdit { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnGoBack { get; set; }
     [Parameter] public EventCallback<string> OnChangeStatus { get; set; }
 }

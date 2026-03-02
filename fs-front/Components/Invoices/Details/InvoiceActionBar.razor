@@ -1,7 +1,7 @@
 ﻿@using fs_front.DTO
 
-<div class="d-flex justify-content-between align-items-start">
-    <div>
+<div class="invoice-topbar d-flex justify-content-between align-items-start gap-3 flex-wrap">
+    <div class="invoice-topbar__meta">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="/facturas">Facturas</a></li>
@@ -14,30 +14,69 @@
         </div>
     </div>
 
-    <div class="d-flex gap-2 flex-wrap justify-content-end">
-        @if (Invoice is not null && Invoice.Status is not ("Cancelada" or "Pagada"))
+    <div class="invoice-topbar__actions d-flex align-items-center gap-2 ms-auto">
+        @if (Invoice is not null && Invoice.Status == "Pendiente")
         {
-            @if (Invoice.Status == "Pendiente")
-            {
-                <button class="btn btn-success" @onclick="OnRegisterPayment">
-                    <i class="bi bi-cash-coin"></i> Registrar Pago
-                </button>
-            }
-            <button class="btn btn-outline-danger" @onclick="OnChangeStatus">
-                <i class="bi bi-x-octagon"></i> Cancelar factura
-            </button>
-            <button class="btn btn-warning" @onclick="OnEdit">
-                <i class="bi bi-pencil-fill"></i> Editar
+            <button class="btn btn-success btn-sm" @onclick="OnRegisterPayment">
+                <i class="bi bi-cash-coin me-1"></i> Registrar pago
             </button>
         }
-        <button class="btn btn-primary" @onclick="OnDownloadPdf">
-            <i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF
-        </button>
-        <button class="btn btn-secondary" @onclick="OnGoBack">
-            <i class="bi bi-arrow-left"></i> Volver
-        </button>
+
+        <div class="dropdown">
+            <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots me-1"></i> Acciones
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                @if (Invoice is not null && Invoice.Status is not ("Cancelada" or "Pagada"))
+                {
+                    <li>
+                        <button class="dropdown-item text-danger" type="button" @onclick="OnChangeStatus">
+                            <i class="bi bi-x-octagon me-2"></i> Cancelar factura
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" type="button" @onclick="OnEdit">
+                            <i class="bi bi-pencil-fill me-2"></i> Editar factura
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                }
+                <li>
+                    <button class="dropdown-item" type="button" @onclick="OnDownloadPdf">
+                        <i class="bi bi-file-earmark-pdf-fill me-2"></i> Descargar PDF
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item" type="button" @onclick="OnGoBack">
+                        <i class="bi bi-arrow-left me-2"></i> Volver al listado
+                    </button>
+                </li>
+            </ul>
+        </div>
     </div>
 </div>
+
+<style>
+    .invoice-topbar__meta .breadcrumb {
+        margin-bottom: 0.35rem;
+    }
+
+    .invoice-topbar__meta h1 {
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+    }
+
+    .invoice-topbar__actions .btn {
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 768px) {
+        .invoice-topbar__actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>
 
 @code {
     [Parameter] public InvoiceDetailDto? Invoice         { get; set; }
