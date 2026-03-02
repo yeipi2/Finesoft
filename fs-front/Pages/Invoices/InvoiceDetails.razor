@@ -30,7 +30,7 @@ else
         <div class="mb-4">
             <InvoiceActionBar Invoice="@_invoice"
                               OnRegisterPayment="OpenAddPaymentDialog"
-                              OnChangeStatus="OpenChangeStatusDialog"
+                              OnChangeStatus="ConfirmCancelInvoice"
                               OnEdit="() => OpenEditDialog(_invoice.Id)"
                               OnDownloadPdf="DownloadPdf"
                               OnGoBack="GoBack" />
@@ -163,40 +163,43 @@ else
         if (result == true) await LoadInvoice();
     }
 
-    private async Task OpenChangeStatusDialog()
+    private async Task ConfirmCancelInvoice()
     {
         if (_invoice == null) return;
 
-        var result = await DialogService.OpenAsync<fs_front.Components.Invoices.InvoiceStatusDialog>(
-            "Cambiar estado",
-            new Dictionary<string, object> { { "CurrentStatus", _invoice.Status } },
-            new DialogOptions { Width = "520px" });
-
-        if (result is not ChangeInvoiceStatusRequest req) return;
-        if (string.IsNullOrWhiteSpace(req.Status)) return;
-
-        if (req.Status == "Cancelada")
+        if (_invoice.Status is "Cancelada" or "Pagada")
         {
-            var confirm = await DialogService.Confirm(
-                "¿Seguro que deseas cancelar esta factura? Ya no se podrá modificar.",
-                "Confirmar cancelación",
-                new ConfirmOptions { OkButtonText = "Sí, cancelar", CancelButtonText = "No" });
-            if (confirm != true) return;
+            Notify("Aviso", "Esta factura ya no puede cancelarse.", NotificationSeverity.Warning);
+            return;
         }
 
+        var confirm = await DialogService.Confirm(
+            "¿Seguro que deseas cancelar esta factura? Si fue un clic accidental, selecciona No.",
+            "Confirmar cancelación",
+            new ConfirmOptions
+            {
+                OkButtonText = "Sí, cancelar",
+                CancelButtonText = "No"
+            });
+
+        if (confirm != true) return;
+
+        const string cancellationReason = "Cancelada manualmente desde el detalle de factura";
+
         var (success, error) = await InvoiceApiService.ChangeInvoiceStatusAsync(
-            _invoice.Id, req.Status, req.Reason);
+            _invoice.Id,
+            "Cancelada",
+            cancellationReason);
 
         if (success)
         {
-            Notify("Éxito", "Estado actualizado", NotificationSeverity.Success);
+            Notify("Éxito", "Factura cancelada", NotificationSeverity.Success);
             await LoadInvoice();
             StateHasChanged();
+            return;
         }
-        else
-        {
-            Notify("Error", error ?? "No se pudo actualizar el estado", NotificationSeverity.Error);
-        }
+
+        Notify("Error", error ?? "No se pudo cancelar la factura", NotificationSeverity.Error);
     }
 
     private async Task DownloadPdf()

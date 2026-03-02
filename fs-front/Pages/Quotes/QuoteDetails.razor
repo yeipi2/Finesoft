@@ -53,7 +53,8 @@
                                     OnConvertToInvoice="ConvertToInvoice"
                                     OnDownloadPdf="DownloadPdf"
                                     OnEdit="EditQuote"
-                                    OnDelete="ConfirmDelete" />
+                                    OnDelete="ConfirmDelete"
+                                    OnGoBack="GoBack" />
                 </div>
             </div>
         </div>
@@ -85,13 +86,6 @@
             </div>
         </div>
 
-        <div class="row mt-4">
-            <div class="col">
-                <button class="btn btn-secondary" @onclick="GoBack">
-                    <i class="bi bi-arrow-left"></i> Volver a Cotizaciones
-                </button>
-            </div>
-        </div>
     }
     else
     {
