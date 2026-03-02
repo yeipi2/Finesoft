@@ -104,7 +104,6 @@
                     @bind="Dto.Status"
                     disabled="@(!IsEditMode)"
                     @bind:after="NotifyChanged">
-                <option value="Borrador">Borrador</option>
                 <option value="Pendiente">Pendiente</option>
                 <option value="Pagada">Pagada</option>
                 <option value="Vencida">Vencida</option>
@@ -113,7 +112,7 @@
             @if (!IsEditMode)
             {
                 <small class="text-muted d-block mt-1">
-                    Al crear, la factura inicia como <strong>Borrador</strong>
+                    Al crear, la factura inicia como <strong>Pendiente</strong>
                 </small>
             }
         </div>

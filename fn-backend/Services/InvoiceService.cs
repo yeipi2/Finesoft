@@ -147,7 +147,7 @@ public class InvoiceService : IInvoiceService
             InvoiceDate = invoiceDto.InvoiceDate ?? DateTime.UtcNow,
             DueDate = invoiceDto.DueDate,
             InvoiceType = invoiceDto.InvoiceType,
-            Status = invoiceDto.Status,
+            Status = InvoiceConstants.Status.Pending,
             PaymentType = invoiceDto.PaymentType,
             PaymentMethod = invoiceDto.PaymentMethod ?? string.Empty,
             CreatedByUserId = createdByUserId,
