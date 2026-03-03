@@ -6,8 +6,9 @@
 - Keep visual weight low to avoid oversized button rows.
 
 ## Depth Strategy
-- Borders-first with subtle Bootstrap shadows only on dropdown menus.
-- No heavy cards or large floating controls in the action area.
+- Borders-first plus subtle panel elevation (`shadow-sm` equivalent) in detail views.
+- Use stronger border contrast and soft layered shadows for cards that need separation.
+- Keep action area compact; avoid heavy floating controls.
 
 ## Spacing Base Unit
 - 8px rhythm.
@@ -21,3 +22,16 @@
 - Destructive actions use `text-danger` in dropdown items.
 - Action rows must wrap on mobile and remain right-aligned.
 - Use concise labels and icon + text format for scanability.
+
+## Invoice Details Visual Pattern
+- Use a light neutral surface system with subtle borders (`--invd-*` tokens) and avoid saturated full-width headers.
+- Top area uses a compact summary panel with breadcrumb, status badge, quick chips (fecha/total/saldo/tipo), and compact actions.
+- Main content uses soft "panel" sections (`.invd-panel`) with thin borders, 12-14px radius, and restrained icon badges.
+- Tables should be `table-sm`, uppercase muted headers, and low-contrast row separators.
+- Sidebar follows the same panel language: key-value list, metric micro-cards, and payment-state callout card.
+
+## Cross-Details Styling
+- All `*Details` pages (`Invoice`, `Quote`, `Ticket`, `Project`) use page wrappers with soft radial background, rounded container, stronger border contrast, and subtle layered shadows.
+- Header sections use compact "hero" containers instead of floating title + buttons.
+- Existing Bootstrap semantic headers (`bg-primary`, `bg-success`, etc.) are softened to tinted backgrounds with dark text for readability and reduced visual noise.
+- Quote and Ticket detail child components follow panel primitives (`qd-*` / `td-*`) with the same hierarchy style used in invoice details.

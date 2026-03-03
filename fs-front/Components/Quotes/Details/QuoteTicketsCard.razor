@@ -1,49 +1,98 @@
-﻿@* Card de tickets asociados *@
 @using fs_front.DTO
 
 @if (TicketsWithDetails.Any())
 {
-    <div class="card mb-4 border-info">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">
-                <i class="bi bi-ticket-perforated-fill"></i> Tickets Asociados (@TicketsWithDetails.Count)
+    <section class="qd-panel">
+        <header class="qd-panel__header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 d-flex align-items-center gap-2">
+                <span class="qd-icon-wrap"><i class="bi bi-ticket-perforated-fill"></i></span>
+                Tickets asociados
             </h5>
-        </div>
-        <div class="card-body">
+            <span class="qd-count">@TicketsWithDetails.Count</span>
+        </header>
+
+        <div class="qd-panel__body d-flex flex-column gap-2">
             @foreach (var item in TicketsWithDetails)
             {
-                <div class="card mb-2 shadow-sm">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <h6 class="mb-2">
-                                    <span class="badge bg-info me-2">#@item.TicketId</span>
-                                    <strong>@item.TicketTitle</strong>
-                                </h6>
-                                @if (!string.IsNullOrEmpty(item.TicketDescription))
-                                {
-                                    <p class="text-muted small mb-2">
-                                        @(item.TicketDescription.Length > 150
-                                                                    ? item.TicketDescription.Substring(0, 150) + "..."
-                                                                    : item.TicketDescription)
-                                    </p>
-                                }
-                                <div class="row small">
-                                    <div class="col-md-4"><i class="bi bi-building text-muted"></i> <strong>Cliente:</strong> @item.TicketClientName</div>
-                                    <div class="col-md-4"><i class="bi bi-folder text-muted"></i> <strong>Proyecto:</strong> @item.TicketProjectName</div>
-                                    <div class="col-md-4"><i class="bi bi-clock text-muted"></i> <strong>Horas:</strong> @item.TicketActualHours?.ToString("0.0") h</div>
-                                </div>
+                <article class="qd-ticket-row">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                <span class="qd-ticket-id">#@item.TicketId</span>
+                                <h6 class="mb-0">@item.TicketTitle</h6>
                             </div>
-                            <a href="/tickets/@item.TicketId" class="btn btn-sm btn-outline-info" target="_blank" title="Ver Ticket">
-                                <i class="bi bi-box-arrow-up-right"></i>
-                            </a>
+
+                            @if (!string.IsNullOrEmpty(item.TicketDescription))
+                            {
+                                <p class="qd-ticket-desc mb-2">
+                                    @(item.TicketDescription.Length > 150
+                                        ? item.TicketDescription[..150] + "..."
+                                        : item.TicketDescription)
+                                </p>
+                            }
+
+                            <div class="row g-2 qd-ticket-meta">
+                                <div class="col-md-4"><i class="bi bi-building"></i><span>@item.TicketClientName</span></div>
+                                <div class="col-md-4"><i class="bi bi-folder"></i><span>@item.TicketProjectName</span></div>
+                                <div class="col-md-4"><i class="bi bi-clock"></i><span>@item.TicketActualHours?.ToString("0.0") h</span></div>
+                            </div>
                         </div>
+
+                        <a href="/tickets/@item.TicketId" class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir
+                        </a>
                     </div>
-                </div>
+                </article>
             }
         </div>
-    </div>
+    </section>
 }
+
+<style>
+    .qd-count {
+        border-radius: 999px;
+        background: #e8efff;
+        color: #1d4ed8;
+        border: 1px solid rgba(29, 78, 216, 0.32);
+        padding: 0.15rem 0.6rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .qd-ticket-row {
+        border: 1px solid var(--qd-border);
+        border-radius: 12px;
+        background: var(--qd-surface-soft);
+        padding: 0.85rem;
+    }
+
+    .qd-ticket-id {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #075985;
+        border: 1px solid #bae6fd;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+
+    .qd-ticket-desc {
+        color: var(--qd-muted);
+        font-size: 0.88rem;
+    }
+
+    .qd-ticket-meta {
+        font-size: 0.82rem;
+        color: var(--qd-muted);
+    }
+
+    .qd-ticket-meta i {
+        margin-right: 0.3rem;
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public List<QuoteItemDto> TicketsWithDetails { get; set; } = new();

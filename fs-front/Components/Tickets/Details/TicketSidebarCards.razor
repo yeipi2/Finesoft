@@ -1,89 +1,187 @@
-﻿@* Sidebar de detalles del ticket: Cliente/Proyecto, Detalles y Tiempo *@
 @using fs_front.DTO
 
-@* ── Card: Cliente y Proyecto ── *@
-<div class="card mb-4">
-    <div class="card-header">
-        <h6 class="mb-0"><i class="bi bi-building"></i> Cliente y Proyecto</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <small class="text-muted">Cliente</small>
-            <div class="fw-bold">@Ticket.ClientName</div>
-        </div>
-        <div class="mb-3">
-            <small class="text-muted">Proyecto</small>
-            <div class="fw-bold">@Ticket.ProjectName</div>
-        </div>
-    </div>
-</div>
+<section class="td-panel">
+    <header class="td-panel__header d-flex align-items-center gap-2">
+        <span class="td-icon-wrap"><i class="bi bi-building"></i></span>
+        <h6 class="mb-0">Cliente y proyecto</h6>
+    </header>
 
-@* ── Card: Detalles ── *@
-<div class="card mb-4">
-    <div class="card-header">
-        <h6 class="mb-0"><i class="bi bi-list-check"></i> Detalles</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <small class="text-muted">Creado por</small>
-            <div>@Ticket.CreatedByUserName</div>
-            <small class="text-muted">@Ticket.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+    <div class="td-panel__body">
+        <div class="td-field">
+            <span class="td-field__label">Cliente</span>
+            <span class="td-field__value">@Ticket.ClientName</span>
         </div>
-        <div class="mb-3">
-            <small class="text-muted">Asignado a</small>
-            <div>
-                @if (!string.IsNullOrEmpty(Ticket.AssignedToUserName))
-                {
-                    <span>@Ticket.AssignedToUserName</span>
-                }
-                else
-                {
-                    <span class="text-muted">Sin asignar</span>
-                }
-            </div>
+        <div class="td-field">
+            <span class="td-field__label">Proyecto</span>
+            <span class="td-field__value">@Ticket.ProjectName</span>
         </div>
-        @if (Ticket.UpdatedAt.HasValue)
-        {
-            <div class="mb-3">
-                <small class="text-muted">Última actualización</small>
-                <div>@Ticket.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-            </div>
-        }
-        @if (Ticket.ClosedAt.HasValue)
-        {
-            <div>
-                <small class="text-muted">Cerrado</small>
-                <div>@Ticket.ClosedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-            </div>
-        }
     </div>
-</div>
+</section>
 
-@* ── Card: Tiempo ── *@
-<div class="card">
-    <div class="card-header">
-        <h6 class="mb-0"><i class="bi bi-clock"></i> Tiempo</h6>
+<section class="td-panel">
+    <header class="td-panel__header d-flex align-items-center gap-2">
+        <span class="td-icon-wrap"><i class="bi bi-list-check"></i></span>
+        <h6 class="mb-0">Detalles</h6>
+    </header>
+
+    <div class="td-panel__body">
+        <dl class="td-kv mb-0">
+            <div>
+                <dt>Creado por</dt>
+                <dd>
+                    @Ticket.CreatedByUserName
+                    <small class="d-block text-muted">@Ticket.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                </dd>
+            </div>
+            <div>
+                <dt>Asignado a</dt>
+                <dd>@(string.IsNullOrEmpty(Ticket.AssignedToUserName) ? "Sin asignar" : Ticket.AssignedToUserName)</dd>
+            </div>
+            @if (Ticket.UpdatedAt.HasValue)
+            {
+                <div>
+                    <dt>Última actualización</dt>
+                    <dd>@Ticket.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</dd>
+                </div>
+            }
+            @if (Ticket.ClosedAt.HasValue)
+            {
+                <div>
+                    <dt>Cerrado</dt>
+                    <dd>@Ticket.ClosedAt.Value.ToString("dd/MM/yyyy HH:mm")</dd>
+                </div>
+            }
+        </dl>
     </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <small class="text-muted">Horas Estimadas</small>
-            <div class="h4 mb-0">@Ticket.EstimatedHours.ToString("0.00")h</div>
+</section>
+
+<section class="td-panel">
+    <header class="td-panel__header d-flex align-items-center gap-2">
+        <span class="td-icon-wrap"><i class="bi bi-clock"></i></span>
+        <h6 class="mb-0">Tiempo</h6>
+    </header>
+
+    <div class="td-panel__body">
+        <div class="td-metrics-grid">
+            <div class="td-metric">
+                <span>Estimadas</span>
+                <strong>@Ticket.EstimatedHours.ToString("0.00")h</strong>
+            </div>
+            <div class="td-metric">
+                <span>Reales</span>
+                <strong class="text-success">@Ticket.ActualHours.ToString("0.00")h</strong>
+            </div>
         </div>
-        <div>
-            <small class="text-muted">Horas Reales</small>
-            <div class="h4 mb-0 text-success">@Ticket.ActualHours.ToString("0.00")h</div>
-        </div>
+
         @if (Ticket.ActualHours > Ticket.EstimatedHours)
         {
-            <div class="alert alert-warning mt-3 mb-0">
-                <small>
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Excedido por @((Ticket.ActualHours - Ticket.EstimatedHours).ToString("0.00"))h
-                </small>
+            <div class="td-overrun mt-3">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Excedido por @((Ticket.ActualHours - Ticket.EstimatedHours).ToString("0.00"))h
             </div>
         }
     </div>
-</div>
+</section>
+
+<style>
+    .td-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.55rem 0.6rem;
+        border-radius: 10px;
+        background: var(--td-surface-soft);
+        border: 1px solid var(--td-border);
+        margin-bottom: 0.5rem;
+    }
+
+    .td-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .td-field__label {
+        font-size: 0.75rem;
+        color: var(--td-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .td-field__value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--td-text);
+    }
+
+    .td-kv {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .td-kv > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.8rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--td-border);
+    }
+
+    .td-kv > div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .td-kv dt {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--td-muted);
+        font-weight: 500;
+    }
+
+    .td-kv dd {
+        margin: 0;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .td-metrics-grid {
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .td-metric {
+        border: 1px solid var(--td-border);
+        border-radius: 10px;
+        background: var(--td-surface-soft);
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .td-metric span {
+        font-size: 0.74rem;
+        color: var(--td-muted);
+    }
+
+    .td-metric strong {
+        font-size: 0.9rem;
+        color: var(--td-text);
+    }
+
+    .td-overrun {
+        border: 1px solid rgba(181, 71, 8, 0.35);
+        background: #fff7ed;
+        color: #9a3412;
+        border-radius: 10px;
+        padding: 0.55rem 0.65rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public TicketDetailDto Ticket { get; set; } = default!;

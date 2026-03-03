@@ -1,23 +1,100 @@
-﻿@* Card de información del cliente en la vista de detalles *@
 @using fs_front.DTO
 
-<div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-building"></i> Información del Cliente</h5>
-    </div>
-    <div class="card-body">
-        <div class="row">
+<section class="qd-panel">
+    <header class="qd-panel__header d-flex align-items-center gap-2">
+        <span class="qd-icon-wrap"><i class="bi bi-building"></i></span>
+        <h5 class="mb-0">Información del cliente</h5>
+    </header>
+
+    <div class="qd-panel__body">
+        <div class="row g-3">
             <div class="col-md-6">
-                <p><strong>Cliente:</strong> @Quote.ClientName</p>
-                <p><strong>Email:</strong> @Quote.ClientEmail</p>
+                <div class="qd-field">
+                    <span class="qd-field__label">Cliente</span>
+                    <span class="qd-field__value">@Quote.ClientName</span>
+                </div>
+                <div class="qd-field">
+                    <span class="qd-field__label">Email</span>
+                    <span class="qd-field__value">@Quote.ClientEmail</span>
+                </div>
             </div>
             <div class="col-md-6">
-                <p><strong>Creada por:</strong> @Quote.CreatedByUserName</p>
-                <p><strong>Fecha de creación:</strong> @Quote.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+                <div class="qd-field">
+                    <span class="qd-field__label">Creada por</span>
+                    <span class="qd-field__value">@Quote.CreatedByUserName</span>
+                </div>
+                <div class="qd-field">
+                    <span class="qd-field__label">Fecha</span>
+                    <span class="qd-field__value">@Quote.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
             </div>
         </div>
     </div>
-</div>
+</section>
+
+<style>
+    .qd-panel {
+        border: 1px solid var(--qd-border);
+        border-radius: 14px;
+        background: var(--qd-surface);
+        box-shadow: var(--qd-shadow-sm);
+    }
+
+    .qd-panel__header {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--qd-border);
+    }
+
+    .qd-panel__header h5 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--qd-text);
+    }
+
+    .qd-panel__body {
+        padding: 1rem;
+    }
+
+    .qd-icon-wrap {
+        width: 1.7rem;
+        height: 1.7rem;
+        border-radius: 999px;
+        background: #e8efff;
+        color: #1d4ed8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+
+    .qd-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.55rem 0.6rem;
+        border-radius: 10px;
+        background: var(--qd-surface-soft);
+        border: 1px solid var(--qd-border);
+        margin-bottom: 0.5rem;
+    }
+
+    .qd-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .qd-field__label {
+        font-size: 0.75rem;
+        color: var(--qd-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .qd-field__value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--qd-text);
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public QuoteDetailDto Quote { get; set; } = default!;

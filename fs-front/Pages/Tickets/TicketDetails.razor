@@ -6,7 +6,7 @@
 
 <PageTitle>Ticket #@TicketId</PageTitle>
 
-<div class="container p-4">
+<div class="ticket-detail-page container p-4">
     @if (_isLoading)
     {
         <div class="text-center py-5">
@@ -38,54 +38,56 @@
                     </ol>
                 </nav>
 
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h1 class="display-6 fw-bold mb-2">
-                            <span class="text-muted">#@_ticket.Id</span> @_ticket.Title
-                        </h1>
-                        <div class="d-flex gap-2 mb-2">
-                            <TicketPriorityBadge Priority="@_ticket.Priority" Class="fs-6" />
-                            <TicketStatusBadge Status="@_ticket.Status" Class="fs-6" />
+                <div class="ticket-hero">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div>
+                            <h1 class="display-6 fw-bold mb-2">
+                                <span class="text-muted">#@_ticket.Id</span> @_ticket.Title
+                            </h1>
+                            <div class="d-flex gap-2 mb-2 flex-wrap">
+                                <TicketPriorityBadge Priority="@_ticket.Priority" Class="fs-6" />
+                                <TicketStatusBadge Status="@_ticket.Status" Class="fs-6" />
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                        @if (ShowEditButton)
-                        {
-                            <button class="btn btn-primary btn-sm" @onclick="EditTicket">
-                                <i class="bi bi-pencil-fill me-1"></i> Editar
-                            </button>
-                        }
+                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                            @if (ShowEditButton)
+                            {
+                                <button class="btn btn-primary btn-sm" @onclick="EditTicket">
+                                    <i class="bi bi-pencil-fill me-1"></i> Editar
+                                </button>
+                            }
 
-                        <div class="dropdown">
-                            <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots me-1"></i> Acciones
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                @if (ShowDeleteButton)
-                                {
+                            <div class="dropdown">
+                                <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-three-dots me-1"></i> Acciones
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    @if (ShowDeleteButton)
+                                    {
+                                        <li>
+                                            <button class="dropdown-item text-danger" type="button" @onclick="ConfirmDelete">
+                                                <i class="bi bi-trash-fill me-2"></i> Eliminar ticket
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider" /></li>
+                                    }
                                     <li>
-                                        <button class="dropdown-item text-danger" type="button" @onclick="ConfirmDelete">
-                                            <i class="bi bi-trash-fill me-2"></i> Eliminar ticket
+                                        <button class="dropdown-item" type="button" @onclick="GoBack">
+                                            <i class="bi bi-arrow-left me-2"></i> Volver a tickets
                                         </button>
                                     </li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                }
-                                <li>
-                                    <button class="dropdown-item" type="button" @onclick="GoBack">
-                                        <i class="bi bi-arrow-left me-2"></i> Volver a tickets
-                                    </button>
-                                </li>
-                            </ul>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row">
+        <div class="row g-4">
             @* ── Columna principal ── *@
-            <div class="col-lg-8">
+            <div class="col-lg-8 d-flex flex-column gap-4">
 
                 <TicketInfoCard Description="@_ticket.Description" />
 
@@ -113,7 +115,7 @@
             </div>
 
             @* ── Sidebar ── *@
-            <div class="col-lg-4">
+            <div class="col-lg-4 d-flex flex-column gap-4">
 
                 @* ── ⭐ CARD DE PÓLIZA MENSUAL (si el cliente tiene póliza) ── *@
                 @if (_policyClient != null && _policyClient.MonthlyHours > 0)
@@ -216,6 +218,74 @@
         </div>
     }
 </div>
+
+<style>
+    .ticket-detail-page {
+        --td-bg: #f3f6fb;
+        --td-surface: #fcfdff;
+        --td-surface-soft: #f4f7fb;
+        --td-text: #101828;
+        --td-muted: #667085;
+        --td-border: rgba(16, 24, 40, 0.13);
+        --td-border-strong: rgba(16, 24, 40, 0.2);
+        --td-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 14px rgba(16, 24, 40, 0.05);
+        --td-shadow-md: 0 3px 8px rgba(16, 24, 40, 0.07), 0 14px 26px rgba(16, 24, 40, 0.07);
+        background: radial-gradient(circle at top right, #e8f0ff 0%, var(--td-bg) 45%, var(--td-bg) 100%);
+        border-radius: 16px;
+        color: var(--td-text);
+    }
+
+    .ticket-hero {
+        background: var(--td-surface);
+        border: 1px solid var(--td-border-strong);
+        border-radius: 14px;
+        padding: 1rem;
+        box-shadow: var(--td-shadow-sm);
+    }
+
+    .ticket-detail-page .card {
+        border-color: var(--td-border);
+        border-radius: 12px;
+        background: var(--td-surface);
+        box-shadow: var(--td-shadow-sm);
+        transition: box-shadow 0.18s ease;
+    }
+
+    .ticket-detail-page .card:hover {
+        box-shadow: var(--td-shadow-md);
+    }
+
+    .ticket-detail-page .card-header {
+        background: var(--td-surface-soft) !important;
+        color: var(--td-text) !important;
+        border-bottom-color: var(--td-border) !important;
+    }
+
+    .ticket-detail-page .card-header.bg-primary {
+        background: #e8efff !important;
+        color: #1d4ed8 !important;
+    }
+
+    .ticket-detail-page .card-header.bg-success {
+        background: #e8f8ef !important;
+        color: #067647 !important;
+    }
+
+    .ticket-detail-page .card-header.bg-info {
+        background: #e9f5ff !important;
+        color: #0b5ea8 !important;
+    }
+
+    .ticket-detail-page .card-header.bg-warning {
+        background: #fff5e8 !important;
+        color: #9a3412 !important;
+    }
+
+    .ticket-detail-page .list-group-item {
+        border-color: var(--td-border);
+        background: var(--td-surface-soft);
+    }
+</style>
 
 @inject ITicketApiService TicketApiService
 @inject IClientApiService ClientApiService

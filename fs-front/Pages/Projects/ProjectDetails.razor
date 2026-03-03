@@ -6,7 +6,7 @@
 
 <PageTitle>Finesoft - Detalle de Proyecto</PageTitle>
 
-<div class="container p-4">
+<div class="project-detail-page container p-4">
     @if (_isLoading)
     {
         <div class="text-center py-5">
@@ -30,35 +30,37 @@
                     </ol>
                 </nav>
 
-                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                    <div>
-                        <h1 class="display-6 fw-bold mb-2">@_project.Name</h1>
-                        <p class="text-muted">@_project.Description</p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 ms-auto flex-wrap justify-content-end">
-                        <ProjectStatusBadge IsActive="@_project.IsActive" />
+                <div class="project-hero">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div>
+                            <h1 class="display-6 fw-bold mb-2">@_project.Name</h1>
+                            <p class="text-muted mb-0">@_project.Description</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 ms-auto flex-wrap justify-content-end">
+                            <ProjectStatusBadge IsActive="@_project.IsActive" />
 
-                        <button class="btn btn-primary btn-sm" @onclick="EditProject">
-                            <i class="bi bi-pencil-fill me-1"></i> Editar
-                        </button>
-
-                        <div class="dropdown">
-                            <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots me-1"></i> Acciones
+                            <button class="btn btn-primary btn-sm" @onclick="EditProject">
+                                <i class="bi bi-pencil-fill me-1"></i> Editar
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                <li>
-                                    <button class="dropdown-item text-danger" type="button" @onclick="ConfirmDeleteProject">
-                                        <i class="bi bi-trash-fill me-2"></i> Eliminar proyecto
-                                    </button>
-                                </li>
-                                <li><hr class="dropdown-divider" /></li>
-                                <li>
-                                    <button class="dropdown-item" type="button" @onclick="GoBack">
-                                        <i class="bi bi-arrow-left me-2"></i> Volver a proyectos
-                                    </button>
-                                </li>
-                            </ul>
+
+                            <div class="dropdown">
+                                <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-three-dots me-1"></i> Acciones
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li>
+                                        <button class="dropdown-item text-danger" type="button" @onclick="ConfirmDeleteProject">
+                                            <i class="bi bi-trash-fill me-2"></i> Eliminar proyecto
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li>
+                                        <button class="dropdown-item" type="button" @onclick="GoBack">
+                                            <i class="bi bi-arrow-left me-2"></i> Volver a proyectos
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -137,6 +139,53 @@
         </div>
     }
 </div>
+
+<style>
+    .project-detail-page {
+        --pd-bg: #f3f6fb;
+        --pd-surface: #fcfdff;
+        --pd-surface-soft: #f4f7fb;
+        --pd-text: #101828;
+        --pd-border: rgba(16, 24, 40, 0.13);
+        --pd-border-strong: rgba(16, 24, 40, 0.2);
+        --pd-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 14px rgba(16, 24, 40, 0.05);
+        --pd-shadow-md: 0 3px 8px rgba(16, 24, 40, 0.07), 0 14px 26px rgba(16, 24, 40, 0.07);
+        background: radial-gradient(circle at top right, #e8f0ff 0%, var(--pd-bg) 45%, var(--pd-bg) 100%);
+        border-radius: 16px;
+        color: var(--pd-text);
+    }
+
+    .project-hero {
+        background: var(--pd-surface);
+        border: 1px solid var(--pd-border-strong);
+        border-radius: 14px;
+        padding: 1rem;
+        box-shadow: var(--pd-shadow-sm);
+    }
+
+    .project-detail-page .card {
+        border-color: var(--pd-border);
+        border-radius: 12px;
+        background: var(--pd-surface);
+        box-shadow: var(--pd-shadow-sm);
+        transition: box-shadow 0.18s ease;
+    }
+
+    .project-detail-page .card:hover {
+        box-shadow: var(--pd-shadow-md);
+    }
+
+    .project-detail-page .card-header {
+        background: var(--pd-surface-soft) !important;
+        color: var(--pd-text) !important;
+        border-bottom-color: var(--pd-border) !important;
+    }
+
+    .project-detail-page .card-header.bg-primary {
+        background: #e8efff !important;
+        color: #1d4ed8 !important;
+    }
+</style>
 
 @inject IProjectApiService ProjectApiService
 @inject DialogService DialogService

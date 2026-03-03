@@ -1,77 +1,139 @@
 ﻿@using fs_front.DTO
 
-<div class="invoice-topbar d-flex justify-content-between align-items-start gap-3 flex-wrap">
-    <div class="invoice-topbar__meta">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/facturas">Facturas</a></li>
-                <li class="breadcrumb-item active">@Invoice?.InvoiceNumber</li>
-            </ol>
-        </nav>
-        <h1 class="display-6 fw-bold mb-2">@Invoice?.InvoiceNumber</h1>
-        <div class="d-flex gap-2 mb-2">
-            <InvoiceStatusBadge Status="@(Invoice?.Status ?? "")" />
+<section class="invd-topbar">
+    <div class="invd-topbar__head d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div class="invd-topbar__meta">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/facturas">Facturas</a></li>
+                    <li class="breadcrumb-item active">@Invoice?.InvoiceNumber</li>
+                </ol>
+            </nav>
+
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                <h1 class="h2 fw-semibold mb-0">@Invoice?.InvoiceNumber</h1>
+                <InvoiceStatusBadge Status="@(Invoice?.Status ?? "")" />
+            </div>
+
+            <div class="invd-topbar__hint">
+                Cliente: <strong>@(Invoice?.ClientName ?? "—")</strong>
+            </div>
         </div>
-    </div>
 
-    <div class="invoice-topbar__actions d-flex align-items-center gap-2 ms-auto">
-        @if (Invoice is not null && Invoice.Status == "Pendiente")
-        {
-            <button class="btn btn-success btn-sm" @onclick="OnRegisterPayment">
-                <i class="bi bi-cash-coin me-1"></i> Registrar pago
-            </button>
-        }
+        <div class="invd-topbar__actions d-flex align-items-center gap-2 ms-auto">
+            @if (Invoice is not null && Invoice.Status == "Pendiente")
+            {
+                <button class="btn btn-success btn-sm" @onclick="OnRegisterPayment">
+                    <i class="bi bi-cash-coin me-1"></i> Registrar pago
+                </button>
+            }
 
-        <div class="dropdown">
-            <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-three-dots me-1"></i> Acciones
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                @if (Invoice is not null && Invoice.Status is not ("Cancelada" or "Pagada"))
-                {
+            <div class="dropdown">
+                <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots me-1"></i> Acciones
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    @if (Invoice is not null && Invoice.Status is not ("Cancelada" or "Pagada"))
+                    {
+                        <li>
+                            <button class="dropdown-item text-danger" type="button" @onclick="OnChangeStatus">
+                                <i class="bi bi-x-octagon me-2"></i> Cancelar factura
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item" type="button" @onclick="OnEdit">
+                                <i class="bi bi-pencil-fill me-2"></i> Editar factura
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider" /></li>
+                    }
                     <li>
-                        <button class="dropdown-item text-danger" type="button" @onclick="OnChangeStatus">
-                            <i class="bi bi-x-octagon me-2"></i> Cancelar factura
+                        <button class="dropdown-item" type="button" @onclick="OnDownloadPdf">
+                            <i class="bi bi-file-earmark-pdf-fill me-2"></i> Descargar PDF
                         </button>
                     </li>
                     <li>
-                        <button class="dropdown-item" type="button" @onclick="OnEdit">
-                            <i class="bi bi-pencil-fill me-2"></i> Editar factura
+                        <button class="dropdown-item" type="button" @onclick="OnGoBack">
+                            <i class="bi bi-arrow-left me-2"></i> Volver al listado
                         </button>
                     </li>
-                    <li><hr class="dropdown-divider" /></li>
-                }
-                <li>
-                    <button class="dropdown-item" type="button" @onclick="OnDownloadPdf">
-                        <i class="bi bi-file-earmark-pdf-fill me-2"></i> Descargar PDF
-                    </button>
-                </li>
-                <li>
-                    <button class="dropdown-item" type="button" @onclick="OnGoBack">
-                        <i class="bi bi-arrow-left me-2"></i> Volver al listado
-                    </button>
-                </li>
-            </ul>
+                </ul>
+            </div>
         </div>
     </div>
-</div>
+
+    <div class="invd-topbar__stats d-flex flex-wrap gap-2 mt-3">
+        <span class="invd-chip">
+            <i class="bi bi-calendar-event"></i>
+            @Invoice?.InvoiceDate.ToString("dd/MM/yyyy")
+        </span>
+        <span class="invd-chip invd-chip--primary">
+            <i class="bi bi-receipt"></i>
+            Total @Invoice?.Total.ToString("C2", new System.Globalization.CultureInfo("en-US"))
+        </span>
+        <span class="invd-chip invd-chip--warning">
+            <i class="bi bi-hourglass-split"></i>
+            Saldo @Invoice?.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))
+        </span>
+        <span class="invd-chip">
+            <i class="bi bi-wallet2"></i>
+            @Invoice?.PaymentType
+        </span>
+    </div>
+</section>
 
 <style>
-    .invoice-topbar__meta .breadcrumb {
+    .invd-topbar {
+        background: var(--invd-surface);
+        border: 1px solid var(--invd-border);
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .invd-topbar__meta .breadcrumb {
         margin-bottom: 0.35rem;
     }
 
-    .invoice-topbar__meta h1 {
-        font-size: 2rem;
-        letter-spacing: -0.02em;
+    .invd-topbar__hint {
+        color: var(--invd-muted);
+        font-size: 0.92rem;
     }
 
-    .invoice-topbar__actions .btn {
+    .invd-topbar__actions .btn {
         white-space: nowrap;
     }
 
+    .invd-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid var(--invd-border);
+        border-radius: 999px;
+        padding: 0.3rem 0.65rem;
+        background: var(--invd-surface-soft);
+        color: var(--invd-text);
+        font-size: 0.82rem;
+        font-weight: 500;
+    }
+
+    .invd-chip--primary {
+        border-color: color-mix(in srgb, var(--invd-primary) 35%, white);
+        background: var(--invd-primary-soft);
+        color: var(--invd-primary);
+    }
+
+    .invd-chip--warning {
+        border-color: color-mix(in srgb, var(--invd-warning) 35%, white);
+        background: var(--invd-warning-soft);
+        color: var(--invd-warning);
+    }
+
     @@media (max-width: 768px) {
-        .invoice-topbar__actions {
+        .invd-topbar {
+            padding: 14px;
+        }
+
+        .invd-topbar__actions {
             width: 100%;
             justify-content: flex-end;
         }

@@ -1,115 +1,229 @@
-﻿@* Sidebar de la vista de detalles: card Detalles + Resumen Financiero + Acción Factura *@
 @using fs_front.DTO
 
 @{
     var statusClass = Status switch
     {
-        "Borrador" => "bg-secondary",
-        "Enviada" => "bg-primary",
-        "Aceptada" => "bg-success",
-        "Rechazada" => "bg-danger",
-        "Expirada" => "bg-warning",
-        _ => "bg-secondary"
+        "Borrador" => "text-bg-secondary",
+        "Enviada" => "text-bg-primary",
+        "Aceptada" => "text-bg-success",
+        "Rechazada" => "text-bg-danger",
+        "Expirada" => "text-bg-warning",
+        _ => "text-bg-secondary"
     };
 }
 
-@* ── Card: Detalles ── *@
-<div class="card mb-4">
-    <div class="card-header">
-        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Detalles</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <small class="text-muted">Número de Cotización</small>
-            <div class="fw-bold">@QuoteNumber</div>
-        </div>
-        <div class="mb-3">
-            <small class="text-muted">Fecha de Creación</small>
-            <div>@CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
-        </div>
-        @if (ValidUntil.HasValue)
-        {
-            <div class="mb-3">
-                <small class="text-muted">Válida Hasta</small>
-                <div>@ValidUntil.Value.ToString("dd/MM/yyyy")</div>
-                @if (ValidUntil.Value < DateTime.Now)
-                {
-                    <small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Expirada</small>
-                }
-            </div>
-        }
-        <div class="mb-3">
-            <small class="text-muted">Estado</small>
-            <div><span class="badge @statusClass">@Status</span></div>
-        </div>
-        <div>
-            <small class="text-muted">Creado Por</small>
-            <div>@CreatedByUserName</div>
-        </div>
-    </div>
-</div>
+<section class="qd-panel">
+    <header class="qd-panel__header d-flex align-items-center gap-2">
+        <span class="qd-icon-wrap"><i class="bi bi-info-circle"></i></span>
+        <h6 class="mb-0">Detalle de cotización</h6>
+    </header>
 
-@* ── Card: Resumen Financiero ── *@
-<div class="card mb-4">
-    <div class="card-header bg-info text-white">
-        <h6 class="mb-0"><i class="bi bi-calculator"></i> Resumen Financiero</h6>
+    <div class="qd-panel__body">
+        <dl class="qd-kv mb-0">
+            <div><dt>Número</dt><dd>@QuoteNumber</dd></div>
+            <div><dt>Creación</dt><dd>@CreatedAt.ToString("dd/MM/yyyy HH:mm")</dd></div>
+            @if (ValidUntil.HasValue)
+            {
+                <div>
+                    <dt>Vigencia</dt>
+                    <dd>
+                        @ValidUntil.Value.ToString("dd/MM/yyyy")
+                        @if (ValidUntil.Value < DateTime.Now)
+                        {
+                            <small class="text-danger d-block">Expirada</small>
+                        }
+                    </dd>
+                </div>
+            }
+            <div><dt>Estado</dt><dd><span class="badge @statusClass">@Status</span></dd></div>
+            <div><dt>Creado por</dt><dd>@CreatedByUserName</dd></div>
+        </dl>
     </div>
-    <div class="card-body">
-        <div class="mb-2">
-            <small class="text-muted">Número de Artículos</small>
-            <div class="fw-bold">@ItemCount</div>
-        </div>
-        @if (TicketCount > 0)
-        {
-            <div class="mb-2">
-                <small class="text-muted">Tickets Asociados</small>
-                <div class="fw-bold text-info">@TicketCount</div>
-            </div>
-        }
-        <div class="mb-2">
-            <small class="text-muted">Subtotal</small>
-            <div class="fw-bold">$@Subtotal.ToString("N2")</div>
-        </div>
-        <div class="mb-2">
-            <small class="text-muted">IVA</small>
-            <div class="fw-bold">$@Tax.ToString("N2")</div>
-        </div>
-        <hr />
-        <div>
-            <small class="text-muted">Total</small>
-            <div class="h4 text-success mb-0">$@Total.ToString("N2")</div>
-        </div>
-    </div>
-</div>
+</section>
 
-@* ── Card: Acción factura ── *@
+<section class="qd-panel">
+    <header class="qd-panel__header d-flex align-items-center gap-2">
+        <span class="qd-icon-wrap"><i class="bi bi-calculator"></i></span>
+        <h6 class="mb-0">Resumen financiero</h6>
+    </header>
+
+    <div class="qd-panel__body">
+        <div class="qd-metrics-grid">
+            <div class="qd-metric"><span>Artículos</span><strong>@ItemCount</strong></div>
+            @if (TicketCount > 0)
+            {
+                <div class="qd-metric"><span>Tickets</span><strong>@TicketCount</strong></div>
+            }
+        </div>
+
+        <div class="qd-finance-rows mt-3">
+            <div><span>Subtotal</span><strong>$@Subtotal.ToString("N2")</strong></div>
+            <div><span>IVA</span><strong>$@Tax.ToString("N2")</strong></div>
+            <div class="qd-finance-rows__total"><span>Total</span><strong>$@Total.ToString("N2")</strong></div>
+        </div>
+    </div>
+</section>
+
 @if (Status == "Aceptada" && !HasInvoice)
 {
-    <div class="card border-warning">
-        <div class="card-header bg-warning text-dark">
-            <h6 class="mb-0"><i class="bi bi-lightning-fill"></i> Acción Disponible</h6>
-        </div>
-        <div class="card-body text-center">
-            <i class="bi bi-file-earmark-arrow-up fs-1 text-warning mb-3"></i>
-            <p class="mb-3">Esta cotización ha sido aceptada y puede convertirse en factura.</p>
-            <button class="btn btn-warning w-100" @onclick="OnConvertToInvoice">
-                <i class="bi bi-file-earmark-arrow-up-fill"></i> Convertir a Factura
+    <section class="qd-state qd-state--warning">
+        <i class="bi bi-lightning-fill"></i>
+        <div class="flex-grow-1">
+            <h6 class="mb-1">Lista para facturar</h6>
+            <p class="mb-2">Esta cotización ya puede convertirse en factura.</p>
+            <button class="btn btn-warning btn-sm w-100" @onclick="OnConvertToInvoice">
+                <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Convertir a factura
             </button>
         </div>
-    </div>
+    </section>
 }
 else if (Status == "Aceptada" && HasInvoice)
 {
-    <div class="card border-info">
-        <div class="card-header bg-info text-white">
-            <h6 class="mb-0"><i class="bi bi-check-circle-fill"></i> Facturada</h6>
+    <section class="qd-state qd-state--info">
+        <i class="bi bi-check-circle-fill"></i>
+        <div>
+            <h6 class="mb-1">Cotización facturada</h6>
+            <p class="mb-0">Esta cotización ya fue convertida en factura.</p>
         </div>
-        <div class="card-body text-center">
-            <i class="bi bi-receipt-cutoff fs-1 text-info mb-3"></i>
-            <p class="mb-0">Esta cotización ya ha sido convertida en factura.</p>
-        </div>
-    </div>
+    </section>
 }
+
+<style>
+    .qd-kv {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .qd-kv > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.8rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--qd-border);
+    }
+
+    .qd-kv > div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .qd-kv dt {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--qd-muted);
+        font-weight: 500;
+    }
+
+    .qd-kv dd {
+        margin: 0;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .qd-metrics-grid {
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    }
+
+    .qd-metric {
+        border: 1px solid var(--qd-border);
+        border-radius: 10px;
+        background: var(--qd-surface-soft);
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .qd-metric span {
+        font-size: 0.74rem;
+        color: var(--qd-muted);
+    }
+
+    .qd-metric strong {
+        font-size: 0.9rem;
+        color: var(--qd-text);
+    }
+
+    .qd-finance-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .qd-finance-rows > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.86rem;
+        color: var(--qd-muted);
+    }
+
+    .qd-finance-rows > div strong {
+        color: var(--qd-text);
+    }
+
+    .qd-finance-rows__total {
+        border-top: 1px solid var(--qd-border-strong);
+        margin-top: 0.35rem;
+        padding-top: 0.5rem;
+    }
+
+    .qd-finance-rows__total strong {
+        color: #067647;
+        font-size: 1rem;
+    }
+
+    .qd-state {
+        border-radius: 12px;
+        border: 1px solid var(--qd-border);
+        padding: 0.9rem;
+        display: flex;
+        gap: 0.7rem;
+        align-items: flex-start;
+        background: var(--qd-surface);
+        box-shadow: var(--qd-shadow-sm);
+    }
+
+    .qd-state > i {
+        font-size: 1.1rem;
+        margin-top: 0.1rem;
+    }
+
+    .qd-state h6 {
+        font-size: 0.95rem;
+        font-weight: 700;
+    }
+
+    .qd-state p {
+        color: var(--qd-muted);
+        font-size: 0.88rem;
+    }
+
+    .qd-state--warning {
+        border-color: rgba(181, 71, 8, 0.34);
+        background: #fff7ed;
+    }
+
+    .qd-state--warning > i,
+    .qd-state--warning h6 {
+        color: #b54708;
+    }
+
+    .qd-state--info {
+        border-color: rgba(11, 94, 168, 0.3);
+        background: #eff8ff;
+    }
+
+    .qd-state--info > i,
+    .qd-state--info h6 {
+        color: #0b5ea8;
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public string QuoteNumber { get; set; } = string.Empty;
@@ -123,6 +237,5 @@ else if (Status == "Aceptada" && HasInvoice)
     [Parameter] public decimal Tax { get; set; }
     [Parameter] public decimal Total { get; set; }
     [Parameter] public bool HasInvoice { get; set; }
-
     [Parameter] public EventCallback OnConvertToInvoice { get; set; }
 }

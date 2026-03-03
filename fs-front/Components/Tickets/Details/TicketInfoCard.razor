@@ -1,13 +1,55 @@
-﻿@* Card de descripción del ticket en la vista de detalles *@
+<section class="td-panel">
+    <header class="td-panel__header d-flex align-items-center gap-2">
+        <span class="td-icon-wrap"><i class="bi bi-info-circle"></i></span>
+        <h5 class="mb-0">Descripción</h5>
+    </header>
 
-<div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Descripción</h5>
+    <div class="td-panel__body">
+        <p class="mb-0 td-description">@Description</p>
     </div>
-    <div class="card-body">
-        <p class="mb-0">@Description</p>
-    </div>
-</div>
+</section>
+
+<style>
+    .td-panel {
+        border: 1px solid var(--td-border);
+        border-radius: 14px;
+        background: var(--td-surface);
+        box-shadow: var(--td-shadow-sm);
+    }
+
+    .td-panel__header {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--td-border);
+    }
+
+    .td-panel__header h5 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--td-text);
+    }
+
+    .td-panel__body {
+        padding: 1rem;
+    }
+
+    .td-icon-wrap {
+        width: 1.7rem;
+        height: 1.7rem;
+        border-radius: 999px;
+        background: #e8efff;
+        color: #1d4ed8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+
+    .td-description {
+        color: var(--td-text);
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public string Description { get; set; } = string.Empty;

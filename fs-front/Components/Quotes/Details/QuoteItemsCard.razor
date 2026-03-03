@@ -1,14 +1,18 @@
-﻿@* Card de artículos de la cotización *@
 @using fs_front.DTO
 
-<div class="card mb-4">
-    <div class="card-header bg-success text-white">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Artículos de la Cotización</h5>
-    </div>
-    <div class="card-body">
+<section class="qd-panel">
+    <header class="qd-panel__header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 d-flex align-items-center gap-2">
+            <span class="qd-icon-wrap"><i class="bi bi-list-ul"></i></span>
+            Artículos de la cotización
+        </h5>
+        <span class="qd-count">@Items.Count</span>
+    </header>
+
+    <div class="qd-panel__body">
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead class="table-light">
+            <table class="table table-sm align-middle qd-table mb-0">
+                <thead>
                     <tr>
                         <th>Descripción</th>
                         <th class="text-center">Cantidad</th>
@@ -21,62 +25,132 @@
                     {
                         <tr>
                             <td>
-                                <div>@item.Description</div>
+                                <div class="fw-medium">@item.Description</div>
                                 @if (!string.IsNullOrEmpty(item.ServiceName))
                                 {
-                                    <small class="text-muted"><i class="bi bi-gear"></i> @item.ServiceName</small>
+                                    <small class="qd-subline"><i class="bi bi-gear me-1"></i>@item.ServiceName</small>
                                 }
                                 @if (item.TicketId.HasValue && item.TicketId.Value > 0)
                                 {
-                                    <br />
-                                    <small class="text-info">
-                                        <i class="bi bi-ticket-perforated"></i> Ticket #@item.TicketId: @item.TicketTitle
+                                    <small class="qd-subline qd-subline--accent d-block">
+                                        <i class="bi bi-ticket-perforated me-1"></i>
+                                        Ticket #@item.TicketId: @item.TicketTitle
                                     </small>
                                 }
                             </td>
                             <td class="text-center">@item.Quantity</td>
                             <td class="text-end">$@item.UnitPrice.ToString("N2")</td>
-                            <td class="text-end fw-bold">$@item.Subtotal.ToString("N2")</td>
+                            <td class="text-end fw-semibold">$@item.Subtotal.ToString("N2")</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
 
-        <div class="row mt-3">
-            <div class="col-md-8"></div>
-            <div class="col-md-4">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Subtotal:</span><strong>$@Subtotal.ToString("N2")</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>IVA (16%):</span><strong>$@Tax.ToString("N2")</strong>
-                        </div>
-                        <hr />
-                        <div class="d-flex justify-content-between">
-                            <span class="h5">Total:</span>
-                            <strong class="h5 text-success">$@Total.ToString("N2")</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="qd-totals mt-3 ms-auto">
+            <div class="qd-total-row"><span>Subtotal</span><strong>$@Subtotal.ToString("N2")</strong></div>
+            <div class="qd-total-row"><span>IVA (16%)</span><strong>$@Tax.ToString("N2")</strong></div>
+            <div class="qd-total-row qd-total-row--grand"><span>Total</span><strong>$@Total.ToString("N2")</strong></div>
         </div>
     </div>
-</div>
+</section>
 
 @if (!string.IsNullOrEmpty(Notes))
 {
-    <div class="card">
-        <div class="card-header bg-warning">
-            <h6 class="mb-0"><i class="bi bi-sticky"></i> Notas Adicionales</h6>
-        </div>
-        <div class="card-body">
-            <p class="mb-0">@Notes</p>
-        </div>
-    </div>
+    <section class="qd-note">
+        <h6 class="mb-2 d-flex align-items-center gap-2">
+            <span class="qd-note__icon"><i class="bi bi-sticky"></i></span>
+            Notas adicionales
+        </h6>
+        <p class="mb-0">@Notes</p>
+    </section>
 }
+
+<style>
+    .qd-table thead th {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--qd-muted);
+        background: var(--qd-surface-soft);
+        border-bottom-color: var(--qd-border);
+    }
+
+    .qd-table td {
+        border-bottom-color: var(--qd-border);
+        color: var(--qd-text);
+        padding-top: 0.7rem;
+        padding-bottom: 0.7rem;
+    }
+
+    .qd-subline {
+        font-size: 0.78rem;
+        color: var(--qd-muted);
+    }
+
+    .qd-subline--accent {
+        color: #1d4ed8;
+    }
+
+    .qd-totals {
+        width: min(100%, 320px);
+        border: 1px solid var(--qd-border);
+        border-radius: 12px;
+        background: var(--qd-surface-soft);
+        padding: 0.75rem;
+    }
+
+    .qd-total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.35rem 0;
+        color: var(--qd-muted);
+        font-size: 0.9rem;
+    }
+
+    .qd-total-row strong {
+        color: var(--qd-text);
+    }
+
+    .qd-total-row--grand {
+        margin-top: 0.2rem;
+        border-top: 1px solid var(--qd-border-strong);
+        padding-top: 0.55rem;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .qd-total-row--grand strong {
+        color: #067647;
+    }
+
+    .qd-note {
+        border: 1px solid rgba(181, 71, 8, 0.28);
+        background: #fff7ed;
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+        color: var(--qd-text);
+    }
+
+    .qd-note p {
+        color: #7a2e0e;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+
+    .qd-note__icon {
+        width: 1.55rem;
+        height: 1.55rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(181, 71, 8, 0.14);
+        color: #b54708;
+        font-size: 0.8rem;
+    }
+</style>
 
 @code {
     [Parameter, EditorRequired] public List<QuoteItemDto> Items { get; set; } = new();

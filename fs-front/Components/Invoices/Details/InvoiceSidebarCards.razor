@@ -1,144 +1,236 @@
 ﻿@using fs_front.DTO
 
-@* ── Card Detalles ── *@
-<div class="card mb-4">
-    <div class="card-header">
-        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Detalles</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <small class="text-muted">Número de Factura</small>
-            <div class="fw-bold">@Invoice?.InvoiceNumber</div>
-        </div>
-        <div class="mb-3">
-            <small class="text-muted">Tipo</small>
+<section class="invd-panel">
+    <header class="invd-panel__header d-flex align-items-center gap-2">
+        <span class="invd-icon-wrap"><i class="bi bi-info-circle"></i></span>
+        <h6 class="mb-0">Detalle de factura</h6>
+    </header>
+    <div class="invd-panel__body">
+        <dl class="invd-kv mb-0">
+            <div><dt>Número</dt><dd>@Invoice?.InvoiceNumber</dd></div>
             <div>
-                <span class="badge @(Invoice?.InvoiceType == "Monthly" ? "bg-info" : "bg-secondary")">
-                    @(Invoice?.InvoiceType == "Monthly" ? "Mensual" : "Evento")
-                </span>
+                <dt>Tipo</dt>
+                <dd>
+                    <span class="badge @(Invoice?.InvoiceType == "Monthly" ? "text-bg-primary" : "text-bg-secondary")">
+                        @(Invoice?.InvoiceType == "Monthly" ? "Mensual" : "Evento")
+                    </span>
+                </dd>
             </div>
-        </div>
-        <div class="mb-3">
-            <small class="text-muted">Fecha de Emisión</small>
-            <div>@Invoice?.InvoiceDate.ToString("dd/MM/yyyy")</div>
-        </div>
-        @if (Invoice?.DueDate.HasValue == true)
-        {
-            <div class="mb-3">
-                <small class="text-muted">Fecha de Vencimiento</small>
-                <div>@Invoice.DueDate!.Value.ToString("dd/MM/yyyy")</div>
+            <div><dt>Emisión</dt><dd>@Invoice?.InvoiceDate.ToString("dd/MM/yyyy")</dd></div>
+            @if (Invoice?.DueDate.HasValue == true)
+            {
+                <div><dt>Vencimiento</dt><dd>@Invoice.DueDate!.Value.ToString("dd/MM/yyyy")</dd></div>
+            }
+            @if (!string.IsNullOrEmpty(Invoice?.PaymentMethod))
+            {
+                <div><dt>Método</dt><dd>@Invoice.PaymentMethod</dd></div>
+            }
+            <div>
+                <dt>Estado</dt>
+                <dd><InvoiceStatusBadge Status="@(Invoice?.Status ?? "")" /></dd>
             </div>
-        }
-        @if (!string.IsNullOrEmpty(Invoice?.PaymentMethod))
-        {
-            <div class="mb-3">
-                <small class="text-muted">Método de Pago</small>
-                <div>@Invoice.PaymentMethod</div>
-            </div>
-        }
-        <div class="mb-3">
-            <small class="text-muted">Estado</small>
-            <div><InvoiceStatusBadge Status="@(Invoice?.Status ?? "")" /></div>
-        </div>
-        <div>
-            <small class="text-muted">Creado Por</small>
-            <div>@Invoice?.CreatedByUserName</div>
-        </div>
+            <div><dt>Creado por</dt><dd>@Invoice?.CreatedByUserName</dd></div>
+        </dl>
     </div>
-</div>
+</section>
 
-@* ── Card Resumen Financiero ── *@
-<div class="card mb-4">
-    <div class="card-header bg-info text-white">
-        <h6 class="mb-0"><i class="bi bi-calculator"></i> Resumen Financiero</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-2">
-            <small class="text-muted">Número de Artículos</small>
-            <div class="fw-bold">@Invoice?.Items.Count</div>
-        </div>
-        @if (TicketsCount > 0)
-        {
-            <div class="mb-2">
-                <small class="text-muted">Tickets Asociados</small>
-                <div class="fw-bold text-info">@TicketsCount</div>
-            </div>
+<section class="invd-panel">
+    <header class="invd-panel__header d-flex align-items-center gap-2">
+        <span class="invd-icon-wrap"><i class="bi bi-calculator"></i></span>
+        <h6 class="mb-0">Resumen financiero</h6>
+    </header>
+    <div class="invd-panel__body">
+        <div class="invd-metrics-grid">
+            <div class="invd-metric"><span>Artículos</span><strong>@Invoice?.Items.Count</strong></div>
+            @if (TicketsCount > 0)
+            {
+                <div class="invd-metric"><span>Tickets</span><strong>@TicketsCount</strong></div>
+            }
             @if (TotalHours > 0)
             {
-                <div class="mb-2">
-                    <small class="text-muted">Total Horas</small>
-                    <div class="fw-bold">@TotalHours.ToString("0.0") h</div>
-                </div>
+                <div class="invd-metric"><span>Horas</span><strong>@TotalHours.ToString("0.0") h</strong></div>
             }
-        }
-        <div class="mb-2">
-            <small class="text-muted">Subtotal</small>
-            <div class="fw-bold">@Invoice?.Subtotal.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
         </div>
-        <div class="mb-2">
-            <small class="text-muted">IVA (16%)</small>
-            <div class="fw-bold">@Invoice?.Tax.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
-        </div>
-        <hr />
-        <div class="mb-2">
-            <small class="text-muted">Total</small>
-            <div class="h4 text-success mb-0">@Invoice?.Total.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
-        </div>
-        @if (Invoice?.PaidAmount > 0)
-        {
-            <div class="mb-2">
-                <small class="text-muted">Pagado</small>
-                <div class="h5 text-success mb-0">@Invoice.PaidAmount.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
-            </div>
-        }
-        @if (Invoice?.Balance > 0)
-        {
-            <div>
-                <small class="text-muted">Saldo Pendiente</small>
-                <div class="h5 text-warning mb-0">@Invoice.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))</div>
-            </div>
-        }
-    </div>
-</div>
 
-@* ── Card Estado de Pago ── *@
+        <div class="invd-finance-rows mt-3">
+            <div><span>Subtotal</span><strong>@Invoice?.Subtotal.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong></div>
+            <div><span>IVA (16%)</span><strong>@Invoice?.Tax.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong></div>
+            <div class="invd-finance-rows__total"><span>Total</span><strong>@Invoice?.Total.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong></div>
+            @if (Invoice?.PaidAmount > 0)
+            {
+                <div><span>Pagado</span><strong class="text-success">@Invoice.PaidAmount.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong></div>
+            }
+            @if (Invoice?.Balance > 0)
+            {
+                <div><span>Saldo</span><strong class="text-warning">@Invoice.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong></div>
+            }
+        </div>
+    </div>
+</section>
+
 @if (Invoice?.Status == "Pagada")
 {
-    <div class="card border-success">
-        <div class="card-header bg-success text-white">
-            <h6 class="mb-0"><i class="bi bi-check-circle-fill"></i> Pagada</h6>
-        </div>
-        <div class="card-body text-center">
-            <i class="bi bi-check-circle fs-1 text-success mb-3"></i>
-            <p class="mb-0">Esta factura ha sido pagada completamente.</p>
+    <section class="invd-payment-state invd-payment-state--paid">
+        <i class="bi bi-check-circle-fill"></i>
+        <div>
+            <h6 class="mb-1">Factura pagada</h6>
+            <p class="mb-0">Esta factura ya fue liquidada.</p>
             @if (Invoice.PaidDate.HasValue)
             {
-                <small class="text-muted">
-                    Fecha de pago: @Invoice.PaidDate.Value.ToString("dd/MM/yyyy")
-                </small>
+                <small>Fecha de pago: @Invoice.PaidDate.Value.ToString("dd/MM/yyyy")</small>
             }
         </div>
-    </div>
+    </section>
 }
 else if (Invoice?.Status == "Pendiente" && Invoice.Balance > 0)
 {
-    <div class="card border-warning">
-        <div class="card-header bg-warning text-dark">
-            <h6 class="mb-0">
-                <i class="bi bi-exclamation-triangle-fill"></i> Pendiente de Pago
-            </h6>
-        </div>
-        <div class="card-body text-center">
-            <i class="bi bi-clock-history fs-1 text-warning mb-3"></i>
-            <p class="mb-3">
-                Saldo pendiente: <strong>@Invoice.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong>
-            </p>
-            <button class="btn btn-success w-100" @onclick="OnRegisterPayment">
-                <i class="bi bi-cash-coin"></i> Registrar Pago
+    <section class="invd-payment-state invd-payment-state--pending">
+        <i class="bi bi-hourglass-split"></i>
+        <div class="flex-grow-1">
+            <h6 class="mb-1">Pago pendiente</h6>
+            <p class="mb-2">Saldo actual: <strong>@Invoice.Balance.ToString("C2", new System.Globalization.CultureInfo("en-US"))</strong></p>
+            <button class="btn btn-success btn-sm w-100" @onclick="OnRegisterPayment">
+                <i class="bi bi-cash-coin me-1"></i> Registrar pago
             </button>
         </div>
-    </div>
+    </section>
 }
+
+<style>
+    .invd-kv {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .invd-kv > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.8rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--invd-border);
+    }
+
+    .invd-kv > div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .invd-kv dt {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--invd-muted);
+        font-weight: 500;
+    }
+
+    .invd-kv dd {
+        margin: 0;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .invd-metrics-grid {
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    }
+
+    .invd-metric {
+        border: 1px solid var(--invd-border);
+        border-radius: 10px;
+        background: var(--invd-surface-soft);
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .invd-metric span {
+        font-size: 0.74rem;
+        color: var(--invd-muted);
+    }
+
+    .invd-metric strong {
+        font-size: 0.9rem;
+        color: var(--invd-text);
+    }
+
+    .invd-finance-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .invd-finance-rows > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.86rem;
+        color: var(--invd-muted);
+    }
+
+    .invd-finance-rows > div strong {
+        color: var(--invd-text);
+    }
+
+    .invd-finance-rows__total {
+        border-top: 1px solid var(--invd-border-strong);
+        margin-top: 0.35rem;
+        padding-top: 0.5rem;
+    }
+
+    .invd-finance-rows__total strong {
+        color: var(--invd-success);
+        font-size: 1rem;
+    }
+
+    .invd-payment-state {
+        border-radius: 12px;
+        border: 1px solid var(--invd-border);
+        padding: 0.9rem;
+        display: flex;
+        gap: 0.7rem;
+        align-items: flex-start;
+        background: var(--invd-surface);
+    }
+
+    .invd-payment-state > i {
+        font-size: 1.1rem;
+        margin-top: 0.1rem;
+    }
+
+    .invd-payment-state h6 {
+        font-size: 0.95rem;
+        font-weight: 700;
+    }
+
+    .invd-payment-state p,
+    .invd-payment-state small {
+        color: var(--invd-muted);
+    }
+
+    .invd-payment-state--paid {
+        border-color: rgba(6, 118, 71, 0.34);
+        background: var(--invd-success-soft);
+    }
+
+    .invd-payment-state--paid > i,
+    .invd-payment-state--paid h6 {
+        color: var(--invd-success);
+    }
+
+    .invd-payment-state--pending {
+        border-color: rgba(181, 71, 8, 0.34);
+        background: var(--invd-warning-soft);
+    }
+
+    .invd-payment-state--pending > i,
+    .invd-payment-state--pending h6 {
+        color: var(--invd-warning);
+    }
+</style>
 
 @code {
     [Parameter] public InvoiceDetailDto? Invoice         { get; set; }
