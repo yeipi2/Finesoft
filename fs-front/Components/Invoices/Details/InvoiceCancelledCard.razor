@@ -26,7 +26,7 @@
 
 <style>
     .invd-cancelled {
-        border: 1px solid rgba(180, 35, 24, 0.3);
+        border: 1px solid var(--invd-danger-border);
         background: var(--invd-danger-soft);
         border-radius: 12px;
         padding: 0.85rem 1rem;
@@ -45,7 +45,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: rgba(180, 35, 24, 0.16);
+        background: color-mix(in srgb, var(--invd-danger) 20%, transparent);
         color: var(--invd-danger);
         font-size: 0.78rem;
     }
@@ -53,14 +53,14 @@
     .invd-cancelled__label {
         display: block;
         font-size: 0.74rem;
-        color: #8a2f2a;
+        color: var(--invd-danger);
         text-transform: uppercase;
         letter-spacing: 0.04em;
         margin-bottom: 0.15rem;
     }
 
     .invd-cancelled__value {
-        color: #7a271a;
+        color: var(--invd-danger-ink);
         font-weight: 600;
         font-size: 0.92rem;
     }

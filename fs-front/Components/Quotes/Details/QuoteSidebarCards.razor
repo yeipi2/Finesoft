@@ -174,7 +174,7 @@ else if (Status == "Aceptada" && HasInvoice)
     }
 
     .qd-finance-rows__total strong {
-        color: #067647;
+        color: var(--qd-success);
         font-size: 1rem;
     }
 
@@ -205,23 +205,23 @@ else if (Status == "Aceptada" && HasInvoice)
     }
 
     .qd-state--warning {
-        border-color: rgba(181, 71, 8, 0.34);
-        background: #fff7ed;
+        border-color: var(--qd-warning-border);
+        background: var(--qd-warning-soft);
     }
 
     .qd-state--warning > i,
     .qd-state--warning h6 {
-        color: #b54708;
+        color: var(--qd-warning);
     }
 
     .qd-state--info {
-        border-color: rgba(11, 94, 168, 0.3);
-        background: #eff8ff;
+        border-color: var(--qd-info-border);
+        background: var(--qd-info-soft);
     }
 
     .qd-state--info > i,
     .qd-state--info h6 {
-        color: #0b5ea8;
+        color: var(--qd-info);
     }
 </style>
 

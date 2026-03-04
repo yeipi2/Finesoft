@@ -212,7 +212,7 @@ else if (Invoice?.Status == "Pendiente" && Invoice.Balance > 0)
     }
 
     .invd-payment-state--paid {
-        border-color: rgba(6, 118, 71, 0.34);
+        border-color: var(--invd-success-border);
         background: var(--invd-success-soft);
     }
 
@@ -222,7 +222,7 @@ else if (Invoice?.Status == "Pendiente" && Invoice.Balance > 0)
     }
 
     .invd-payment-state--pending {
-        border-color: rgba(181, 71, 8, 0.34);
+        border-color: var(--invd-warning-border);
         background: var(--invd-warning-soft);
     }
 

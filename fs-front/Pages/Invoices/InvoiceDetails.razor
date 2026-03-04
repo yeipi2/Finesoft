@@ -75,17 +75,56 @@ else
         --invd-border-strong: rgba(16, 24, 40, 0.22);
         --invd-primary: #155eef;
         --invd-primary-soft: #eff4ff;
+        --invd-primary-border: rgba(21, 94, 239, 0.3);
+        --invd-info: #0b5ea8;
+        --invd-info-soft: #e9f5ff;
+        --invd-info-border: rgba(11, 94, 168, 0.3);
         --invd-success: #067647;
         --invd-success-soft: #ecfdf3;
+        --invd-success-border: rgba(6, 118, 71, 0.34);
         --invd-warning: #b54708;
         --invd-warning-soft: #fff7ed;
+        --invd-warning-border: rgba(181, 71, 8, 0.34);
+        --invd-warning-ink: #7a2e0e;
         --invd-danger: #b42318;
         --invd-danger-soft: #fef3f2;
+        --invd-danger-border: rgba(180, 35, 24, 0.3);
+        --invd-danger-ink: #7a271a;
         --invd-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 3px 10px rgba(16, 24, 40, 0.04);
         --invd-shadow-md: 0 2px 6px rgba(16, 24, 40, 0.07), 0 10px 24px rgba(16, 24, 40, 0.06);
         color: var(--invd-text);
         background: radial-gradient(circle at top right, #edf3ff 0%, var(--invd-bg) 40%, var(--invd-bg) 100%);
         border-radius: 16px;
+    }
+
+    [data-theme="dark"] .invoice-detail-page {
+        --invd-bg: #0f1525;
+        --invd-surface: #141d32;
+        --invd-surface-soft: #19243c;
+        --invd-text: #e5ecf6;
+        --invd-muted: #9ba8bf;
+        --invd-border: rgba(155, 168, 191, 0.28);
+        --invd-border-strong: rgba(155, 168, 191, 0.42);
+        --invd-primary: #7aa2ff;
+        --invd-primary-soft: #1a2a4f;
+        --invd-primary-border: rgba(122, 162, 255, 0.45);
+        --invd-info: #7dc6ff;
+        --invd-info-soft: #17334f;
+        --invd-info-border: rgba(125, 198, 255, 0.45);
+        --invd-success: #5cd6a3;
+        --invd-success-soft: #183b33;
+        --invd-success-border: rgba(92, 214, 163, 0.45);
+        --invd-warning: #f5c07e;
+        --invd-warning-soft: #3b2b1a;
+        --invd-warning-border: rgba(245, 192, 126, 0.5);
+        --invd-warning-ink: #f3cca0;
+        --invd-danger: #ff8f87;
+        --invd-danger-soft: #3f2326;
+        --invd-danger-border: rgba(255, 143, 135, 0.5);
+        --invd-danger-ink: #ffb0aa;
+        --invd-shadow-sm: 0 6px 16px rgba(0, 0, 0, 0.35);
+        --invd-shadow-md: 0 10px 26px rgba(0, 0, 0, 0.42);
+        background: radial-gradient(circle at top right, #1a2742 0%, var(--invd-bg) 40%, var(--invd-bg) 100%);
     }
 
     .invoice-detail-page .card {
@@ -112,6 +151,18 @@ else
     .invoice-detail-page .invd-ticket-row:hover {
         box-shadow: var(--invd-shadow-md);
         transition: box-shadow 0.18s ease;
+    }
+
+    .invoice-detail-page .btn-outline-dark {
+        color: var(--invd-text);
+        border-color: var(--invd-border-strong);
+        background: var(--invd-surface-soft);
+    }
+
+    .invoice-detail-page .btn-outline-dark:hover {
+        color: var(--invd-text);
+        border-color: var(--invd-primary-border);
+        background: var(--invd-primary-soft);
     }
 
     @@media (max-width: 992px) {

@@ -89,7 +89,7 @@
     }
 
     .qd-subline--accent {
-        color: #1d4ed8;
+        color: var(--qd-primary);
     }
 
     .qd-totals {
@@ -122,19 +122,19 @@
     }
 
     .qd-total-row--grand strong {
-        color: #067647;
+        color: var(--qd-success);
     }
 
     .qd-note {
-        border: 1px solid rgba(181, 71, 8, 0.28);
-        background: #fff7ed;
+        border: 1px solid var(--qd-warning-border);
+        background: var(--qd-warning-soft);
         border-radius: 12px;
         padding: 0.9rem 1rem;
         color: var(--qd-text);
     }
 
     .qd-note p {
-        color: #7a2e0e;
+        color: var(--qd-warning-ink);
         font-size: 0.92rem;
         line-height: 1.5;
     }
@@ -146,8 +146,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: rgba(181, 71, 8, 0.14);
-        color: #b54708;
+        background: color-mix(in srgb, var(--qd-warning) 18%, transparent);
+        color: var(--qd-warning);
         font-size: 0.8rem;
     }
 </style>

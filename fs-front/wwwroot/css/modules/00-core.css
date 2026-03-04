@@ -33,6 +33,16 @@ html, body {
     --theme-toggle-color: #1a1a2e;
     --cta-text: #1a1a2e;
     --cta-subtitle: #6b7280;
+
+    --app-canvas: #f6f7fb;
+    --app-surface: #ffffff;
+    --app-surface-alt: #f8f9fc;
+    --app-surface-elevated: #ffffff;
+    --app-border-soft: rgba(16, 24, 40, 0.08);
+    --app-border-strong: rgba(16, 24, 40, 0.14);
+    --app-text: #101828;
+    --app-text-muted: #667085;
+    --app-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 12px rgba(16, 24, 40, 0.06);
 }
 
 /* ============================================================
@@ -57,6 +67,16 @@ html, body {
     --theme-toggle-color: #f1f1f1;
     --cta-text: #f1f1f1;
     --cta-subtitle: #a0aec0;
+
+    --app-canvas: #0f1525;
+    --app-surface: #17223a;
+    --app-surface-alt: #1b2742;
+    --app-surface-elevated: #1e2a45;
+    --app-border-soft: rgba(156, 169, 194, 0.24);
+    --app-border-strong: rgba(156, 169, 194, 0.38);
+    --app-text: #e5ecf6;
+    --app-text-muted: #9aa8c0;
+    --app-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 /* ============================================================

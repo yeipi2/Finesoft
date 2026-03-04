@@ -334,50 +334,45 @@
     /* ═══════════════════════════════════════════
        DARK MODE
     ═══════════════════════════════════════════ */
-    [data-theme="dark"] .card,
-    [data-theme="dark"] .card-header.bg-white {
-        background: #1e1e35 !important;
-        border-color: #2d2d4e !important;
-        color: #f1f1f1 !important;
+    [data-theme="dark"] .reports-theme .card,
+    [data-theme="dark"] .reports-theme .card-header.bg-white {
+        background: var(--app-surface) !important;
+        border-color: var(--app-border-soft) !important;
+        color: var(--app-text) !important;
     }
 
-    [data-theme="dark"] .perf-kpi {
-        background: #1e1e35 !important;
+    [data-theme="dark"] .reports-theme .perf-kpi {
+        background: var(--app-surface) !important;
+        border-color: var(--app-border-soft);
+        box-shadow: var(--app-shadow-sm);
     }
 
-    [data-theme="dark"] .mini-progress,
-    [data-theme="dark"] .perf-progress,
-    [data-theme="dark"] .ticket-mini-bar {
-        background: #2d2d4e;
+    [data-theme="dark"] .reports-theme .mini-progress,
+    [data-theme="dark"] .reports-theme .perf-progress,
+    [data-theme="dark"] .reports-theme .ticket-mini-bar,
+    [data-theme="dark"] .reports-theme .collection-bar {
+        background: var(--app-surface-alt);
     }
 
-    [data-theme="dark"] .fin-row {
-        border-color: #2d2d4e;
-        color: #f1f1f1;
+    [data-theme="dark"] .reports-theme .fin-row,
+    [data-theme="dark"] .reports-theme .ticket-status-total {
+        border-color: var(--app-border-soft);
+        color: var(--app-text);
     }
 
-    [data-theme="dark"] .collection-bar {
-        background: #2d2d4e;
+    [data-theme="dark"] .reports-theme .table thead th {
+        background: var(--app-surface-alt) !important;
+        color: var(--app-text-muted) !important;
+        border-color: var(--app-border-soft) !important;
     }
 
-    [data-theme="dark"] .ticket-status-total {
-        border-color: #2d2d4e;
-        color: #f1f1f1;
+    [data-theme="dark"] .reports-theme .table tbody td {
+        border-color: var(--app-border-soft);
+        color: var(--app-text);
     }
 
-    [data-theme="dark"] .table thead th {
-        background: #252545 !important;
-        color: #a0aec0 !important;
-        border-color: #2d2d4e !important;
-    }
-
-    [data-theme="dark"] .table tbody td {
-        border-color: #2d2d4e;
-        color: #f1f1f1;
-    }
-
-    [data-theme="dark"] .table tbody tr:hover td {
-        background: #252545;
+    [data-theme="dark"] .reports-theme .table tbody tr:hover td {
+        background: color-mix(in srgb, var(--app-surface-alt) 84%, white 16%);
     }
 
     /* ═══════════════════════════════════════════
