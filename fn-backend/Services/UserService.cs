@@ -85,6 +85,15 @@ public class UserService : IUserService
         await _userManager.RemoveFromRolesAsync(user, currentRoles);
         var addResult = await _userManager.AddToRoleAsync(user, userDto.RoleName);
 
+        if (addResult.Succeeded && !string.IsNullOrWhiteSpace(userDto.Password))
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var pwResult = await _userManager.ResetPasswordAsync(user, token, userDto.Password);
+
+            if (!pwResult.Succeeded)
+                return ServiceResult<bool>.Failure(pwResult.Errors.Select(e => e.Description));
+        }
+
         return addResult.Succeeded
             ? ServiceResult<bool>.Success(true)
             : ServiceResult<bool>.Failure(addResult.Errors.Select(e => e.Description));
@@ -96,10 +105,17 @@ public class UserService : IUserService
         if (user == null)
             return ServiceResult<bool>.Failure($"Usuario con ID {id} no encontrado");
 
-        var result = await _userManager.DeleteAsync(user);
-        return result.Succeeded
-            ? ServiceResult<bool>.Success(true)
-            : ServiceResult<bool>.Failure(result.Errors.Select(e => e.Description));
+        var targetIsActive = !IsUserActive(user);
+
+        SetUserAccessState(user, targetIsActive);
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return ServiceResult<bool>.Failure(result.Errors.Select(e => e.Description));
+
+        await SyncCatalogStatusAsync(user.Id, targetIsActive);
+
+        return ServiceResult<bool>.Success(true);
     }
 
     public async Task<ServiceResult<bool>> ChangePasswordAsync(string id, ChangePasswordDto dto)
@@ -243,14 +259,86 @@ public class UserService : IUserService
     private async Task<UserDto> MapUserToDto(IdentityUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);
+        var roleName = roles.FirstOrDefault() ?? string.Empty;
+
         return new UserDto
         {
             Id = user.Id,
             UserName = user.UserName ?? string.Empty,
             Email = user.Email ?? string.Empty,
-            RoleName = roles.FirstOrDefault() ?? string.Empty,
-            Password = null
+            RoleName = roleName,
+            Password = null,
+            IsActive = IsUserActive(user),
+            DisplayName = await ResolveDisplayNameAsync(user, roleName)
         };
+    }
+
+    private static bool IsUserActive(IdentityUser user)
+        => !(user.LockoutEnabled && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow);
+
+    private static void SetUserAccessState(IdentityUser user, bool isActive)
+    {
+        user.LockoutEnabled = !isActive;
+        user.LockoutEnd = isActive ? null : DateTimeOffset.MaxValue;
+    }
+
+    private async Task SyncCatalogStatusAsync(string userId, bool isActive)
+    {
+        var employee = await _context.Employees
+            .FirstOrDefaultAsync(e => e.UserId == userId);
+
+        if (employee is not null)
+        {
+            employee.IsActive = isActive;
+            employee.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var client = await _context.Clients
+            .Include(c => c.Projects)
+            .FirstOrDefaultAsync(c => c.UserId == userId);
+
+        if (client is not null)
+        {
+            client.IsActive = isActive;
+            client.UpdatedAt = DateTime.UtcNow;
+
+            if (client.Projects is not null && client.Projects.Any())
+            {
+                foreach (var project in client.Projects)
+                    project.IsActive = isActive;
+            }
+        }
+
+        if (employee is not null || client is not null)
+            await _context.SaveChangesAsync();
+    }
+
+    private async Task<string> ResolveDisplayNameAsync(IdentityUser user, string roleName)
+    {
+        if (EmployeeRoles.Contains(roleName))
+        {
+            var employee = await _context.Employees
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.UserId == user.Id);
+
+            if (!string.IsNullOrWhiteSpace(employee?.FullName))
+                return employee.FullName;
+        }
+
+        if (roleName.Equals("Cliente", StringComparison.OrdinalIgnoreCase))
+        {
+            var client = await _context.Clients
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.UserId == user.Id)
+                ?? await _context.Clients
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.Email == user.Email);
+
+            if (!string.IsNullOrWhiteSpace(client?.CompanyName))
+                return client.CompanyName;
+        }
+
+        return user.UserName ?? user.Email ?? string.Empty;
     }
 
     // ─────────────────────────────────────────────────────────

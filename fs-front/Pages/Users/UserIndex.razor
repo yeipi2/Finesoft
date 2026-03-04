@@ -1,12 +1,10 @@
 ﻿@page "/usuarios"
 @using fs_front.DTO
 
-@* CAMBIO 1: Quitar Roles, solo Authorize *@
 @attribute [Authorize]
 
 <PageTitle>Finesoft - Usuarios</PageTitle>
 
-@* CAMBIO 2: Spinner + guard *@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
@@ -17,8 +15,6 @@
 }
 else if (_hasAccess)
 {
-
-    @* ↓↓↓ TODO EL HTML ORIGINAL SIN CAMBIAR NADA ↓↓↓ *@
     <div class="">
         <section class="container-fluid px-xl-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
@@ -29,16 +25,9 @@ else if (_hasAccess)
                         <p class="text-muted mb-0">Administración de acceso y control de roles</p>
                     </div>
                 </div>
-                @* CAMBIO: botón condicionado a permiso *@
-                @if (_canCreate)
-                {
-                    <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold small" @onclick="ShowCreateModal">
-                        <i class="bi bi-plus-lg"></i> Nuevo Usuario
-                    </button>
-                }
             </div>
             <SearchBar Placeholder="Buscar usuarios..."
-           Value="@_searchTerm"
+            Value="@_searchTerm"
            ValueChanged="@(v => { _searchTerm = v; FilterUsers(); })"/>
         </section>
 
@@ -57,20 +46,21 @@ else if (_hasAccess)
                         Subtitle="Administración de acceso y control de roles"
                         Items="_sortedUsers"
                         IsLoading="_isLoading"
-                        ColSpan="3"
+                        ColSpan="4"
                         EmptyTitle="No se encontraron usuarios"
                         EmptySubtitle="Prueba con otra búsqueda.">
 
                 <Header>
                     <FsSortHeader Text="Usuario" Field="username" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
                     <FsSortHeader Text="Rol" Field="role" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
+                    <FsSortHeader Text="Estado" Field="status" ActiveField="@_sortField" Direction="@_sortDir" SortChanged="OnSortChanged" />
                     <th class="text-center">Acciones</th>
                 </Header>
 
                 <RowTemplate Context="user">
                     <tr>
                         <td>
-                            <div class="fw-bold text-primary">@user.UserName</div>
+                            <div class="fw-bold text-primary">@(string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName : user.DisplayName)</div>
                             <div class="text-muted small">@user.Email</div>
                         </td>
 
@@ -78,7 +68,13 @@ else if (_hasAccess)
                             <span class="badge bg-info text-dark">@user.RoleName</span>
                         </td>
 
-                        <td class="text-center" style="width:120px">
+                        <td style="width:120px">
+                            <span class="badge @(user.IsActive ? "bg-success" : "bg-secondary")">
+                                @(user.IsActive ? "Activo" : "Inactivo")
+                            </span>
+                        </td>
+
+                        <td class="text-center" style="width:150px">
                             <div class="d-flex gap-2 justify-content-center">
                                 @if (_canEdit)
                                 {
@@ -89,9 +85,10 @@ else if (_hasAccess)
                                 }
                                 @if (_canDelete)
                                 {
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            @onclick="() => DeleteUser(user)" @onclick:stopPropagation="true">
-                                        <i class="bi bi-trash-fill"></i>
+                                    <button class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                            @onclick="() => ToggleUserStatus(user)" @onclick:stopPropagation="true"
+                                            title="@(user.IsActive ? "Desactivar" : "Activar")">
+                                        <i class="bi @(user.IsActive ? "bi-person-x-fill" : "bi-person-check-fill")"></i>
                                     </button>
                                 }
                             </div>
@@ -109,7 +106,6 @@ else if (_hasAccess)
         </section>
     </div>
 }
-@* ← cierre del else if (_hasAccess) *@
 
 @inject IUserApiService UserApiService
 @inject DialogService DialogService
@@ -124,10 +120,8 @@ else if (_hasAccess)
     private bool _isLoading;
     private string _searchTerm = "";
 
-    @* CAMBIO 3: Agregar estas variables *@
     private bool _checkingAccess = true;
     private bool _hasAccess = false;
-    private bool _canCreate;
     private bool _canEdit;
     private bool _canDelete;
 
@@ -146,7 +140,6 @@ private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
 
     protected override async Task OnInitializedAsync()
     {
-        @* CAMBIO 3: Verificar permiso PRIMERO *@
         if (!await PermissionService.HasPermissionAsync("users.view"))
         {
             _checkingAccess = false;
@@ -156,14 +149,12 @@ private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
         _hasAccess = true;
         _checkingAccess = false;
 
-        _canCreate = await PermissionService.HasPermissionAsync("users.create");
         _canEdit = await PermissionService.HasPermissionAsync("users.edit");
         _canDelete = await PermissionService.HasPermissionAsync("users.delete");
 
         await LoadUsers();
     }
 
-    @* Todo lo demás igual que antes — sin cambiar nada *@
     private async Task LoadUsers()
     {
         _isLoading = true;
@@ -189,35 +180,62 @@ private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
         if (_users == null) return;
         _filteredUsers = string.IsNullOrWhiteSpace(_searchTerm) ? _users
             : _users.Where(u => u.UserName.ToLower().Contains(_searchTerm.ToLower()) ||
+                                u.DisplayName.ToLower().Contains(_searchTerm.ToLower()) ||
                                 u.Email.ToLower().Contains(_searchTerm.ToLower()) ||
                                 u.RoleName.ToLower().Contains(_searchTerm.ToLower()));
     }
 
-    private async Task ShowCreateModal()
-    {
-        var result = await DialogService.OpenAsync<UserForm>("Crear Usuario", options: new DialogOptions { Width = "500px", Resizable = false, Draggable = false });
-        if (result == true) await LoadUsers();
-    }
-
     private async Task EditUser(UserDto user)
     {
+        if (string.IsNullOrWhiteSpace(user.Id))
+        {
+            ShowNotification("Error", "No se pudo identificar el usuario.", NotificationSeverity.Error);
+            return;
+        }
+
         var parameters = new Dictionary<string, object> { { "UserId", user.Id } };
         var result = await DialogService.OpenAsync<UserForm>("Editar Usuario", parameters, options: new DialogOptions { Width = "500px", Resizable = false, Draggable = false });
         if (result == true) await LoadUsers();
     }
 
-    private async Task DeleteUser(UserDto user)
+    private async Task ToggleUserStatus(UserDto user)
     {
-        var confirmed = await DialogService.Confirm($"¿Estás seguro de que deseas eliminar al usuario '{user.UserName}'?", "Confirmar Eliminación", new ConfirmOptions { OkButtonText = "Sí, eliminar", CancelButtonText = "Cancelar" });
+        if (string.IsNullOrWhiteSpace(user.Id))
+        {
+            ShowNotification("Error", "No se pudo identificar el usuario.", NotificationSeverity.Error);
+            return;
+        }
+
+        var actionText = user.IsActive ? "desactivar" : "activar";
+        var confirmed = await DialogService.Confirm(
+            $"¿Estás seguro de que quieres {actionText} al usuario '{user.UserName}'?",
+            $"Confirmar {actionText}",
+            new ConfirmOptions
+            {
+                OkButtonText = $"Sí, {actionText}",
+                CancelButtonText = "Cancelar"
+            });
+
         if (confirmed == true)
         {
             try
             {
                 var result = await UserApiService.DeleteUserAsync(user.Id);
-                if (result.Success) { ShowNotification("Éxito", "Usuario eliminado correctamente.", NotificationSeverity.Success); await LoadUsers(); }
-                else { _loadErrorMessage = result.ErrorMessage; ShowNotification("Error", result.ErrorMessage ?? "Error al eliminar usuario", NotificationSeverity.Error); }
+                if (result.Success)
+                {
+                    ShowNotification("Éxito", $"Usuario {(user.IsActive ? "desactivado" : "activado")} correctamente.", NotificationSeverity.Success);
+                    await LoadUsers();
+                }
+                else
+                {
+                    _loadErrorMessage = result.ErrorMessage;
+                    ShowNotification("Error", result.ErrorMessage ?? "Error al actualizar usuario", NotificationSeverity.Error);
+                }
             }
-            catch (Exception ex) { ShowNotification("Error", $"Error inesperado: {ex.Message}", NotificationSeverity.Error); }
+            catch (Exception ex)
+            {
+                ShowNotification("Error", $"Error inesperado: {ex.Message}", NotificationSeverity.Error);
+            }
         }
     }
 
@@ -225,11 +243,14 @@ private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
 {
     return (_sortField, _sortDir) switch
     {
-        ("username", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.UserName),
-        ("username", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.UserName),
+        ("username", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => string.IsNullOrWhiteSpace(x.DisplayName) ? x.UserName : x.DisplayName),
+        ("username", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => string.IsNullOrWhiteSpace(x.DisplayName) ? x.UserName : x.DisplayName),
 
         ("role", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.RoleName),
         ("role", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.RoleName),
+
+        ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
+        ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
 
         _ => q.OrderByDescending(x => x.UserName),
     };

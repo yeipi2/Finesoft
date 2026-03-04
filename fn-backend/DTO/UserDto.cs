@@ -13,4 +13,8 @@ public class UserDto
     [MinLength(6)] public string? Password { get; set; }
 
     [Required] public string RoleName { get; set; } = string.Empty;
+
+    public bool IsActive { get; set; } = true;
+
+    public string DisplayName { get; set; } = string.Empty;
 }

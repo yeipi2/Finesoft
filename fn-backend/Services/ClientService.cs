@@ -172,14 +172,13 @@ public class ClientService : IClientService
         client.MonthlyHours = dto.MonthlyHours;
         client.UpdatedAt = DateTime.UtcNow;
 
-        // ✅ Actualizar email del usuario si existe
         if (!string.IsNullOrEmpty(client.UserId))
         {
             var user = await _userManager.FindByIdAsync(client.UserId);
             if (user != null)
             {
-                user.Email = dto.Email;
-                user.UserName = dto.Email;
+                user.LockoutEnabled = !client.IsActive;
+                user.LockoutEnd = client.IsActive ? null : DateTimeOffset.MaxValue;
                 await _userManager.UpdateAsync(user);
             }
         }

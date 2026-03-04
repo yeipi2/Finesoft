@@ -18,4 +18,8 @@ public class UserDto
 
     [Required(ErrorMessage = "El rol es obligatorio")]
     public string RoleName { get; set; } = string.Empty;
+
+    public bool IsActive { get; set; } = true;
+
+    public string DisplayName { get; set; } = string.Empty;
 }

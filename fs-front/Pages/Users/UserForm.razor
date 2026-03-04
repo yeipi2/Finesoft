@@ -30,15 +30,16 @@
                     </ChildContent>
                 </RadzenFormField>
 
-                @if (!_isEditMode)
+                <RadzenFormField Text="@(_isEditMode ? "Nueva Contraseña (Opcional)" : "Contraseña")" Variant="Variant.Outlined" style="width:100%">
+                    <ChildContent>
+                        <RadzenPassword @bind-Value="_model.Password" Name="Password"
+                                        style="width:100%"
+                                        Placeholder="@(_isEditMode ? "Dejar vacío para mantener actual" : "Mínimo 6 caracteres")" />
+                    </ChildContent>
+                </RadzenFormField>
+                @if (_isEditMode)
                 {
-                    <RadzenFormField Text="Contraseña" Variant="Variant.Outlined" style="width:100%">
-                        <ChildContent>
-                            <RadzenPassword @bind-Value="_model.Password" Name="Password"
-                                            style="width:100%"
-                                            Placeholder="Mínimo 6 caracteres" />
-                        </ChildContent>
-                    </RadzenFormField>
+                    <small class="text-muted mt-n2">Solo captúrala si deseas cambiar la contraseña del usuario.</small>
                 }
 
                 <RadzenFormField Text="Rol" Variant="Variant.Outlined" style="width:100%">
@@ -190,7 +191,8 @@
         {
             UserName = model.UserName,
             Email = model.Email,
-            RoleName = model.RoleName
+            RoleName = model.RoleName,
+            Password = string.IsNullOrWhiteSpace(model.Password) ? null : model.Password
         });
 
         if (result.Success)
