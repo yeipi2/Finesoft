@@ -15,9 +15,9 @@
 }
 else if (_hasAccess)
 {
-    <div class="">
-        <section class="container-fluid px-xl-5">
-            <div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="fs-index-layout">
+        <section class="fs-index-section">
+            <div class="d-flex justify-content-between align-items-start mb-0">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-people fs-1 text-primary me-3"></i>
                     <div>
@@ -26,12 +26,15 @@ else if (_hasAccess)
                     </div>
                 </div>
             </div>
-            <SearchBar Placeholder="Buscar usuarios..."
-            Value="@_searchTerm"
-           ValueChanged="@(v => { _searchTerm = v; FilterUsers(); })"/>
         </section>
 
-        <section class="container-fluid p-xl-5">
+        <section class="fs-index-section">
+            <SearchBar Placeholder="Buscar usuarios..."
+             Value="@_searchTerm"
+            ValueChanged="@(v => { _searchTerm = v; FilterUsers(); })"/>
+        </section>
+
+        <section class="fs-index-section">
             @if (_isLoading)
             {
                 <div class="text-center py-5">

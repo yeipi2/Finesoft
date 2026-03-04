@@ -20,8 +20,8 @@ else if (!_hasAccess)
 }
 else
 {
-    <div class="p-4">
-        <section class="container-fluid px-xl-5 py-4">
+    <div class="fs-index-layout">
+        <section class="fs-index-section">
             <TicketsHeader CanCreate="@_canCreate"
                            CanViewAll="@_canViewAll"
                            CurrentRole="@_currentRole"
@@ -38,7 +38,7 @@ else
             }
         </section>
 
-        <section class="container-fluid px-xl-5 py-4">
+        <section class="fs-index-section">
             <TicketsFilterBar SearchValue="@_searchText"
                               StatusFilter="@_statusFilter"
                               PriorityFilter="@_priorityFilter"
@@ -48,7 +48,7 @@ else
                               OnClear="ClearFilters" />
         </section>
 
-        <section class="container-fluid px-xl-5 py-4">
+        <section class="fs-index-section">
             <TicketsTable Items="_filteredTickets"
                           IsLoading="_isLoading"
                           CanViewAll="@_canViewAll"

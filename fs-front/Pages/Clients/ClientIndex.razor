@@ -24,13 +24,13 @@ else if (!_hasAccess)
 }
 else
 {
-    <div class="container p-4">
-        <section class="container-fluid px-xl-5">
+    <div class="fs-index-layout">
+        <section class="fs-index-section">
             <ClientsHeader CanCreate="@_canCreate" OnCreateClick="ShowCreateModal" />
         </section>
 
-        <section class="container-fluid px-xl-5 mb-4">
-            <FilterBar Class="mb-0"
+        <section class="fs-index-section">
+            <FilterBar
                        SearchPlaceholder="Buscar clientes..."
                        SearchValue="@_searchText"
                        SearchValueChanged="@(v => _searchText = v)"
@@ -45,7 +45,7 @@ else
             </FilterBar>
         </section>
 
-        <section class="container-fluid p-xl-5">
+        <section class="fs-index-section">
             <ClientsTable Clients="@_sortedClients"
                           IsLoading="@_isLoading"
                           CanEdit="@_canEdit"

@@ -23,43 +23,45 @@ else if (!_hasAccess)
 }
 else
 {
-    <section class="px-xl-5 py-4">
+    <div class="fs-index-layout fs-index-layout-compact">
+        <section class="fs-index-section fs-index-stack-lg">
+            <InvoicesHeader CanCreate="@_canCreate"
+                            IsGenerating="@_isGenerating"
+                            OnNew="OpenNewInvoiceDialog"
+                            OnGenerate="OpenMonthlyPanel" />
 
-        <InvoicesHeader CanCreate="@_canCreate"
-                        IsGenerating="@_isGenerating"
-                        OnNew="OpenNewInvoiceDialog"
-                        OnGenerate="OpenMonthlyPanel" />
+            @if (_stats != null)
+            {
+                <StatGrid>
+                    <StatCard Title="Pendientes"
+                              Value="@_stats.PendingInvoices.ToString()"
+                              SubValue="@_stats.TotalPending.ToString("C")"
+                              Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-hourglass-split" />
 
-        @if (_stats != null)
-        {
-            <StatGrid class="mb-5">
-                <StatCard Title="Pendientes"
-                          Value="@_stats.PendingInvoices.ToString()"
-                          SubValue="@_stats.TotalPending.ToString("C")"
-                          Accent="StatCard.StatAccent.Info"
-                          IconClass="bi bi-hourglass-split" />
+                    <StatCard Title="Pagadas"
+                              Value="@_stats.PaidInvoices.ToString()"
+                              SubValue="@_stats.TotalPaid.ToString("C")"
+                              Accent="StatCard.StatAccent.Success"
+                              IconClass="bi bi-check-circle" />
 
-                <StatCard Title="Pagadas"
-                          Value="@_stats.PaidInvoices.ToString()"
-                          SubValue="@_stats.TotalPaid.ToString("C")"
-                          Accent="StatCard.StatAccent.Success"
-                          IconClass="bi bi-check-circle" />
+                    <StatCard Title="Vencidas"
+                              Value="@_stats.OverdueInvoices.ToString()"
+                              SubValue="@_stats.TotalOverdue.ToString("C")"
+                              Accent="StatCard.StatAccent.Danger"
+                              IconClass="bi bi-exclamation-triangle" />
 
-                <StatCard Title="Vencidas"
-                          Value="@_stats.OverdueInvoices.ToString()"
-                          SubValue="@_stats.TotalOverdue.ToString("C")"
-                          Accent="StatCard.StatAccent.Danger"
-                          IconClass="bi bi-exclamation-triangle" />
+                    <StatCard Title="Total Facturado"
+                              Value="@_stats.TotalInvoices.ToString()"
+                              SubValue="@_stats.TotalBilled.ToString("C")"
+                              Accent="StatCard.StatAccent.Info"
+                              IconClass="bi bi-wallet2" />
+                </StatGrid>
+            }
+        </section>
 
-                <StatCard Title="Total Facturado"
-                          Value="@_stats.TotalInvoices.ToString()"
-                          SubValue="@_stats.TotalBilled.ToString("C")"
-                          Accent="StatCard.StatAccent.Info"
-                          IconClass="bi bi-wallet2" />
-            </StatGrid>
-        }
-
-        <FilterBar Class="mb-5"
+        <section class="fs-index-section">
+            <FilterBar
                    SearchPlaceholder="Buscar facturas..."
                    SearchValue="@_searchTerm"
                    SearchValueChanged="@(v => { _searchTerm = v; ApplyFilters(); })"
@@ -86,19 +88,21 @@ else
                     <option value="Monthly">Mensual</option>
                 </select>
             </Filters>
-        </FilterBar>
+            </FilterBar>
+        </section>
 
-        <div class="card">
-            <InvoicesTable Items="@_sortedInvoices"
-                           IsLoading="@_isLoading"
-                           SortField="@_sortField"
-                           SortDir="@_sortDir"
-                           OnView="ViewDetails"
-                           OnDownloadPdf="DownloadPdf"
-                           SortChanged="HandleSortChanged" />
-        </div>
-
-    </section>
+        <section class="fs-index-section">
+            <div class="card">
+                <InvoicesTable Items="@_sortedInvoices"
+                               IsLoading="@_isLoading"
+                               SortField="@_sortField"
+                               SortDir="@_sortDir"
+                               OnView="ViewDetails"
+                               OnDownloadPdf="DownloadPdf"
+                               SortChanged="HandleSortChanged" />
+            </div>
+        </section>
+    </div>
 }
 
 @inject IInvoiceApiService InvoiceApiService

@@ -29,13 +29,15 @@ else if (!_hasAccess)
 }
 else
 {
-    <container class="container p-4">
+    <div class="fs-index-layout">
 
-        <section class="container-fluid px-xl-5">
+        <section class="fs-index-section">
             <EmployeesHeader CanCreate="_canCreate"
                              OnCreateClicked="ShowCreateModal" />
+        </section>
 
-            <FilterBar Class="mb-4"
+        <section class="fs-index-section">
+            <FilterBar
                        SearchPlaceholder="Buscar empleados..."
                        SearchValue="@_searchTerm"
                        SearchValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })"
@@ -50,7 +52,7 @@ else
             </FilterBar>
         </section>
 
-        <section class="container-fluid p-xl-5">
+        <section class="fs-index-section">
             <EmployeesTable Items="_sortedEmployees"
                             IsLoading="_isLoading"
                             CanEdit="_canEdit"
@@ -62,7 +64,7 @@ else
                             EmptyTitle="@(_employees == null || !_employees.Any() ? "No hay empleados registrados" : "No se encontraron empleados")" />
         </section>
 
-    </container>
+    </div>
 }
 
 @code {

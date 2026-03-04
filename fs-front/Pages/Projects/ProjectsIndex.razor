@@ -25,16 +25,18 @@ else if (!_hasAccess)
 @* ── ESTADO: contenido real ── *@
 else
 {
-    <container class="container p-4">
-        <section class="container-fluid px-xl-5">
+    <div class="fs-index-layout">
+        <section class="fs-index-section">
             <ProjectsHeader CanCreate="_canCreate" OnCreate="ShowCreateModal" />
-            <SearchBar Placeholder="Buscar proyectos..."
-                       Value="@_searchText"
-                       ValueChanged="@(v => { _searchText = v; StateHasChanged(); })"
-                       Class="mb-4" />
         </section>
 
-        <section class="container-fluid p-xl-5">
+        <section class="fs-index-section">
+            <SearchBar Placeholder="Buscar proyectos..."
+                       Value="@_searchText"
+                       ValueChanged="@(v => { _searchText = v; StateHasChanged(); })" />
+        </section>
+
+        <section class="fs-index-section">
             <ProjectsTable Items="_sortedProjects"
                            IsLoading="_isLoading"
                            SortField="@_sortField"
@@ -42,7 +44,7 @@ else
                            SortChanged="OnSortChanged"
                            OnViewDetails="ViewProjectDetails" />
         </section>
-    </container>
+    </div>
 }
 
 @inject IProjectApiService ProjectApiService

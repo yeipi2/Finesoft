@@ -23,10 +23,12 @@ else if (!_hasAccess)
 }
 else
 {
-    <div class="container">
-        <section class="container-fluid px-xl-5">
+    <div class="fs-index-layout">
+        <section class="fs-index-section">
             <QuotesHeader CanCreate="@_canCreate" OnCreate="ShowCreateModal" />
+        </section>
 
+        <section class="fs-index-section">
             <QuotesFilterBar SearchValue="@_searchText"
                              StatusFilter="@_statusFilter"
                              ClientFilter="@_clientFilter"
@@ -37,7 +39,7 @@ else
                              OnClear="ClearFilters" />
         </section>
 
-        <section class="container-fluid p-xl-5">
+        <section class="fs-index-section">
             <QuotesTable Items="@_sortedQuotes"
                          IsLoading="@_isLoading"
                          SortField="@_sortField"
