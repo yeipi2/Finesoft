@@ -311,15 +311,30 @@
    38. DARK MODE â€” FORM SECTIONS & DIALOG
    ============================================================ */
 
-[data-theme="dark"] .rz-dialog-wrapper .rz-dialog-titlebar {
-    background: #1e1e35 !important;
-    border-bottom-color: #2d2d4e !important;
-    color: #f1f1f1 !important;
+[data-theme="dark"] .rz-dialog-wrapper {
+    --fsd-surface-0: #111a2b;
+    --fsd-surface-1: #16233a;
+    --fsd-surface-2: #1b2a44;
+    --fsd-border: #2a3b58;
+    --fsd-text: #e7eef9;
+    --fsd-muted: #9fb0c8;
+    --fsd-hover: #1f3150;
 }
 
-[data-theme="dark"] .fs-form-section {
-    background: #1e1e35;
-    border-color: #2d2d4e;
+[data-theme="dark"] .rz-dialog-wrapper .rz-dialog-titlebar {
+    background: var(--fsd-surface-1) !important;
+    border-bottom-color: var(--fsd-border) !important;
+    color: var(--fsd-text) !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .rz-dialog-content {
+    background: var(--fsd-surface-0) !important;
+    color: var(--fsd-text) !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .fs-form-section {
+    background: var(--fsd-surface-0);
+    border-color: var(--fsd-border);
     box-shadow: none;
 }
 
@@ -335,13 +350,13 @@
         border-left-color: #475569;
     }
 
-[data-theme="dark"] .fs-form-section__header {
-    background: #252545;
-    border-bottom-color: #2d2d4e;
+[data-theme="dark"] .rz-dialog-wrapper .fs-form-section__header {
+    background: var(--fsd-surface-1);
+    border-bottom-color: var(--fsd-border);
 }
 
-[data-theme="dark"] .fs-form-section__title {
-    color: #f1f1f1;
+[data-theme="dark"] .rz-dialog-wrapper .fs-form-section__title {
+    color: var(--fsd-text);
 }
 
 [data-theme="dark"] .fs-form-section.is-incomplete .fs-form-section__title {
@@ -358,8 +373,8 @@
     color: #f87171;
 }
 
-[data-theme="dark"] .fs-form-section.is-optional .fs-form-section__icon-wrap {
-    background: #2d2d4e;
+[data-theme="dark"] .rz-dialog-wrapper .fs-form-section.is-optional .fs-form-section__icon-wrap {
+    background: var(--fsd-surface-2);
     color: #94a3b8;
 }
 
@@ -375,40 +390,80 @@
     border-color: rgba(239,68,68,.3);
 }
 
-[data-theme="dark"] .fs-section-badge--optional {
-    background: #252545;
+[data-theme="dark"] .rz-dialog-wrapper .fs-section-badge--optional {
+    background: var(--fsd-surface-1);
     color: #94a3b8;
-    border-color: #2d2d4e;
+    border-color: var(--fsd-border);
 }
 
-[data-theme="dark"] .fs-form-section__body {
-    background: #1e1e35;
+[data-theme="dark"] .rz-dialog-wrapper .fs-form-section__body {
+    background: var(--fsd-surface-0);
 }
 
-[data-theme="dark"] .ticket-form-footer,
-[data-theme="dark"] .quote-form-footer,
-[data-theme="dark"] .invoice-form-footer,
-[data-theme="dark"] .form-actions,
-[data-theme="dark"] .employee-form-footer,
-[data-theme="dark"] .project-form-footer,
-[data-theme="dark"] .fs-dialog-form-footer {
-    border-top-color: #2d2d4e;
-    background-color: #1e1e35;
+[data-theme="dark"] .rz-dialog-wrapper .ticket-form-footer,
+[data-theme="dark"] .rz-dialog-wrapper .quote-form-footer,
+[data-theme="dark"] .rz-dialog-wrapper .invoice-form-footer,
+[data-theme="dark"] .rz-dialog-wrapper .form-actions,
+[data-theme="dark"] .rz-dialog-wrapper .employee-form-footer,
+[data-theme="dark"] .rz-dialog-wrapper .project-form-footer,
+[data-theme="dark"] .rz-dialog-wrapper .fs-dialog-form-footer {
+    border-top-color: var(--fsd-border);
+    background-color: var(--fsd-surface-0);
 }
 
-[data-theme="dark"] .autocomplete-dropdown {
-    background-color: #252545;
-    border-color: #2d2d4e;
+[data-theme="dark"] .rz-dialog-wrapper .autocomplete-dropdown {
+    background-color: var(--fsd-surface-1);
+    border-color: var(--fsd-border);
 }
 
-[data-theme="dark"] .autocomplete-item {
-    border-bottom-color: #2d2d4e;
-    color: #f1f1f1;
+[data-theme="dark"] .rz-dialog-wrapper .autocomplete-item {
+    border-bottom-color: var(--fsd-border);
+    color: var(--fsd-text);
 }
 
-    [data-theme="dark"] .autocomplete-item:hover {
-        background-color: #1a3a5c;
-    }
+[data-theme="dark"] .rz-dialog-wrapper .autocomplete-item:hover {
+    background-color: var(--fsd-hover);
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .form-label,
+[data-theme="dark"] .rz-dialog-wrapper .text-muted,
+[data-theme="dark"] .rz-dialog-wrapper small.text-muted {
+    color: var(--fsd-muted) !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .form-control,
+[data-theme="dark"] .rz-dialog-wrapper .form-select,
+[data-theme="dark"] .rz-dialog-wrapper input[type="date"],
+[data-theme="dark"] .rz-dialog-wrapper textarea.form-control {
+    background-color: var(--fsd-surface-1) !important;
+    border-color: var(--fsd-border) !important;
+    color: var(--fsd-text) !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .form-control::placeholder,
+[data-theme="dark"] .rz-dialog-wrapper textarea.form-control::placeholder {
+    color: #89a0bc !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .form-control:focus,
+[data-theme="dark"] .rz-dialog-wrapper .form-select:focus,
+[data-theme="dark"] .rz-dialog-wrapper input[type="date"]:focus,
+[data-theme="dark"] .rz-dialog-wrapper textarea.form-control:focus {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 0.16rem rgba(96, 165, 250, .22) !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .badge.bg-light,
+[data-theme="dark"] .rz-dialog-wrapper .badge.bg-light.text-dark {
+    background-color: var(--fsd-surface-2) !important;
+    border-color: var(--fsd-border) !important;
+    color: var(--fsd-muted) !important;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .rz-dialog-titlebar-close:hover {
+    background-color: var(--fsd-surface-2) !important;
+    color: var(--fsd-text) !important;
+}
 /* ============================================================
    39. RADZEN CONFIRM DIALOG â€” BOTONES
    ============================================================ */

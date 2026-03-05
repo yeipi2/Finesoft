@@ -35,3 +35,9 @@
 - Header sections use compact "hero" containers instead of floating title + buttons.
 - Existing Bootstrap semantic headers (`bg-primary`, `bg-success`, etc.) are softened to tinted backgrounds with dark text for readability and reduced visual noise.
 - Quote and Ticket detail child components follow panel primitives (`qd-*` / `td-*`) with the same hierarchy style used in invoice details.
+
+## Modal Forms (Dark Mode)
+- Dark modal form wrappers (`.rz-dialog-wrapper`) use a blue-slate palette for all form surfaces to avoid mixed hue perception.
+- Keep modal/form tokens aligned: `--fsd-surface-0`, `--fsd-surface-1`, `--fsd-surface-2`, `--fsd-border`, `--fsd-text`, `--fsd-muted`, `--fsd-hover`.
+- Form section header/body/footer, autocomplete panel, and light badges inside modals must consume the same token family.
+- Focus states in modal form controls use blue ring accents only; avoid purple-tinted dark surfaces.
