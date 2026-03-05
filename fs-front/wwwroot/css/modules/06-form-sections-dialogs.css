@@ -407,8 +407,18 @@
 [data-theme="dark"] .rz-dialog-wrapper .employee-form-footer,
 [data-theme="dark"] .rz-dialog-wrapper .project-form-footer,
 [data-theme="dark"] .rz-dialog-wrapper .fs-dialog-form-footer {
-    border-top-color: var(--fsd-border);
-    background-color: var(--fsd-surface-0);
+    border: 1px solid var(--fsd-border);
+    border-radius: 10px;
+    background-color: var(--fsd-surface-1);
+    padding: 0.55rem 0.7rem;
+    margin-top: 0.5rem;
+}
+
+[data-theme="dark"] .rz-dialog-wrapper .ticket-form-footer .text-danger,
+[data-theme="dark"] .rz-dialog-wrapper .quote-form-footer .text-danger,
+[data-theme="dark"] .rz-dialog-wrapper .invoice-form-footer .text-danger,
+[data-theme="dark"] .rz-dialog-wrapper .fs-dialog-form-footer .text-danger {
+    color: #fda4af !important;
 }
 
 [data-theme="dark"] .rz-dialog-wrapper .autocomplete-dropdown {
