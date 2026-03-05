@@ -39,15 +39,16 @@
                         <div class="d-flex align-items-center gap-2 ms-auto flex-wrap justify-content-end">
                             <ProjectStatusBadge IsActive="@_project.IsActive" />
 
-                            <button class="btn btn-primary btn-sm" @onclick="EditProject">
-                                <i class="bi bi-pencil-fill me-1"></i> Editar
-                            </button>
-
                             <div class="dropdown">
                                 <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-three-dots me-1"></i> Acciones
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li>
+                                        <button class="dropdown-item" type="button" @onclick="EditProject">
+                                            <i class="bi bi-pencil-fill me-2"></i> Editar proyecto
+                                        </button>
+                                    </li>
                                     <li>
                                         <button class="dropdown-item text-danger" type="button" @onclick="ConfirmDeleteProject">
                                             <i class="bi bi-trash-fill me-2"></i> Eliminar proyecto
