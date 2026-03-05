@@ -1,3 +1,4 @@
+// fs-backend/Services/InvoiceService.cs  — COMPLETO ACTUALIZADO
 using fs_backend.DTO;
 using fs_backend.Identity;
 using fs_backend.Models;
@@ -57,27 +58,19 @@ public class InvoiceService : IInvoiceService
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
-        {
             query = query.Where(i => i.Status == status);
-        }
 
         if (!string.IsNullOrEmpty(invoiceType))
-        {
             query = query.Where(i => i.InvoiceType == invoiceType);
-        }
 
         if (clientId.HasValue)
-        {
             query = query.Where(i => i.ClientId == clientId.Value);
-        }
 
         var invoices = await query.OrderByDescending(i => i.InvoiceDate).ToListAsync();
 
         var invoiceDtos = new List<InvoiceDetailDto>();
         foreach (var invoice in invoices)
-        {
             invoiceDtos.Add(await _invoiceMapper.MapToDetailDtoAsync(invoice));
-        }
 
         return invoiceDtos;
     }
@@ -104,14 +97,10 @@ public class InvoiceService : IInvoiceService
     {
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == invoiceDto.ClientId);
         if (!clientExists)
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("El cliente especificado no existe");
-        }
 
         if (invoiceDto.Items == null || !invoiceDto.Items.Any())
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("La factura debe tener al menos un elemento");
-        }
 
         if (!_paymentPolicy.TryNormalizePayType(invoiceDto.PaymentType, out var normalizedPaymentType))
             return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
@@ -160,16 +149,14 @@ public class InvoiceService : IInvoiceService
             var itemSubtotal = itemDto.Quantity * itemDto.UnitPrice;
             subtotal += itemSubtotal;
 
-            var item = new InvoiceItem
+            invoice.Items.Add(new InvoiceItem
             {
                 Description = itemDto.Description,
                 Quantity = itemDto.Quantity,
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
                 TicketId = itemDto.TicketId
-            };
-
-            invoice.Items.Add(item);
+            });
         }
 
         invoice.Subtotal = subtotal;
@@ -182,7 +169,6 @@ public class InvoiceService : IInvoiceService
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
 
-        // Cargar relaciones de tickets
         foreach (var item in invoice.Items)
         {
             if (item.TicketId.HasValue)
@@ -199,11 +185,9 @@ public class InvoiceService : IInvoiceService
         return ServiceResult<InvoiceDetailDto>.Success(await _invoiceMapper.MapToDetailDtoAsync(invoice));
     }
 
-    // ⭐ MÉTODO CORREGIDO: CreateInvoiceFromQuoteAsync
     public async Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceFromQuoteAsync(
         CreateInvoiceFromQuoteDto dto, string createdByUserId)
     {
-        // Cargar cotización con TODOS los datos necesarios
         var quote = await _context.Quotes
             .Include(q => q.Client)
             .Include(q => q.Items)
@@ -213,21 +197,14 @@ public class InvoiceService : IInvoiceService
             .FirstOrDefaultAsync(q => q.Id == dto.QuoteId);
 
         if (quote == null)
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("Cotización no encontrada");
-        }
 
         if (quote.Status != "Aceptada")
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("Solo se pueden facturar cotizaciones aceptadas");
-        }
 
-        // Verificar si ya existe factura para esta cotización
         var existingInvoice = await _context.Invoices.AnyAsync(i => i.QuoteId == dto.QuoteId);
         if (existingInvoice)
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("Esta cotización ya tiene una factura asociada");
-        }
 
         if (!_paymentPolicy.TryNormalizePayType(dto.PaymentType, out var normalizedPaymentType))
             return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
@@ -238,7 +215,7 @@ public class InvoiceService : IInvoiceService
         {
             dto.PaymentMethod = string.Empty;
         }
-        else // PUE
+        else
         {
             try
             {
@@ -273,25 +250,21 @@ public class InvoiceService : IInvoiceService
             Notes = dto.Notes ?? quote.Notes
         };
 
-        // ⭐ CRÍTICO: Copiar items CON TicketId
         foreach (var quoteItem in quote.Items)
         {
-            var invoiceItem = new InvoiceItem
+            invoice.Items.Add(new InvoiceItem
             {
                 Description = quoteItem.Description,
                 Quantity = quoteItem.Quantity,
                 UnitPrice = quoteItem.UnitPrice,
                 Subtotal = quoteItem.Subtotal,
-                TicketId = quoteItem.TicketId // ⭐ ESTO ES ESENCIAL
-            };
-
-            invoice.Items.Add(invoiceItem);
+                TicketId = quoteItem.TicketId
+            });
         }
 
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
-        // Cargar relaciones completas
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
 
@@ -318,27 +291,17 @@ public class InvoiceService : IInvoiceService
             .FirstOrDefaultAsync(i => i.Id == id);
 
         if (invoice == null)
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("Factura no encontrada");
-        }
 
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == invoiceDto.ClientId);
         if (!clientExists)
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("El cliente especificado no existe");
-        }
 
         if (invoiceDto.Items == null || !invoiceDto.Items.Any())
-        {
             return ServiceResult<InvoiceDetailDto>.Failure("La factura debe tener al menos un elemento");
-        }
 
         if (invoice.Status is InvoiceConstants.Status.Cancelled or InvoiceConstants.Status.Paid)
-        {
-            return ServiceResult<InvoiceDetailDto>.Failure(
-                $"No se puede editar una factura {invoice.Status.ToLower()}");
-        }
-
+            return ServiceResult<InvoiceDetailDto>.Failure($"No se puede editar una factura {invoice.Status.ToLower()}");
 
         if (!_paymentPolicy.TryNormalizePayType(invoiceDto.PaymentType, out var normalizedPaymentType))
             return ServiceResult<InvoiceDetailDto>.Failure("PaymentType inválido. Usa PUE o PPD.");
@@ -383,7 +346,7 @@ public class InvoiceService : IInvoiceService
             var itemSubtotal = itemDto.Quantity * itemDto.UnitPrice;
             subtotal += itemSubtotal;
 
-            var item = new InvoiceItem
+            invoice.Items.Add(new InvoiceItem
             {
                 InvoiceId = id,
                 Description = itemDto.Description,
@@ -391,9 +354,7 @@ public class InvoiceService : IInvoiceService
                 UnitPrice = itemDto.UnitPrice,
                 Subtotal = itemSubtotal,
                 TicketId = itemDto.TicketId
-            };
-
-            invoice.Items.Add(item);
+            });
         }
 
         invoice.Subtotal = subtotal;
@@ -426,9 +387,7 @@ public class InvoiceService : IInvoiceService
     {
         var invoice = await _context.Invoices.FindAsync(id);
         if (invoice == null)
-        {
             return ServiceResult<bool>.Failure("Factura no encontrada");
-        }
 
         _context.Invoices.Remove(invoice);
         await _context.SaveChangesAsync();
@@ -464,20 +423,16 @@ public class InvoiceService : IInvoiceService
         }
 
         if (newStatus == InvoiceConstants.Status.Paid)
-        {
             invoice.PaidDate = DateTime.UtcNow;
-        }
 
         invoice.Status = newStatus;
-
         await _context.SaveChangesAsync();
+
         return ServiceResult<bool>.Success(true);
     }
 
     public async Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(
-    int invoiceId,
-    RegisterInvoicePaymentDto dto,
-    string userId)
+        int invoiceId, RegisterInvoicePaymentDto dto, string userId)
     {
         var invoice = await _context.Invoices
             .Include(i => i.Payments)
@@ -511,7 +466,6 @@ public class InvoiceService : IInvoiceService
             Reference = dto.Reference ?? string.Empty,
             Notes = dto.Notes ?? string.Empty,
             RecordedByUserId = userId,
-
             ReceiptPath = receipt?.Path,
             ReceiptFileName = receipt?.FileName,
             ReceiptContentType = receipt?.ContentType,
@@ -538,7 +492,6 @@ public class InvoiceService : IInvoiceService
             Notes = payment.Notes,
             RecordedByUserId = userId,
             RecordedByUserName = user?.UserName,
-
             ReceiptPath = payment.ReceiptPath,
             ReceiptFileName = payment.ReceiptFileName,
             ReceiptContentType = payment.ReceiptContentType,
@@ -546,11 +499,8 @@ public class InvoiceService : IInvoiceService
         });
     }
 
-
     public async Task<ServiceResult<InvoicePaymentDto>> AddPaymentWithReceiptAsync(
-    int invoiceId,
-    AddInvoicePaymentWithReceiptRequest request,
-    string userId)
+        int invoiceId, AddInvoicePaymentWithReceiptRequest request, string userId)
     {
         var invoice = await _context.Invoices
             .Include(i => i.Payments)
@@ -575,7 +525,6 @@ public class InvoiceService : IInvoiceService
             var requiredReceiptResult = await _receiptStorageService.SaveRequiredAsync(invoiceId, request.Receipt);
             if (!requiredReceiptResult.Succeeded)
                 return ServiceResult<InvoicePaymentDto>.Failure(requiredReceiptResult.Errors);
-
             receipt = requiredReceiptResult.Data;
         }
         else
@@ -583,7 +532,6 @@ public class InvoiceService : IInvoiceService
             var optionalReceiptResult = await _receiptStorageService.SaveOptionalAsync(invoiceId, request.Receipt);
             if (!optionalReceiptResult.Succeeded)
                 return ServiceResult<InvoicePaymentDto>.Failure(optionalReceiptResult.Errors);
-
             receipt = optionalReceiptResult.Data;
         }
 
@@ -596,7 +544,6 @@ public class InvoiceService : IInvoiceService
             Reference = request.Reference ?? string.Empty,
             Notes = request.Notes ?? string.Empty,
             RecordedByUserId = userId,
-
             ReceiptFileName = receipt?.FileName,
             ReceiptContentType = receipt?.ContentType,
             ReceiptSize = receipt?.Size,
@@ -623,7 +570,6 @@ public class InvoiceService : IInvoiceService
             Notes = payment.Notes,
             RecordedByUserId = userId,
             RecordedByUserName = user?.UserName,
-
             ReceiptPath = payment.ReceiptPath,
             ReceiptFileName = payment.ReceiptFileName,
             ReceiptContentType = payment.ReceiptContentType,
@@ -631,10 +577,11 @@ public class InvoiceService : IInvoiceService
         });
     }
 
-
-    public Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null)
+    // ⭐ ACTUALIZADO: delega al MonthlyBillingService con la nueva firma
+    public Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(
+        string userId, List<GenerateMonthlyInvoiceItemDto> items)
     {
-        return _monthlyBillingService.GenerateMonthlyInvoicesAsync(userId, clientIds);
+        return _monthlyBillingService.GenerateMonthlyInvoicesAsync(userId, items);
     }
 
     public Task<List<MonthlyClientSummaryDto>> GetMonthlySummaryAsync()
@@ -646,7 +593,7 @@ public class InvoiceService : IInvoiceService
     {
         var invoices = await _context.Invoices.ToListAsync();
 
-        var stats = new InvoiceStatsDto
+        return new InvoiceStatsDto
         {
             PaidInvoices = invoices.Count(i => i.Status == InvoiceConstants.Status.Paid),
             TotalPaid = invoices.Where(i => i.Status == InvoiceConstants.Status.Paid).Sum(i => (decimal?)i.Total) ?? 0,
@@ -657,8 +604,6 @@ public class InvoiceService : IInvoiceService
             TotalInvoices = invoices.Count,
             TotalBilled = invoices.Sum(i => (decimal?)i.Total) ?? 0
         };
-
-        return stats;
     }
 
     public async Task<byte[]> GenerateInvoicePdfAsync(int id)

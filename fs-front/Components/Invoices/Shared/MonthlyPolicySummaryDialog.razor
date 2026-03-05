@@ -246,12 +246,84 @@ else
                         </div>
                     }
 
+                    @* ── Selectores de pago por cliente (solo si está disponible y seleccionado) ── *@
+                    @if (avail && sel)
+                    {
+                        var pm = GetPaymentMethod(c.ClientId);
+                        var pf = GetPaymentForm(c.ClientId);
+                        var isPue = pm == "PUE";
+
+                        <div class="mpd-payment-row" @onclick:stopPropagation="true">
+
+                            @* Método: PPD / PUE *@
+                            <div class="mpd-pay-field">
+                                <label class="mpd-pay-lbl">
+                                    <i class="bi bi-credit-card"></i>
+                                    Método <span style="color:#ef4444">*</span>
+                                </label>
+                                <select class="form-select form-select-sm mpd-pm-select"
+                                        value="@pm"
+                                        @onchange="e => SetPaymentMethod(c.ClientId, e.Value?.ToString() ?? string.Empty)"
+                                        @onclick:stopPropagation="true">
+                                    <option value="">— Seleccionar —</option>
+                                    <option value="PPD">PPD — Parcialidades o diferido</option>
+                                    <option value="PUE">PUE — Una sola exhibición</option>
+                                </select>
+                            </div>
+
+                            @* Forma de pago: solo si PUE *@
+                            @if (isPue)
+                            {
+                                <div class="mpd-pay-field">
+                                    <label class="mpd-pay-lbl">
+                                        <i class="bi bi-wallet2"></i>
+                                        Forma de Pago <span style="color:#ef4444">*</span>
+                                    </label>
+                                    <select class="form-select form-select-sm mpd-pm-select"
+                                            value="@pf"
+                                            @onchange="e => SetPaymentForm(c.ClientId, e.Value?.ToString() ?? string.Empty)"
+                                            @onclick:stopPropagation="true">
+                                        <option value="">— Seleccionar —</option>
+                                        <option value="Transferencia">Transferencia</option>
+                                        <option value="Efectivo">Efectivo</option>
+                                        <option value="Tarjeta">Tarjeta</option>
+                                        <option value="Cheque">Cheque</option>
+                                        <option value="Depósito">Depósito</option>
+                                    </select>
+                                </div>
+                            }
+
+                            @* Indicador de estado *@
+                            @if (string.IsNullOrEmpty(pm))
+                            {
+                                <span class="mpd-pay-status mpd-pay-status-err">
+                                    <i class="bi bi-exclamation-circle"></i> Requerido
+                                </span>
+                            }
+                            else if (isPue && string.IsNullOrEmpty(pf))
+                            {
+                                <span class="mpd-pay-status mpd-pay-status-err">
+                                    <i class="bi bi-exclamation-circle"></i> Elige forma de pago
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="mpd-pay-status mpd-pay-status-ok">
+                                    <i class="bi bi-check-circle"></i>
+                                    @pm @(isPue ? $"· {pf}" : string.Empty)
+                                </span>
+                            }
+
+                        </div>
+                    }
+
                 </div>
             }
         </div>
 
         @* ── Footer ── *@
         <div class="mpd-footer">
+
             <div class="mpd-legend">
                 <span class="mpd-b b-ok">Normal</span>
                 <span class="mpd-b b-warn">Advert. &gt;80%</span>
@@ -259,15 +331,26 @@ else
                 <span class="mpd-b b-crit">Crítico &gt;10h</span>
                 <span class="mpd-b b-can">Cancelada</span>
             </div>
+
             <div class="mpd-btns">
+                @if (_pendingCount > 0)
+                {
+                    <span style="font-size:.74rem;color:#ef4444;white-space:nowrap;align-self:center">
+                        <i class="bi bi-exclamation-circle"></i>
+                        @_pendingCount pendiente@(_pendingCount == 1 ? "" : "s") de completar
+                    </span>
+                }
+
                 <button class="mpd-btn mpd-btn-sec"
                         @onclick="Cancel"
                         disabled="@_isGenerating">
                     <i class="bi bi-x-lg"></i> Cancelar
                 </button>
+
                 <button class="mpd-btn mpd-btn-pri"
                         @onclick="Generate"
-                        disabled="@(_isGenerating || _selectedIds.Count == 0)">
+                        disabled="@(_isGenerating || _selectedIds.Count == 0 || _pendingCount > 0)"
+                        title="@(_pendingCount > 0 ? "Completa los datos de pago de cada factura" : string.Empty)">
                     @if (_isGenerating)
                     {
                         <span class="mpd-spin"></span>
@@ -285,11 +368,89 @@ else
     </div>
 }
 
+<style>
+    .mpd-payment-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: rgba(37, 99, 235, 0.04);
+        border: 1px dashed rgba(37, 99, 235, 0.25);
+        border-radius: 8px;
+        flex-wrap: wrap;
+    }
+
+    .mpd-pay-field {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .mpd-pay-lbl {
+        font-size: .74rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--mpd-text, #1e293b);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin: 0;
+    }
+
+    .mpd-pm-select {
+        min-width: 195px;
+        font-size: .78rem !important;
+        padding: 3px 8px !important;
+        height: auto !important;
+    }
+
+    .mpd-pay-status {
+        font-size: .7rem;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: auto;
+    }
+
+    .mpd-pay-status-ok {
+        color: #10b981;
+    }
+
+    .mpd-pay-status-err {
+        color: #ef4444;
+    }
+
+    [data-theme="dark"] .mpd-payment-row {
+        background: rgba(122, 162, 255, 0.06);
+        border-color: rgba(122, 162, 255, 0.25);
+    }
+
+    [data-theme="dark"] .mpd-pay-lbl {
+        color: var(--mpd-text, #e2e8f0);
+    }
+</style>
+
 @code {
     private List<MonthlyClientSummaryDto>? _summary;
     private HashSet<int> _selectedIds = new();
     private bool _isLoading = true;
     private bool _isGenerating = false;
+
+    // clientId → PaymentMethod ("PPD" | "PUE" | "")
+    private Dictionary<int, string> _paymentMethods = new();
+    // clientId → PaymentForm ("Transferencia" | "Efectivo" | etc. | "")
+    private Dictionary<int, string> _paymentForms = new();
+
+    // Cuántos seleccionados tienen datos incompletos
+    private int _pendingCount => _selectedIds.Count(id =>
+    {
+        var pm = GetPaymentMethod(id);
+        if (string.IsNullOrEmpty(pm)) return true;
+        if (pm == "PUE" && string.IsNullOrEmpty(GetPaymentForm(id))) return true;
+        return false;
+    });
 
     private int _availableCount => _summary?.Count(s => !s.AlreadyHasInvoice) ?? 0;
     private int _alreadyCount => _summary?.Count(s => s.AlreadyHasInvoice) ?? 0;
@@ -303,10 +464,18 @@ else
         {
             _summary = await InvoiceApiService.GetMonthlySummaryAsync();
             if (_summary != null)
+            {
                 _selectedIds = _summary
                     .Where(s => !s.AlreadyHasInvoice)
                     .Select(s => s.ClientId)
                     .ToHashSet();
+
+                foreach (var c in _summary.Where(s => !s.AlreadyHasInvoice))
+                {
+                    _paymentMethods[c.ClientId] = string.Empty;
+                    _paymentForms[c.ClientId] = string.Empty;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -314,6 +483,26 @@ else
             _summary = new();
         }
         finally { _isLoading = false; }
+    }
+
+    private string GetPaymentMethod(int clientId) =>
+        _paymentMethods.TryGetValue(clientId, out var v) ? v : string.Empty;
+
+    private string GetPaymentForm(int clientId) =>
+        _paymentForms.TryGetValue(clientId, out var v) ? v : string.Empty;
+
+    private void SetPaymentMethod(int clientId, string value)
+    {
+        _paymentMethods[clientId] = value;
+        // Si cambia a PPD limpiar forma de pago (no aplica)
+        if (value != "PUE") _paymentForms[clientId] = string.Empty;
+        StateHasChanged();
+    }
+
+    private void SetPaymentForm(int clientId, string value)
+    {
+        _paymentForms[clientId] = value;
+        StateHasChanged();
     }
 
     private void ToggleClient(int id)
@@ -334,15 +523,29 @@ else
 
     private async Task Generate()
     {
-        if (_selectedIds.Count == 0) return;
+        if (_selectedIds.Count == 0 || _pendingCount > 0) return;
+
         _isGenerating = true;
         StateHasChanged();
+
         try
         {
-            var (ok, err) = await InvoiceApiService.GenerateMonthlyInvoicesAsync(_selectedIds.ToList());
+            var items = _selectedIds
+                .Select(id => new ClientInvoiceRequestDto
+                {
+                    ClientId = id,
+                    PaymentMethod = GetPaymentMethod(id),
+                    PaymentForm = GetPaymentMethod(id) == "PUE" ? GetPaymentForm(id) : null
+                })
+                .ToList();
+
+            var (ok, err) = await InvoiceApiService.GenerateMonthlyInvoicesAsync(items);
             DialogService.Close(ok ? "generated" : err);
         }
-        finally { _isGenerating = false; }
+        finally
+        {
+            _isGenerating = false;
+        }
     }
 
     private void Cancel() => DialogService.Close(null);

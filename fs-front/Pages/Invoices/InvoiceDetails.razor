@@ -39,6 +39,26 @@ else
         @* ── Card de cancelación (solo si aplica) ── *@
         <InvoiceCancelledCard Invoice="@_invoice" />
 
+        @* ── AVISO: sin método de pago asignado ── *@
+        @if (string.IsNullOrEmpty(_invoice.PaymentMethod))
+        {
+            <div class="invd-no-payment-banner d-flex align-items-center gap-3 mb-4 p-3 rounded-3 border"
+                 style="background:#fff7ed;border-color:#fed7aa !important;color:#7c2d12;">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"
+                   style="font-size:1.25rem;color:#f97316"></i>
+                <div class="flex-grow-1">
+                    <strong>Sin método de pago asignado.</strong>
+                    Esta factura no tiene <strong>PPD</strong> ni <strong>PUE</strong> definido.
+                    Edítala para asignarlo antes de registrar pagos.
+                </div>
+                <button class="btn btn-sm fw-semibold flex-shrink-0"
+                        style="background:#f97316;color:#fff;border:none;white-space:nowrap"
+                        @onclick="() => OpenEditDialog(_invoice!.Id)">
+                    <i class="bi bi-pencil-fill me-1"></i> Asignar ahora
+                </button>
+            </div>
+        }
+
         @* ── Layout principal ── *@
         <div class="row g-4">
 
@@ -127,6 +147,16 @@ else
         background: radial-gradient(circle at top right, #1a2742 0%, var(--invd-bg) 40%, var(--invd-bg) 100%);
     }
 
+        [data-theme="dark"] .invoice-detail-page .invd-no-payment-banner {
+            background: #3b2b1a !important;
+            border-color: rgba(245, 192, 126, 0.4) !important;
+            color: #f3cca0 !important;
+        }
+
+            [data-theme="dark"] .invoice-detail-page .invd-no-payment-banner strong {
+                color: #fcd6a0;
+            }
+
     .invoice-detail-page .card {
         border-color: var(--invd-border);
     }
@@ -147,11 +177,11 @@ else
         border-color: var(--invd-border-strong);
     }
 
-    .invoice-detail-page .invd-panel:hover,
-    .invoice-detail-page .invd-ticket-row:hover {
-        box-shadow: var(--invd-shadow-md);
-        transition: box-shadow 0.18s ease;
-    }
+        .invoice-detail-page .invd-panel:hover,
+        .invoice-detail-page .invd-ticket-row:hover {
+            box-shadow: var(--invd-shadow-md);
+            transition: box-shadow 0.18s ease;
+        }
 
     .invoice-detail-page .btn-outline-dark {
         color: var(--invd-text);
@@ -159,11 +189,11 @@ else
         background: var(--invd-surface-soft);
     }
 
-    .invoice-detail-page .btn-outline-dark:hover {
-        color: var(--invd-text);
-        border-color: var(--invd-primary-border);
-        background: var(--invd-primary-soft);
-    }
+        .invoice-detail-page .btn-outline-dark:hover {
+            color: var(--invd-text);
+            border-color: var(--invd-primary-border);
+            background: var(--invd-primary-soft);
+        }
 
     @@media (max-width: 992px) {
         .invoice-detail-page {
@@ -243,9 +273,7 @@ else
             },
             new DialogOptions
             {
-                Width = "900px",
-                Height = "auto",
-                Resizable = true,
+                Width = "640px",
                 CloseDialogOnOverlayClick = false,
                 Draggable = false
             });

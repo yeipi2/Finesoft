@@ -142,10 +142,7 @@ public class InvoicesController : ControllerBase
         return Ok(result.Data);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ⭐ NUEVO: GET api/invoices/monthly-summary
-    // Devuelve el resumen de pólizas mensuales con tickets y estado para el panel
-    // ─────────────────────────────────────────────────────────────────────────
+    /// GET: api/invoices/monthly-summary
     [HttpGet("monthly-summary")]
     [RequirePermission("invoices.view")]
     public async Task<IActionResult> GetMonthlySummary()
@@ -156,20 +153,34 @@ public class InvoicesController : ControllerBase
 
     // ─────────────────────────────────────────────────────────────────────────
     // ⭐ ACTUALIZADO: POST api/invoices/generate-monthly
-    // Acepta lista de clientIds seleccionados. Si está vacía, genera todos.
+    // Recibe lista de { ClientId, PaymentMethod, PaymentForm? } por cliente
     // ─────────────────────────────────────────────────────────────────────────
     [HttpPost("generate-monthly")]
     [RequirePermission("invoices.create")]
-    public async Task<IActionResult> GenerateMonthlyInvoices([FromBody] GenerateMonthlyInvoicesDto? dto = null)
+    public async Task<IActionResult> GenerateMonthlyInvoices([FromBody] GenerateMonthlyInvoicesDto dto)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized(new { message = "Usuario no autenticado" });
 
-        _logger.LogInformation("✅ Usuario {UserId} generando facturas mensuales para {Count} clientes",
-            userId, dto?.ClientIds?.Count ?? 0);
+        if (dto?.Items == null || !dto.Items.Any())
+            return BadRequest(new { message = "Debes seleccionar al menos un cliente." });
 
-        var result = await _invoiceService.GenerateMonthlyInvoicesAsync(userId, dto?.ClientIds);
+        // Validar que todos los items tengan PaymentMethod
+        var sinMetodo = dto.Items.Where(i => string.IsNullOrEmpty(i.PaymentMethod)).ToList();
+        if (sinMetodo.Any())
+            return BadRequest(new { message = $"Faltan métodos de pago para {sinMetodo.Count} cliente(s)." });
+
+        // Validar que PUE tenga PaymentForm
+        var puesinforma = dto.Items
+            .Where(i => i.PaymentMethod == "PUE" && string.IsNullOrEmpty(i.PaymentForm))
+            .ToList();
+        if (puesinforma.Any())
+            return BadRequest(new { message = $"{puesinforma.Count} cliente(s) con PUE no tienen forma de pago." });
+
+        _logger.LogInformation("Usuario {UserId} generando {Count} facturas mensuales", userId, dto.Items.Count);
+
+        var result = await _invoiceService.GenerateMonthlyInvoicesAsync(userId, dto.Items);
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 

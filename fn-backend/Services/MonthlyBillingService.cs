@@ -1,3 +1,4 @@
+// fs-backend/Services/MonthlyBillingService.cs  — COMPLETO ACTUALIZADO
 using fn_backend.Models;
 using fs_backend.DTO;
 using fs_backend.Identity;
@@ -24,25 +25,41 @@ public class MonthlyBillingService : IMonthlyBillingService
         _logger = logger;
     }
 
-    public async Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null)
+    // ⭐ ACTUALIZADO: cada cliente lleva su propio PaymentMethod y PaymentForm
+    public async Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(
+        string userId, List<GenerateMonthlyInvoiceItemDto> items)
     {
         var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var nextMonth = currentMonth.AddMonths(1);
 
-        var query = _context.Clients
-            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual") && c.IsActive);
+        var clientIds = items.Select(i => i.ClientId).ToList();
 
-        if (clientIds != null && clientIds.Any())
-            query = query.Where(c => clientIds.Contains(c.Id));
+        var clients = await _context.Clients
+            .Where(c => (c.BillingFrequency == "Monthly" || c.ServiceMode == "Mensual")
+                        && c.IsActive
+                        && clientIds.Contains(c.Id))
+            .ToListAsync();
 
-        var clientsWithMonthly = await query.ToListAsync();
-        if (!clientsWithMonthly.Any())
+        if (!clients.Any())
             return ServiceResult<bool>.Failure("No se encontraron clientes con facturación mensual activa");
 
         var invoicesCreated = 0;
 
-        foreach (var client in clientsWithMonthly)
+        foreach (var client in clients)
         {
+            // Obtener el item con los datos de pago elegidos para este cliente
+            var itemDto = items.FirstOrDefault(i => i.ClientId == client.Id);
+            if (itemDto == null) continue;
+
+            var paymentType = itemDto.PaymentMethod.ToUpper() == "PUE"
+                                    ? InvoiceConstants.PaymentType.Pue
+                                    : InvoiceConstants.PaymentType.Ppd;
+
+            // Para PUE la forma de pago es requerida; para PPD se deja vacía
+            var paymentMethod = paymentType == InvoiceConstants.PaymentType.Pue
+                                    ? (itemDto.PaymentForm ?? string.Empty)
+                                    : string.Empty;
+
             var existingActiveInvoice = await _context.Invoices
                 .AnyAsync(i => i.ClientId == client.Id
                             && i.InvoiceType == InvoiceConstants.InvoiceType.Monthly
@@ -78,8 +95,8 @@ public class MonthlyBillingService : IMonthlyBillingService
 
             var monthlyHours = client.MonthlyHours;
             var subtotal = (client.MonthlyRate.HasValue && client.MonthlyRate.Value > 0)
-                ? (decimal)client.MonthlyRate.Value
-                : 0m;
+                                   ? (decimal)client.MonthlyRate.Value
+                                   : 0m;
 
             var notes = $"Factura mensual - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}";
             if (monthlyHours > 0 && hoursUsed > monthlyHours + 10)
@@ -111,8 +128,8 @@ public class MonthlyBillingService : IMonthlyBillingService
                 DueDate = currentMonth.AddDays(30),
                 InvoiceType = InvoiceConstants.InvoiceType.Monthly,
                 Status = InvoiceConstants.Status.Pending,
-                PaymentType = InvoiceConstants.PaymentType.Ppd,
-                PaymentMethod = string.Empty,
+                PaymentType = paymentType,    // ⭐ viene del selector por cliente
+                PaymentMethod = paymentMethod,  // ⭐ vacío para PPD, forma de pago para PUE
                 CreatedByUserId = userId,
                 Notes = notes
             };
@@ -143,10 +160,10 @@ public class MonthlyBillingService : IMonthlyBillingService
 
             _context.Invoices.Add(invoice);
             invoicesCreated++;
+
             _logger.LogInformation(
-                "Factura mensual generada para {CompanyName} con {TicketCount} tickets",
-                client.CompanyName,
-                ticketsThisMonth.Count);
+                "Factura mensual generada para {CompanyName} | {PaymentType} | {PaymentMethod} | {TicketCount} tickets",
+                client.CompanyName, paymentType, paymentMethod, ticketsThisMonth.Count);
         }
 
         await _context.SaveChangesAsync();

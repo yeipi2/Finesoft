@@ -15,12 +15,10 @@ public interface IInvoiceService
     Task<ServiceResult<bool>> ChangeInvoiceStatusAsync(int id, string newStatus, string? reason);
     Task<ServiceResult<InvoicePaymentDto>> AddPaymentAsync(int invoiceId, RegisterInvoicePaymentDto dto, string userId);
 
-    // ⭐ ACTUALIZADO: ahora recibe lista de clientIds seleccionados
-    Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<int>? clientIds = null);
+    // ⭐ ACTUALIZADO: recibe lista de items con PaymentMethod + PaymentForm por cliente
+    Task<ServiceResult<bool>> GenerateMonthlyInvoicesAsync(string userId, List<GenerateMonthlyInvoiceItemDto> items);
 
-    // ⭐ NUEVO: resumen completo de pólizas mensuales con tickets
     Task<List<MonthlyClientSummaryDto>> GetMonthlySummaryAsync();
-
     Task<InvoiceStatsDto> GetInvoiceStatsAsync();
     Task<byte[]> GenerateInvoicePdfAsync(int id);
     Task<List<int>> GetTicketsInUseAsync();

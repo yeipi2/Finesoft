@@ -12,8 +12,8 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                    background:white;z-index:9999;
-                    display:flex;align-items:center;justify-content:center;">
+                        background:white;z-index:9999;
+                        display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -61,33 +61,32 @@ else
         </section>
 
         <section class="fs-index-section">
-            <FilterBar
-                   SearchPlaceholder="Buscar facturas..."
-                   SearchValue="@_searchTerm"
-                   SearchValueChanged="@(v => { _searchTerm = v; ApplyFilters(); })"
-                   OnClear="ClearFilters">
-            <Filters>
-                <select class="form-select"
-                        @bind="_selectedStatus"
-                        @bind:event="onchange"
-                        @bind:after="ApplyFilters">
-                    <option value="">Todos los estados</option>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="Pagada">Pagada</option>
-                    <option value="Vencida">Vencida</option>
-                    <option value="Cancelada">Cancelada</option>
-                    <option value="Borrador">Borrador</option>
-                </select>
+            <FilterBar SearchPlaceholder="Buscar facturas..."
+                       SearchValue="@_searchTerm"
+                       SearchValueChanged="@(v => { _searchTerm = v; ApplyFilters(); })"
+                       OnClear="ClearFilters">
+                <Filters>
+                    <select class="form-select"
+                            @bind="_selectedStatus"
+                            @bind:event="onchange"
+                            @bind:after="ApplyFilters">
+                        <option value="">Todos los estados</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Pagada">Pagada</option>
+                        <option value="Vencida">Vencida</option>
+                        <option value="Cancelada">Cancelada</option>
+                        <option value="Borrador">Borrador</option>
+                    </select>
 
-                <select class="form-select"
-                        @bind="_selectedType"
-                        @bind:event="onchange"
-                        @bind:after="ApplyFilters">
-                    <option value="">Todos los tipos</option>
-                    <option value="Event">Evento</option>
-                    <option value="Monthly">Mensual</option>
-                </select>
-            </Filters>
+                    <select class="form-select"
+                            @bind="_selectedType"
+                            @bind:event="onchange"
+                            @bind:after="ApplyFilters">
+                        <option value="">Todos los tipos</option>
+                        <option value="Event">Evento</option>
+                        <option value="Monthly">Mensual</option>
+                    </select>
+                </Filters>
             </FilterBar>
         </section>
 
@@ -243,7 +242,6 @@ else
         if (result == true) await LoadData();
     }
 
-    // ⭐ NUEVO: abre el panel de pólizas mensuales como dialog
     private async Task OpenMonthlyPanel()
     {
         _isGenerating = true;
@@ -271,10 +269,8 @@ else
             }
             else if (result != null && result.ToString() != "generated")
             {
-                // El dialog cerró con un mensaje de error
                 Notify("Error", result.ToString() ?? "Error al generar facturas.", NotificationSeverity.Error);
             }
-            // Si result es null el usuario canceló — no hacer nada
         }
         finally
         {

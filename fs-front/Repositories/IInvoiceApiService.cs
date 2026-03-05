@@ -1,7 +1,6 @@
 ﻿// fs-front/Repositories/IInvoiceApiService.cs
 using fs_front.DTO;
 using Microsoft.AspNetCore.Components.Forms;
-
 namespace fs_front.Services;
 
 public interface IInvoiceApiService
@@ -14,13 +13,9 @@ public interface IInvoiceApiService
     Task<(bool Success, string? ErrorMessage)> DeleteInvoiceAsync(int id);
     Task<(bool Success, string? ErrorMessage)> ChangeInvoiceStatusAsync(int id, string newStatus, string? reason = null);
     Task<(bool Success, InvoicePaymentDto? AddedPayment, string? ErrorMessage)> AddPaymentAsync(int invoiceId, InvoicePaymentDto payment);
-
-    // ⭐ ACTUALIZADO: acepta lista de clientIds seleccionados
-    Task<(bool Success, string? ErrorMessage)> GenerateMonthlyInvoicesAsync(List<int>? clientIds = null);
-
-    // ⭐ NUEVO: resumen completo con tickets para el panel
+    // ⭐ ACTUALIZADO: cada cliente lleva su propio PaymentMethod + PaymentForm
+    Task<(bool Success, string? ErrorMessage)> GenerateMonthlyInvoicesAsync(List<ClientInvoiceRequestDto> items);
     Task<List<MonthlyClientSummaryDto>?> GetMonthlySummaryAsync();
-
     Task<InvoiceStatsDto?> GetInvoiceStatsAsync();
     Task<byte[]?> GenerateInvoicePdfAsync(int id);
     Task<List<int>?> GetTicketsInUseAsync();

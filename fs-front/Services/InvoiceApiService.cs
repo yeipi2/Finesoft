@@ -174,14 +174,16 @@ public class InvoiceApiService : IInvoiceApiService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ⭐ ACTUALIZADO: recibe lista de clientIds seleccionados en el panel
+    // ⭐ ACTUALIZADO: envía lista de { ClientId, PaymentMethod, PaymentForm }
+    // El backend los recibe como GenerateMonthlyInvoicesDto { Items: [...] }
     // ─────────────────────────────────────────────────────────────────────────
     public async Task<(bool Success, string? ErrorMessage)> GenerateMonthlyInvoicesAsync(
-        List<int>? clientIds = null)
+        List<ClientInvoiceRequestDto> items)
     {
         try
         {
-            var body = new { ClientIds = clientIds ?? new List<int>() };
+            // El backend espera { "items": [ { clientId, paymentMethod, paymentForm }, ... ] }
+            var body = new { items };
             var response = await _httpClient.PostAsJsonAsync("api/invoices/generate-monthly", body);
 
             if (response.IsSuccessStatusCode) return (true, null);
@@ -192,9 +194,6 @@ public class InvoiceApiService : IInvoiceApiService
         catch (Exception e) { return (false, $"Error: {e.Message}"); }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ⭐ NUEVO: obtiene resumen completo con tickets del mes para el panel
-    // ─────────────────────────────────────────────────────────────────────────
     public async Task<List<MonthlyClientSummaryDto>?> GetMonthlySummaryAsync()
     {
         try
