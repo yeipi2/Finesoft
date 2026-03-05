@@ -15,8 +15,8 @@ public class AddInvoicePaymentWithReceiptRequest
     [Required]
     public string PaymentMethod { get; set; } = string.Empty;
 
-    public string Reference { get; set; } = string.Empty;
-    public string Notes { get; set; } = string.Empty;
+    public string? Reference { get; set; }
+    public string? Notes { get; set; }
 
     [Required]
     public IFormFile Receipt { get; set; } = default!;

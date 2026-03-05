@@ -508,8 +508,8 @@ public class InvoiceService : IInvoiceService
             Amount = paymentInfo.Amount,
             PaymentDate = dto.PaymentDate,
             PaymentMethod = dto.PaymentMethod,
-            Reference = dto.Reference,
-            Notes = dto.Notes,
+            Reference = dto.Reference ?? string.Empty,
+            Notes = dto.Notes ?? string.Empty,
             RecordedByUserId = userId,
 
             ReceiptPath = receipt?.Path,
@@ -581,8 +581,8 @@ public class InvoiceService : IInvoiceService
             Amount = paymentInfo.Amount,
             PaymentDate = request.PaymentDate,
             PaymentMethod = request.PaymentMethod,
-            Reference = request.Reference,
-            Notes = request.Notes,
+            Reference = request.Reference ?? string.Empty,
+            Notes = request.Notes ?? string.Empty,
             RecordedByUserId = userId,
 
             ReceiptFileName = receipt.FileName,

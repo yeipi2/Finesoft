@@ -15,8 +15,8 @@ public class RegisterInvoicePaymentDto
     [Required(ErrorMessage = "El método de pago es obligatorio")]
     public string PaymentMethod { get; set; } = string.Empty;
 
-    public string Reference { get; set; } = string.Empty;
-    public string Notes { get; set; } = string.Empty;
+    public string? Reference { get; set; }
+    public string? Notes { get; set; }
 
     // ✅ Archivo (pdf/jpg/png)
     public IFormFile? Receipt { get; set; }
