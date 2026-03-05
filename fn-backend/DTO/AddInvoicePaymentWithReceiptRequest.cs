@@ -18,6 +18,5 @@ public class AddInvoicePaymentWithReceiptRequest
     public string? Reference { get; set; }
     public string? Notes { get; set; }
 
-    [Required]
-    public IFormFile Receipt { get; set; } = default!;
+    public IFormFile? Receipt { get; set; }
 }

@@ -140,7 +140,7 @@ public class InvoiceApiService : IInvoiceApiService
     }
 
     public async Task<(bool Success, InvoicePaymentDto? AddedPayment, string? ErrorMessage)>
-        AddPaymentWithReceiptAsync(int invoiceId, InvoicePaymentDto payment, IBrowserFile receiptFile)
+        AddPaymentWithReceiptAsync(int invoiceId, InvoicePaymentDto payment, IBrowserFile? receiptFile)
     {
         try
         {
@@ -151,10 +151,13 @@ public class InvoiceApiService : IInvoiceApiService
             content.Add(new StringContent(payment.Reference ?? ""), "Reference");
             content.Add(new StringContent(payment.Notes ?? ""), "Notes");
 
-            var stream = receiptFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
-            var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(receiptFile.ContentType);
-            content.Add(fileContent, "Receipt", receiptFile.Name);
+            if (receiptFile != null)
+            {
+                var stream = receiptFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                var fileContent = new StreamContent(stream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(receiptFile.ContentType);
+                content.Add(fileContent, "Receipt", receiptFile.Name);
+            }
 
             var response = await _httpClient.PostAsync(
                 $"api/invoices/{invoiceId}/payments-with-receipt", content);

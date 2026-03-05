@@ -569,11 +569,23 @@ public class InvoiceService : IInvoiceService
         var paymentInfo = validation.Data!;
         request.PaymentMethod = paymentInfo.PaymentMethod;
 
-        var receiptResult = await _receiptStorageService.SaveRequiredAsync(invoiceId, request.Receipt);
-        if (!receiptResult.Succeeded)
-            return ServiceResult<InvoicePaymentDto>.Failure(receiptResult.Errors);
+        (string Path, string FileName, string ContentType, long Size, DateTime UploadedAt)? receipt;
+        if (RequiresReceiptForPaymentMethod(request.PaymentMethod))
+        {
+            var requiredReceiptResult = await _receiptStorageService.SaveRequiredAsync(invoiceId, request.Receipt);
+            if (!requiredReceiptResult.Succeeded)
+                return ServiceResult<InvoicePaymentDto>.Failure(requiredReceiptResult.Errors);
 
-        var receipt = receiptResult.Data!;
+            receipt = requiredReceiptResult.Data;
+        }
+        else
+        {
+            var optionalReceiptResult = await _receiptStorageService.SaveOptionalAsync(invoiceId, request.Receipt);
+            if (!optionalReceiptResult.Succeeded)
+                return ServiceResult<InvoicePaymentDto>.Failure(optionalReceiptResult.Errors);
+
+            receipt = optionalReceiptResult.Data;
+        }
 
         var payment = new InvoicePayment
         {
@@ -585,11 +597,11 @@ public class InvoiceService : IInvoiceService
             Notes = request.Notes ?? string.Empty,
             RecordedByUserId = userId,
 
-            ReceiptFileName = receipt.FileName,
-            ReceiptContentType = receipt.ContentType,
-            ReceiptSize = receipt.Size,
-            ReceiptPath = receipt.Path,
-            ReceiptUploadedAt = receipt.UploadedAt
+            ReceiptFileName = receipt?.FileName,
+            ReceiptContentType = receipt?.ContentType,
+            ReceiptSize = receipt?.Size,
+            ReceiptPath = receipt?.Path,
+            ReceiptUploadedAt = receipt?.UploadedAt
         };
 
         _context.InvoicePayments.Add(payment);
@@ -676,5 +688,10 @@ public class InvoiceService : IInvoiceService
             .Select(ii => ii.TicketId!.Value)
             .Distinct()
             .ToListAsync();
+    }
+
+    private static bool RequiresReceiptForPaymentMethod(string? paymentMethod)
+    {
+        return !string.Equals(paymentMethod?.Trim(), "Efectivo", StringComparison.OrdinalIgnoreCase);
     }
 }

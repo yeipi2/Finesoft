@@ -123,14 +123,22 @@
 
                     <div class="col-12">
                         <label class="form-label small fw-bold">
-                            Comprobante (PDF/Imagen) <span class="text-danger">*</span>
+                            Comprobante (PDF/Imagen)
+                            @if (RequiresReceipt)
+                            {
+                                <span class="text-danger">*</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted ms-1">(opcional para efectivo)</span>
+                            }
                         </label>
 
                         <InputFile class="form-control form-control-sm"
                                    OnChange="OnFileSelected"
                                    accept=".pdf,image/*" />
 
-                        @if (!string.IsNullOrWhiteSpace(_fileError))
+                        @if (!string.IsNullOrWhiteSpace(_fileError) && (RequiresReceipt || _receiptFile != null))
                         {
                             <div class="text-danger small mt-1">@_fileError</div>
                         }
@@ -201,7 +209,9 @@
         _model.Amount > 0 &&
         _model.PaymentDate != default &&
         !string.IsNullOrWhiteSpace(_model.PaymentMethod) &&
-        _receiptFile != null;
+        (!RequiresReceipt || _receiptFile != null);
+    private bool RequiresReceipt =>
+        !string.Equals(_model.PaymentMethod?.Trim(), "Efectivo", StringComparison.OrdinalIgnoreCase);
 
     protected override void OnParametersSet()
     {
@@ -284,11 +294,14 @@
             return;
         }
 
-        if (_receiptFile == null)
+        if (RequiresReceipt && _receiptFile == null)
         {
             _fileError = "Debes subir un comprobante.";
             return;
         }
+
+        if (!RequiresReceipt)
+            _fileError = null;
 
         if (IsPUE && !string.IsNullOrWhiteSpace(InvoicePaymentMethod))
             _model.PaymentMethod = InvoicePaymentMethod;

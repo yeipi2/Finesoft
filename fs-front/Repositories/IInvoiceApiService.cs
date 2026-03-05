@@ -27,6 +27,6 @@ public interface IInvoiceApiService
     Task<(bool Success, InvoicePaymentDto? AddedPayment, string? ErrorMessage)> AddPaymentWithReceiptAsync(
         int invoiceId,
         InvoicePaymentDto payment,
-        IBrowserFile receiptFile
+        IBrowserFile? receiptFile
     );
 }
