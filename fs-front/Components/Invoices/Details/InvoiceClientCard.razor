@@ -6,7 +6,7 @@
             <span class="invd-icon-wrap"><i class="bi bi-building"></i></span>
             Información del cliente
         </h5>
-        <span class="invd-tag">@Invoice?.InvoiceType</span>
+        <span class="invd-tag invd-tag--@(Invoice?.InvoiceType == "Monthly" ? "primary" : "secondary")">@Invoice?.InvoiceType</span>
     </header>
 
     <div class="invd-panel__body">
@@ -71,11 +71,19 @@
     .invd-tag {
         border-radius: 999px;
         border: 1px solid var(--invd-border);
-        background: var(--invd-surface-soft);
-        color: var(--invd-muted);
         padding: 0.2rem 0.55rem;
         font-size: 0.75rem;
         font-weight: 600;
+    }
+
+    .invd-tag--primary {
+        background: var(--invd-primary-soft);
+        color: var(--invd-primary);
+    }
+
+    .invd-tag--secondary {
+        background: var(--invd-surface-soft);
+        color: var(--invd-muted);
     }
 
     .invd-field {

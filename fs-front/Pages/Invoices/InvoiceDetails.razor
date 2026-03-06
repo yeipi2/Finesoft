@@ -39,8 +39,8 @@ else
         @* ── Card de cancelación (solo si aplica) ── *@
         <InvoiceCancelledCard Invoice="@_invoice" />
 
-        @* ── AVISO: sin método de pago asignado ── *@
-        @if (string.IsNullOrEmpty(_invoice.PaymentMethod))
+        @* ── AVISO: sin método de pago asignado (solo para PUE) ── *@
+        @if (_invoice.PaymentType == "PUE" && string.IsNullOrEmpty(_invoice.PaymentMethod))
         {
             <div class="invd-no-payment-banner d-flex align-items-center gap-3 mb-4 p-3 rounded-3 border"
                  style="background:#fff7ed;border-color:#fed7aa !important;color:#7c2d12;">

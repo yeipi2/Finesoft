@@ -11,7 +11,7 @@
             <div>
                 <dt>Tipo</dt>
                 <dd>
-                    <span class="badge @(Invoice?.InvoiceType == "Monthly" ? "text-bg-primary" : "text-bg-secondary")">
+                    <span class="invd-badge @(Invoice?.InvoiceType == "Monthly" ? "invd-badge--primary" : "invd-badge--secondary")">
                         @(Invoice?.InvoiceType == "Monthly" ? "Mensual" : "Evento")
                     </span>
                 </dd>
@@ -97,6 +97,24 @@ else if (Invoice?.Status == "Pendiente" && Invoice.Balance > 0)
 }
 
 <style>
+    .invd-badge {
+        border-radius: 999px;
+        border: 1px solid var(--invd-border);
+        padding: 0.2rem 0.55rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .invd-badge--primary {
+        background: var(--invd-primary-soft);
+        color: var(--invd-primary);
+    }
+
+    .invd-badge--secondary {
+        background: var(--invd-surface-soft);
+        color: var(--invd-muted);
+    }
+
     .invd-kv {
         display: flex;
         flex-direction: column;
