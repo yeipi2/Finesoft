@@ -35,12 +35,18 @@ public class AuthController : ControllerBase
         if (user is null)
             return Unauthorized(new { message = "Correo o contraseña incorrectos." });
 
+        // ⭐ NUEVO: verificar si está bloqueado/inactivo
+        var isLockedOut = user.LockoutEnabled &&
+                          user.LockoutEnd.HasValue &&
+                          user.LockoutEnd.Value > DateTimeOffset.UtcNow;
+        if (isLockedOut)
+            return Unauthorized(new { message = "Tu cuenta está desactivada. Contacta al administrador." });
+
         var result = await _signInManager.CheckPasswordSignInAsync(user, req.Password, lockoutOnFailure: false);
         if (!result.Succeeded)
             return Unauthorized(new { message = "Correo o contraseña incorrectos." });
 
         var token = await _jwt.CreateTokenAsync(user);
-
         return Ok(new { accessToken = token });
     }
 
@@ -77,4 +83,5 @@ public class AuthController : ControllerBase
         var token = await _jwt.CreateTokenAsync(user);
         return Ok(new { accessToken = token });
     }
+
 }

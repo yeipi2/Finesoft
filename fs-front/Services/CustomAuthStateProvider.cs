@@ -71,7 +71,22 @@ namespace fs_front.Services
                     new { loginModel.Email, loginModel.Password });
 
                 if (!response.IsSuccessStatusCode)
-                    return new FormResponse { Succeeded = false, Errors = ["Correo o contraseña incorrecto"] };
+                {
+                    try
+                    {
+                        var errorBody = await response.Content.ReadFromJsonAsync<JsonNode>();
+                        var msg = errorBody?["message"]?.ToString();
+                        return new FormResponse
+                        {
+                            Succeeded = false,
+                            Errors = [string.IsNullOrWhiteSpace(msg) ? "Correo o contraseña incorrectos." : msg]
+                        };
+                    }
+                    catch
+                    {
+                        return new FormResponse { Succeeded = false, Errors = ["Correo o contraseña incorrectos."] };
+                    }
+                }
 
                 var strResponse = await response.Content.ReadAsStringAsync();
                 var jsonResponse = JsonNode.Parse(strResponse);
