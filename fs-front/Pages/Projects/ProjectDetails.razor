@@ -183,8 +183,86 @@
     }
 
     .project-detail-page .card-header.bg-primary {
-        background: #e8efff !important;
-        color: #1d4ed8 !important;
+        background: var(--pd-primary-soft, #e8efff) !important;
+        color: var(--pd-primary, #1d4ed8) !important;
+    }
+
+    [data-theme="dark"] .project-detail-page {
+        --pd-bg: #0f1525;
+        --pd-surface: #141d32;
+        --pd-surface-soft: #19243c;
+        --pd-text: #e5ecf6;
+        --pd-border: rgba(155, 168, 191, 0.28);
+        --pd-border-strong: rgba(155, 168, 191, 0.42);
+        --pd-primary: #7aa2ff;
+        --pd-primary-soft: #1a2a4f;
+        --pd-primary-border: rgba(122, 162, 255, 0.45);
+        --pd-shadow-sm: 0 6px 16px rgba(0, 0, 0, 0.35);
+        --pd-shadow-md: 0 10px 26px rgba(0, 0, 0, 0.42);
+        background: radial-gradient(circle at top right, #1a2742 0%, var(--pd-bg) 45%, var(--pd-bg) 100%);
+    }
+
+    [data-theme="dark"] .project-detail-page .project-hero {
+        background: var(--pd-surface);
+        border-color: var(--pd-border-strong);
+    }
+
+    [data-theme="dark"] .project-detail-page .card {
+        background: var(--pd-surface);
+        border-color: var(--pd-border);
+    }
+
+    [data-theme="dark"] .project-detail-page .card-header {
+        background: var(--pd-surface-soft) !important;
+        color: var(--pd-text) !important;
+    }
+
+    [data-theme="dark"] .project-detail-page .card-header.bg-primary {
+        background: var(--pd-primary-soft) !important;
+        color: var(--pd-primary) !important;
+    }
+
+    [data-theme="dark"] .project-detail-page .text-muted {
+        color: #9ba8bf !important;
+    }
+
+    [data-theme="dark"] .project-detail-page .breadcrumb-item a {
+        color: var(--pd-primary) !important;
+    }
+
+    [data-theme="dark"] .project-detail-page .btn-outline-dark {
+        color: var(--pd-text);
+        border-color: var(--pd-border-strong);
+        background: var(--pd-surface-soft);
+    }
+
+    [data-theme="dark"] .project-detail-page .btn-outline-dark:hover {
+        color: var(--pd-text);
+        border-color: var(--pd-primary);
+        background: var(--pd-primary-soft);
+    }
+
+    [data-theme="dark"] .project-detail-page .alert-info {
+        background-color: var(--pd-surface-soft);
+        border-color: var(--pd-primary-border, rgba(122, 162, 255, 0.45));
+        color: var(--pd-primary);
+    }
+
+    [data-theme="dark"] .project-detail-page .dropdown-menu {
+        background-color: var(--pd-surface);
+        border-color: var(--pd-border);
+    }
+
+    [data-theme="dark"] .project-detail-page .dropdown-item {
+        color: var(--pd-text);
+    }
+
+    [data-theme="dark"] .project-detail-page .dropdown-item:hover {
+        background-color: var(--pd-surface-soft);
+    }
+
+    [data-theme="dark"] .project-detail-page .dropdown-divider {
+        border-color: var(--pd-border);
     }
 </style>
 
