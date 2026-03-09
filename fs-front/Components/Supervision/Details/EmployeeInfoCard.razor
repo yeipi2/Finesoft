@@ -1,0 +1,24 @@
+@using fs_front.DTO
+
+<div class="card">
+    <div class="card-header text-white" style="background: var(--suph-primary)">
+        <i class="bi bi-person-badge me-2"></i>Información del Empleado
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-2"><strong>Email:</strong> @Employee?.Email</p>
+                <p class="mb-2"><strong>Puesto:</strong> @Employee?.Position</p>
+                <p class="mb-0"><strong>Departamento:</strong> @(string.IsNullOrEmpty(Employee?.Department) ? "-" : Employee?.Department)</p>
+            </div>
+            <div class="col-md-6">
+                <p class="mb-2"><strong>Fecha de Contratación:</strong> @Employee?.HireDate.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))</p>
+                <p class="mb-0"><strong>Última Actividad:</strong> @(Employee?.LastActivityDate?.ToString("g") ?? "Sin actividad")</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EmployeeSummaryDto? Employee { get; set; }
+}

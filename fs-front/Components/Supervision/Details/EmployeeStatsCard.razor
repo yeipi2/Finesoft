@@ -1,0 +1,51 @@
+@using fs_front.DTO
+
+<div class="card">
+    <div class="card-header text-white" style="background: var(--suph-primary)">
+        <i class="bi bi-bar-chart me-2"></i>Estadísticas
+    </div>
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-ticket-perforated me-2" style="color:var(--suph-primary)"></i>Tickets Creados</span>
+                <span class="badge rounded-pill" style="background:var(--suph-primary); color: white">@(Stats?.TotalTicketsCreados ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-person-check me-2" style="color:#7c3aed"></i>Tickets Asignados</span>
+                <span class="badge rounded-pill" style="background:#7c3aed; color: white">@(Stats?.TotalTicketsAsignados ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-check2-square me-2" style="color:#059669"></i>Actividades</span>
+                <span class="badge bg-success rounded-pill">@(Stats?.TotalActividades ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-chat-dots me-2" style="color:#0891b2"></i>Comentarios</span>
+                <span class="badge rounded-pill" style="background:#0891b2; color: white">@(Stats?.TotalComentarios ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-file-earmark-text me-2" style="color:#dc2626"></i>Cotizaciones</span>
+                <span class="badge bg-danger rounded-pill">@(Stats?.TotalCotizaciones ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-receipt-cutoff me-2" style="color:#ea580c"></i>Facturas</span>
+                <span class="badge rounded-pill" style="background:#ea580c; color: white">@(Stats?.TotalFacturas ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-calendar-check me-2" style="color:#7c3aed"></i>Facturas Mensuales</span>
+                <span class="badge rounded-pill" style="background:#7c3aed; color: white">@(Stats?.TotalFacturasMensuales ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center" style="background: var(--suph-surface); border-color: var(--suph-border)">
+                <span><i class="bi bi-credit-card me-2" style="color:#059669"></i>Pagos Registrados</span>
+                <span class="badge bg-success rounded-pill">@(Stats?.TotalPagosRegistrados ?? 0)</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center fw-bold" style="background: var(--suph-surface-soft); border-color: var(--suph-border)">
+                <span>Total Acciones</span>
+                <span class="badge bg-dark rounded-pill">@(Stats?.TotalAcciones ?? 0)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EmployeeStatsDto? Stats { get; set; }
+}

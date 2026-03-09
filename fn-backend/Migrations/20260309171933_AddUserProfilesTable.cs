@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace fs_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class AddUserProfiles : Migration
+    public partial class AddUserProfilesTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

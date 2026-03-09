@@ -199,6 +199,10 @@ namespace fs_backend.Identity
             permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "Editar", Code = "employees.edit", Description = "Editar empleados" });
             permissions.Add(new Permission { Id = id++, Module = "Empleados", Action = "Eliminar", Code = "employees.delete", Description = "Eliminar empleados" });
 
+            // ========== SUPERVISOR (1 permiso) ==========
+            permissions.Add(new Permission { Id = id++, Module = "Supervisor", Action = "Ver", Code = "supervisor.view", Description = "Ver panel de supervisión" });
+            permissions.Add(new Permission { Id = id++, Module = "Supervisor", Action = "VerEmpleados", Code = "supervisor.employees", Description = "Ver historial de empleados" });
+
             // ========== PROYECTOS (5 permisos) ==========
             permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "Ver", Code = "projects.view", Description = "Ver lista de proyectos" });
             permissions.Add(new Permission { Id = id++, Module = "Proyectos", Action = "VerDetalle", Code = "projects.view_detail", Description = "Ver detalles de proyecto" });

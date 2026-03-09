@@ -1,0 +1,220 @@
+@page "/supervisor/empleados"
+@using fs_front.DTO
+@using fs_front.Services
+@using fs_front.Repositories
+@inject ISupervisorApiService SupervisorApiService
+@inject NavigationManager NavigationManager
+@inject PermissionService PermissionService
+@inject NotificationService NotificationService
+
+@attribute [Authorize]
+
+<PageTitle>Supervisión de Empleados - Finesoft</PageTitle>
+
+<SupervisionStyles />
+
+@if (_checkingAccess)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (!_hasAccess)
+{
+    <div class="container p-4">
+        <div class="alert alert-danger">
+            <i class="bi bi-shield-lock"></i> No tienes permiso para acceder a esta sección.
+        </div>
+    </div>
+}
+else
+{
+    <div class="supervisor-index-page container-fluid px-3 px-lg-4 py-4">
+        <SupervisionHeader />
+
+        <SupervisionFilterBar 
+            SearchTerm="@_searchTerm"
+            DepartmentFilter="@_departmentFilter"
+            PositionFilter="@_positionFilter"
+            StatusFilter="@_statusFilter"
+            Departments="@_departments"
+            Positions="@_positions"
+            SearchTermChanged="OnSearchTermChanged"
+            DepartmentFilterChanged="OnDepartmentFilterChanged"
+            PositionFilterChanged="OnPositionFilterChanged"
+            StatusFilterChanged="OnStatusFilterChanged"
+            OnClearFilters="ClearFilters"
+            OnClearSearch="ClearSearch" />
+
+        <SupervisionEmployeesTable 
+            Employees="@_employees"
+            IsLoading="@_isLoading"
+            CurrentPage="@_currentPage"
+            PageSize="@_pageSize"
+            TotalCount="@_totalCount"
+            TotalPages="@_totalPages"
+            OnViewHistory="ViewEmployeeHistory"
+            OnPageChange="ChangePage" />
+    </div>
+}
+
+@code {
+    private List<EmployeeSummaryDto>? _employees;
+    private List<string>? _departments;
+    private List<string>? _positions;
+
+    private bool _checkingAccess = true;
+    private bool _hasAccess;
+    private bool _isLoading = true;
+
+    private string _searchTerm = "";
+    private string _departmentFilter = "Todos";
+    private string _positionFilter = "Todos";
+    private string _statusFilter = "Todos";
+
+    private int _currentPage = 1;
+    private int _pageSize = 15;
+    private int _totalCount;
+    private int _totalPages;
+
+    private System.Timers.Timer? _debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var canView = await PermissionService.HasPermissionAsync("supervisor.view");
+        if (!canView)
+            canView = await PermissionService.HasPermissionAsync("employees.view");
+
+        if (!canView)
+        {
+            _checkingAccess = false;
+            _hasAccess = false;
+            NavigationManager.NavigateTo("/dashboard", forceLoad: true);
+            return;
+        }
+
+        _hasAccess = true;
+        _checkingAccess = false;
+
+        await LoadFilters();
+        await LoadEmployees();
+    }
+
+    private async Task LoadFilters()
+    {
+        try
+        {
+            var filters = await SupervisorApiService.GetFiltersAsync();
+            if (filters != null)
+            {
+                _departments = filters.Departments;
+                _positions = filters.Positions;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error loading filters: {e.Message}");
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var result = await SupervisorApiService.GetEmployeesAsync(
+                _currentPage,
+                _pageSize,
+                string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm,
+                _departmentFilter == "Todos" ? null : _departmentFilter,
+                _positionFilter == "Todos" ? null : _positionFilter,
+                _statusFilter == "Todos" ? null : _statusFilter
+            );
+
+            _employees = result.Items;
+            _totalCount = result.TotalCount;
+            _totalPages = result.TotalPages;
+        }
+        catch (Exception e)
+        {
+            ShowNotification("Error", "No se pudo cargar la lista de empleados.", NotificationSeverity.Error);
+            Console.WriteLine(e);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSearchTermChanged(string value)
+    {
+        _searchTerm = value;
+        _currentPage = 1;
+        await LoadEmployees();
+    }
+
+    private async Task OnDepartmentFilterChanged(string value)
+    {
+        _departmentFilter = value;
+        _currentPage = 1;
+        await LoadEmployees();
+    }
+
+    private async Task OnPositionFilterChanged(string value)
+    {
+        _positionFilter = value;
+        _currentPage = 1;
+        await LoadEmployees();
+    }
+
+    private async Task OnStatusFilterChanged(string value)
+    {
+        _statusFilter = value;
+        _currentPage = 1;
+        await LoadEmployees();
+    }
+
+    private async Task ClearFilters()
+    {
+        _searchTerm = "";
+        _departmentFilter = "Todos";
+        _positionFilter = "Todos";
+        _statusFilter = "Todos";
+        _currentPage = 1;
+        await LoadEmployees();
+    }
+
+    private async Task ClearSearch()
+    {
+        _searchTerm = "";
+        _currentPage = 1;
+        await LoadEmployees();
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > _totalPages) return;
+        _currentPage = page;
+        await LoadEmployees();
+    }
+
+    private void ViewEmployeeHistory(string userId) =>
+        NavigationManager.NavigateTo($"/supervisor/empleados/{userId}");
+
+    private void ShowNotification(string title, string message, NotificationSeverity severity) =>
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
+        });
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

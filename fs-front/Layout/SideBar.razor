@@ -81,14 +81,24 @@
                 </div>
             }
 
-            @if (_canViewReports)
+            @if (_canViewReports || _canViewSupervisor)
             {
                 <div class="fs-sidebar__section">
                     <div class="fs-sidebar__title">Análisis</div>
 
-                    <NavLink class="fs-navlink" href="reportes" Match="NavLinkMatch.Prefix" title="Reportes">
-                        <i class="bi bi-flag"></i><span>Reportes</span>
-                    </NavLink>
+                    @if (_canViewReports)
+                    {
+                        <NavLink class="fs-navlink" href="reportes" Match="NavLinkMatch.Prefix" title="Reportes">
+                            <i class="bi bi-flag"></i><span>Reportes</span>
+                        </NavLink>
+                    }
+
+                    @if (_canViewSupervisor)
+                    {
+                        <NavLink class="fs-navlink" href="supervisor/empleados" Match="NavLinkMatch.Prefix" title="Supervisión">
+                            <i class="bi bi-people"></i><span>Supervisión</span>
+                        </NavLink>
+                    }
                 </div>
             }
 
@@ -128,6 +138,7 @@
     private bool _canViewReports;
     private bool _canViewUsers;
     private bool _canViewEmployees;
+    private bool _canViewSupervisor;
 
     protected override async Task OnInitializedAsync()
     {
@@ -151,6 +162,7 @@
             _isAdminArea = false;
             _canViewDashboard = _canViewTickets = _canViewClients = _canViewProjects = false;
             _canViewQuotes = _canViewInvoices = _canViewReports = _canViewUsers = _canViewEmployees = false;
+            _canViewSupervisor = false;
             return;
         }
 
@@ -167,6 +179,10 @@
         _canViewReports = await authProvider.HasPermissionAsync("reports.view");
         _canViewUsers = await authProvider.HasPermissionAsync("users.view");
         _canViewEmployees = await authProvider.HasPermissionAsync("employees.view");
+        _canViewSupervisor = await authProvider.HasPermissionAsync("supervisor.view") || 
+                             user.IsInRole("Supervisor") ||
+                             user.IsInRole("Admin") ||
+                             user.IsInRole("Administracion");
     }
 
     public void Dispose()

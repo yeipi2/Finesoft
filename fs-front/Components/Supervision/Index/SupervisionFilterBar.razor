@@ -1,0 +1,127 @@
+@using fs_front.DTO
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Buscar empleado</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Nombre o email..."
+                           value="@SearchTerm"
+                           @oninput="OnSearchInput" />
+                    @if (!string.IsNullOrEmpty(SearchTerm))
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="OnClearSearch" title="Limpiar búsqueda">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Departamento</label>
+                <select class="form-select" value="@DepartmentFilter" @onchange="OnDepartmentChange">
+                    <option value="Todos">Todos</option>
+                    @if (Departments != null)
+                    {
+                        @foreach (var dept in Departments)
+                        {
+                            <option value="@dept">@dept</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Puesto</label>
+                <select class="form-select" value="@PositionFilter" @onchange="OnPositionChange">
+                    <option value="Todos">Todos</option>
+                    @if (Positions != null)
+                    {
+                        @foreach (var pos in Positions)
+                        {
+                            <option value="@pos">@pos</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Estado</label>
+                <select class="form-select" value="@StatusFilter" @onchange="OnStatusChange">
+                    <option value="Todos">Todos</option>
+                    <option value="Activos">Activos</option>
+                    <option value="Inactivos">Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-outline-secondary w-100" @onclick="OnClearFilters" title="Limpiar filtros">
+                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string SearchTerm { get; set; } = "";
+    [Parameter] public string DepartmentFilter { get; set; } = "Todos";
+    [Parameter] public string PositionFilter { get; set; } = "Todos";
+    [Parameter] public string StatusFilter { get; set; } = "Todos";
+    [Parameter] public List<string>? Departments { get; set; }
+    [Parameter] public List<string>? Positions { get; set; }
+
+    [Parameter] public EventCallback<string> SearchTermChanged { get; set; }
+    [Parameter] public EventCallback<string> DepartmentFilterChanged { get; set; }
+    [Parameter] public EventCallback<string> PositionFilterChanged { get; set; }
+    [Parameter] public EventCallback<string> StatusFilterChanged { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback OnClearSearch { get; set; }
+
+    private System.Timers.Timer? _debounceTimer;
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+        await SearchTermChanged.InvokeAsync(value);
+
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (s, args) =>
+        {
+            _debounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await SearchTermChanged.InvokeAsync(value);
+            });
+        };
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Start();
+    }
+
+    private async Task OnDepartmentChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "Todos";
+        await DepartmentFilterChanged.InvokeAsync(value);
+    }
+
+    private async Task OnPositionChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "Todos";
+        await PositionFilterChanged.InvokeAsync(value);
+    }
+
+    private async Task OnStatusChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "Todos";
+        await StatusFilterChanged.InvokeAsync(value);
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

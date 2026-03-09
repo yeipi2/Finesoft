@@ -12,8 +12,8 @@ using fs_backend.Identity;
 namespace fs_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260226164408_AddUserProfiles")]
-    partial class AddUserProfiles
+    [Migration("20260309171933_AddUserProfilesTable")]
+    partial class AddUserProfilesTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -257,6 +257,9 @@ namespace fs_backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<decimal>("MonthlyHours")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<double?>("MonthlyRate")
                         .HasColumnType("float");
 
@@ -423,7 +426,7 @@ namespace fs_backend.Migrations
 
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("InvoiceType")
                         .IsRequired()
@@ -463,6 +466,9 @@ namespace fs_backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique();
 
                     b.HasIndex("QuoteId");
 
@@ -760,13 +766,29 @@ namespace fs_backend.Migrations
                         {
                             Id = 21,
                             Action = "Ver",
+                            Code = "supervisor.view",
+                            Description = "Ver panel de supervisión",
+                            Module = "Supervisor"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Action = "VerEmpleados",
+                            Code = "supervisor.employees",
+                            Description = "Ver historial de empleados",
+                            Module = "Supervisor"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Action = "Ver",
                             Code = "projects.view",
                             Description = "Ver lista de proyectos",
                             Module = "Proyectos"
                         },
                         new
                         {
-                            Id = 22,
+                            Id = 24,
                             Action = "VerDetalle",
                             Code = "projects.view_detail",
                             Description = "Ver detalles de proyecto",
@@ -774,7 +796,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 23,
+                            Id = 25,
                             Action = "Crear",
                             Code = "projects.create",
                             Description = "Crear proyectos",
@@ -782,7 +804,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 24,
+                            Id = 26,
                             Action = "Editar",
                             Code = "projects.edit",
                             Description = "Editar proyectos",
@@ -790,7 +812,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 25,
+                            Id = 27,
                             Action = "Eliminar",
                             Code = "projects.delete",
                             Description = "Eliminar proyectos",
@@ -798,7 +820,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 26,
+                            Id = 28,
                             Action = "Ver",
                             Code = "quotes.view",
                             Description = "Ver lista de cotizaciones",
@@ -806,7 +828,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 27,
+                            Id = 29,
                             Action = "VerDetalle",
                             Code = "quotes.view_detail",
                             Description = "Ver detalles de cotización",
@@ -814,7 +836,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 28,
+                            Id = 30,
                             Action = "Crear",
                             Code = "quotes.create",
                             Description = "Crear cotizaciones",
@@ -822,7 +844,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 29,
+                            Id = 31,
                             Action = "Editar",
                             Code = "quotes.edit",
                             Description = "Editar cotizaciones",
@@ -830,7 +852,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 30,
+                            Id = 32,
                             Action = "Eliminar",
                             Code = "quotes.delete",
                             Description = "Eliminar cotizaciones",
@@ -838,7 +860,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 31,
+                            Id = 33,
                             Action = "ConvertirFactura",
                             Code = "quotes.convert",
                             Description = "Convertir a factura",
@@ -846,7 +868,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 32,
+                            Id = 34,
                             Action = "Ver",
                             Code = "invoices.view",
                             Description = "Ver lista de facturas",
@@ -854,7 +876,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 33,
+                            Id = 35,
                             Action = "VerDetalle",
                             Code = "invoices.view_detail",
                             Description = "Ver detalles de factura",
@@ -862,7 +884,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 34,
+                            Id = 36,
                             Action = "Crear",
                             Code = "invoices.create",
                             Description = "Crear facturas",
@@ -870,7 +892,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 35,
+                            Id = 37,
                             Action = "Editar",
                             Code = "invoices.edit",
                             Description = "Editar facturas",
@@ -878,7 +900,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 36,
+                            Id = 38,
                             Action = "Eliminar",
                             Code = "invoices.delete",
                             Description = "Eliminar facturas",
@@ -886,7 +908,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 37,
+                            Id = 39,
                             Action = "RegistrarPago",
                             Code = "invoices.payment",
                             Description = "Registrar pagos",
@@ -894,7 +916,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 38,
+                            Id = 40,
                             Action = "Ver",
                             Code = "reports.view",
                             Description = "Ver reportes",
@@ -902,7 +924,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 39,
+                            Id = 41,
                             Action = "Exportar",
                             Code = "reports.export",
                             Description = "Exportar reportes",
@@ -910,7 +932,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 40,
+                            Id = 42,
                             Action = "Financieros",
                             Code = "reports.financial",
                             Description = "Ver reportes financieros",
@@ -918,7 +940,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 41,
+                            Id = 43,
                             Action = "Ver",
                             Code = "users.view",
                             Description = "Ver lista de usuarios",
@@ -926,7 +948,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 42,
+                            Id = 44,
                             Action = "Crear",
                             Code = "users.create",
                             Description = "Crear usuarios",
@@ -934,7 +956,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 43,
+                            Id = 45,
                             Action = "Editar",
                             Code = "users.edit",
                             Description = "Editar usuarios",
@@ -942,7 +964,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 44,
+                            Id = 46,
                             Action = "Eliminar",
                             Code = "users.delete",
                             Description = "Eliminar usuarios",
@@ -950,7 +972,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 45,
+                            Id = 47,
                             Action = "CambiarPassword",
                             Code = "users.change_password",
                             Description = "Cambiar contraseñas",
@@ -958,7 +980,7 @@ namespace fs_backend.Migrations
                         },
                         new
                         {
-                            Id = 46,
+                            Id = 48,
                             Action = "AsignarRoles",
                             Code = "users.assign_roles",
                             Description = "Asignar roles",

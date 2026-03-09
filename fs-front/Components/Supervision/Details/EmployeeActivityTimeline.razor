@@ -1,0 +1,46 @@
+@using fs_front.DTO
+
+<div class="card">
+    <div class="card-header text-white" style="background: var(--suph-info)">
+        <i class="bi bi-activity me-2"></i>Actividad Reciente
+    </div>
+    <div class="card-body" style="max-height: 400px; overflow-y: auto; background: var(--suph-surface)">
+        @if (Actions != null && Actions.Any())
+        {
+            <div class="timeline">
+                @foreach (var action in Actions.Take(10))
+                {
+                    <div class="timeline-item d-flex gap-3 mb-3">
+                        <div class="timeline-icon" style="background: @action.ColorCss">
+                            <i class="bi @action.IconCss"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="small fw-semibold" style="color: var(--suph-text)">@action.ActionTypeDisplay</div>
+                            <div class="small text-truncate" style="color: var(--suph-muted)">@action.EntityName</div>
+                            <div class="small" style="color: var(--suph-muted)">@GetRelativeTime(action.Date)</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-center mb-0" style="color: var(--suph-muted)">Sin actividad reciente</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<EmployeeActionDto>? Actions { get; set; }
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var span = DateTime.Now - date;
+        if (span.TotalMinutes < 1) return "Hace un momento";
+        if (span.TotalMinutes < 60) return $"Hace {(int)span.TotalMinutes} min";
+        if (span.TotalHours < 24) return $"Hace {(int)span.TotalHours} hrs";
+        if (span.TotalDays < 7) return $"Hace {(int)span.TotalDays} días";
+        if (span.TotalDays < 30) return $"Hace {(int)(span.TotalDays / 7)} sem";
+        return date.ToString("dd MMM yyyy");
+    }
+}

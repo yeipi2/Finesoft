@@ -1,0 +1,213 @@
+@using fs_front.DTO
+
+<div class="card">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Tipo de Acción</label>
+                <select class="form-select" value="@ActionTypeFilter" @onchange="HandleActionTypeChange">
+                    <option value="">Todas las acciones</option>
+                    <option value="TicketCreado">Tickets Creados</option>
+                    <option value="TicketAsignado">Tickets Asignados</option>
+                    <option value="ActividadTicket">Actividades de Tickets</option>
+                    <option value="ComentarioTicket">Comentarios en Tickets</option>
+                    <option value="CotizacionCreada">Cotizaciones</option>
+                    <option value="FacturaCreada">Facturas</option>
+                    <option value="FacturaMensual">Facturas Mensuales</option>
+                    <option value="PagoRegistrado">Pagos Registrados</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Desde</label>
+                <input type="date" class="form-control" value="@DateFromStr" @onchange="HandleDateFromChange" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Hasta</label>
+                <input type="date" class="form-control" value="@DateToStr" @onchange="HandleDateToChange" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary w-100" @onclick="OnClearFilters" title="Limpiar filtros">
+                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-2"></i>Historial de Acciones</span>
+        <span class="badge bg-secondary">@TotalCount acciones</span>
+    </div>
+    <div class="card-body p-0">
+        @if (IsLoading)
+        {
+            <div class="text-center py-4">
+                <div class="spinner-border spinner-border-sm" style="color: var(--suph-primary)"></div>
+            </div>
+        }
+        else if (ActionsByClient == null || !ActionsByClient.Any())
+        {
+            <div class="text-center py-4" style="color: var(--suph-muted)">
+                <i class="bi bi-inbox display-6"></i>
+                <p class="mt-2">No hay acciones registradas</p>
+            </div>
+        }
+        else
+        {
+            <div class="accordion" id="clientAccordion">
+                @foreach (var clientGroup in ActionsByClient)
+                {
+                    <div class="accordion-item" style="border-color: var(--suph-border)">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button @(IsClientExpanded(clientGroup.Key) ? "" : "collapsed")"
+                                    type="button"
+                                    @onclick="() => OnToggleClient.InvokeAsync(clientGroup.Key)"
+                                    style="background: var(--suph-surface-soft); color: var(--suph-text)">
+                                <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                    <span>
+                                        <i class="bi bi-building me-2"></i>
+                                        @(string.IsNullOrEmpty(clientGroup.Key) ? "Sin cliente" : clientGroup.Key)
+                                    </span>
+                                    <span class="badge rounded-pill" style="background: var(--suph-primary)">
+                                        @clientGroup.Value.Count acciones
+                                    </span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div class="accordion-collapse collapse @(IsClientExpanded(clientGroup.Key) ? "show" : "")">
+                            <div class="accordion-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light" style="background: var(--suph-surface-soft)">
+                                            <tr>
+                                                <th class="ps-4">Tipo</th>
+                                                <th>Entidad</th>
+                                                <th>Fecha</th>
+                                                <th class="text-end pe-4">Detalle</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var action in clientGroup.Value)
+                                            {
+                                                <tr>
+                                                    <td class="ps-4">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="action-icon" style="background: @action.ColorCss">
+                                                                <i class="bi @action.IconCss"></i>
+                                                            </div>
+                                                            <span class="small">@action.ActionTypeDisplay</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @if (!string.IsNullOrEmpty(action.EntityUrl))
+                                                        {
+                                                            <a href="@action.EntityUrl" target="_blank" class="text-decoration-none" style="color: var(--suph-primary)">
+                                                                @action.EntityName
+                                                            </a>
+                                                        }
+                                                        else
+                                                        {
+                                                            @action.EntityName
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <span title="@action.Date.ToString("g")">@GetRelativeTime(action.Date)</span>
+                                                    </td>
+                                                    <td class="text-end pe-4">
+                                                        <button class="btn btn-sm btn-outline-secondary"
+                                                                @onclick="() => OnShowDetails.InvokeAsync(action)"
+                                                                title="Ver detalles">
+                                                            <i class="bi bi-info-circle"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (TotalPages > 1)
+            {
+                <div class="card-footer bg-transparent">
+                    <nav>
+                        <ul class="pagination mb-0 justify-content-center">
+                            <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => OnPageChange.InvokeAsync(CurrentPage - 1)">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                            </li>
+                            @for (int i = Math.Max(1, CurrentPage - 2); i <= Math.Min(TotalPages, CurrentPage + 2); i++)
+                            {
+                                <li class="page-item @(CurrentPage == i ? "active" : "")">
+                                    <button class="page-link" @onclick="() => OnPageChange.InvokeAsync(i)">@i</button>
+                                </li>
+                            }
+                            <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => OnPageChange.InvokeAsync(CurrentPage + 1)">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Dictionary<string, List<EmployeeActionDto>>? ActionsByClient { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public string ActionTypeFilter { get; set; } = "";
+    [Parameter] public string DateFromStr { get; set; } = "";
+    [Parameter] public string DateToStr { get; set; } = "";
+    [Parameter] public HashSet<string> ExpandedClients { get; set; } = new();
+
+    [Parameter] public EventCallback<string> OnActionTypeChange { get; set; }
+    [Parameter] public EventCallback<string> OnDateFromChange { get; set; }
+    [Parameter] public EventCallback<string> OnDateToChange { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback<string> OnToggleClient { get; set; }
+    [Parameter] public EventCallback<EmployeeActionDto> OnShowDetails { get; set; }
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+
+    private async Task HandleActionTypeChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+        await OnActionTypeChange.InvokeAsync(value);
+    }
+
+    private async Task HandleDateFromChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+        await OnDateFromChange.InvokeAsync(value);
+    }
+
+    private async Task HandleDateToChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+        await OnDateToChange.InvokeAsync(value);
+    }
+
+    private bool IsClientExpanded(string clientName) => ExpandedClients?.Contains(clientName) ?? false;
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var span = DateTime.Now - date;
+        if (span.TotalMinutes < 1) return "Hace un momento";
+        if (span.TotalMinutes < 60) return $"Hace {(int)span.TotalMinutes} min";
+        if (span.TotalHours < 24) return $"Hace {(int)span.TotalHours} hrs";
+        if (span.TotalDays < 7) return $"Hace {(int)span.TotalDays} días";
+        if (span.TotalDays < 30) return $"Hace {(int)(span.TotalDays / 7)} sem";
+        return date.ToString("dd MMM yyyy");
+    }
+}
