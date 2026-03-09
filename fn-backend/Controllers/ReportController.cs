@@ -1,12 +1,16 @@
-﻿using fs_backend.Services;
+﻿using Asp.Versioning;
+using fs_backend.Services;
 using fs_backend.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace fs_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class ReportsController : ControllerBase
@@ -140,6 +144,7 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("public-stats")]
     [AllowAnonymous]
+    [EnableRateLimiting("PublicApi")]
     public async Task<IActionResult> GetPublicStats()
     {
         var stats = await _reportService.GetPublicStatsAsync();

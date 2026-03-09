@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using fn_backend.Services;
 using fs_backend.Hubs;
 using fs_backend.Identity;
@@ -6,22 +7,74 @@ using fs_backend.Services;
 using fs_front.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Services.AddControllers();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var problemDetails = new ValidationProblemDetails(context.ModelState)
+        {
+            Status = StatusCodes.Status422UnprocessableEntity,
+            Title = "Validation failed",
+            Type = "https://httpstatuses.com/422"
+        };
+
+        return new UnprocessableEntityObjectResult(problemDetails);
+    };
+});
+
+builder.Services.AddProblemDetails();
+
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "FineSoft API",
+        Version = "v1"
+    });
 });
 builder.Services.AddRazorPages();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("PublicApi", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 30;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+});
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
@@ -92,6 +145,8 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    Console.WriteLine(">>> RUNTIME CONN: " + db.Database.GetConnectionString());
     try
     {
         foreach (var role in new[] { "Admin", "Administracion", "Empleado", "Supervisor", "Cliente" })
@@ -137,20 +192,25 @@ app.UseCors(policy =>
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "FineSoft API v1");
+    });
 }
+
+app.UseExceptionHandler();
+app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+
+app.UseStaticFiles();
 
 app.MapHub<PermissionsHub>("/hubs/permissions");
 app.MapHub<QuotesHub>("/hubs/quotes");
 
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.UseStaticFiles();
-
 app.MapControllers();
 app.MapIdentityApi<IdentityUser>();
-
-app.UseHttpsRedirection();
 
 app.Run();

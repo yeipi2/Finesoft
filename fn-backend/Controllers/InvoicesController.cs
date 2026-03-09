@@ -1,15 +1,20 @@
 ﻿// fs-backend/Controllers/InvoicesController.cs  — COMPLETO ACTUALIZADO
+using Asp.Versioning;
 using fs_backend.Attributes;
+using fs_backend.DTO.Common;
 using fs_backend.DTO;
 using fs_backend.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using fs_backend.Services;
+using fs_backend.Util;
 
 namespace fs_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class InvoicesController : ControllerBase
@@ -27,12 +32,18 @@ public class InvoicesController : ControllerBase
     [HttpGet]
     [RequirePermission("invoices.view")]
     public async Task<IActionResult> GetInvoices(
+        [FromQuery] PaginationQueryDto query,
         [FromQuery] string? status = null,
         [FromQuery] string? invoiceType = null,
         [FromQuery] int? clientId = null)
     {
         var invoices = await _invoiceService.GetInvoicesAsync(status, invoiceType, clientId);
-        return Ok(invoices);
+        var pagedResult = ApiResponseHelper.Paginate(invoices, query, (i, search) =>
+            i.InvoiceNumber.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || i.ClientName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || i.Status.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return Ok(pagedResult);
     }
 
     /// GET: api/invoices/{id}
@@ -42,7 +53,7 @@ public class InvoicesController : ControllerBase
     {
         var invoice = await _invoiceService.GetInvoiceByIdAsync(id);
         if (invoice == null)
-            return NotFound(new { message = "Factura no encontrada" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Factura no encontrada");
         return Ok(invoice);
     }
 
@@ -53,11 +64,11 @@ public class InvoicesController : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _invoiceService.CreateInvoiceAsync(invoiceDto, userId);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
 
         return CreatedAtAction(nameof(GetInvoiceById), new { id = result.Data!.Id }, result.Data);
     }
@@ -69,11 +80,11 @@ public class InvoicesController : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _invoiceService.CreateInvoiceFromQuoteAsync(dto, userId);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
 
         return CreatedAtAction(nameof(GetInvoiceById), new { id = result.Data!.Id }, result.Data);
     }
@@ -85,7 +96,7 @@ public class InvoicesController : ControllerBase
     {
         var result = await _invoiceService.UpdateInvoiceAsync(id, invoiceDto);
         if (!result.Succeeded)
-            return NotFound(result.Errors);
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.FirstOrDefault() ?? "Factura no encontrada");
         return Ok(result.Data);
     }
 
@@ -96,8 +107,8 @@ public class InvoicesController : ControllerBase
     {
         var result = await _invoiceService.DeleteInvoiceAsync(id);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
-        return Ok(new { message = "Factura eliminada exitosamente" });
+            return this.ToValidationProblem(result.Errors);
+        return NoContent();
     }
 
     /// PATCH: api/invoices/{id}/status
@@ -107,7 +118,7 @@ public class InvoicesController : ControllerBase
     {
         var result = await _invoiceService.ChangeInvoiceStatusAsync(id, request.Status, request.Reason);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         return Ok(new { message = "Estado actualizado exitosamente" });
     }
 
@@ -118,11 +129,11 @@ public class InvoicesController : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _invoiceService.AddPaymentAsync(id, dto, userId);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         return Ok(result.Data);
     }
 
@@ -134,11 +145,11 @@ public class InvoicesController : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _invoiceService.AddPaymentWithReceiptAsync(id, request, userId);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         return Ok(result.Data);
     }
 
@@ -161,28 +172,28 @@ public class InvoicesController : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         if (dto?.Items == null || !dto.Items.Any())
-            return BadRequest(new { message = "Debes seleccionar al menos un cliente." });
+            return this.ToValidationProblem(new[] { "Debes seleccionar al menos un cliente." });
 
         // Validar que todos los items tengan PaymentMethod
         var sinMetodo = dto.Items.Where(i => string.IsNullOrEmpty(i.PaymentMethod)).ToList();
         if (sinMetodo.Any())
-            return BadRequest(new { message = $"Faltan métodos de pago para {sinMetodo.Count} cliente(s)." });
+            return this.ToValidationProblem(new[] { $"Faltan métodos de pago para {sinMetodo.Count} cliente(s)." });
 
         // Validar que PUE tenga PaymentForm
         var puesinforma = dto.Items
             .Where(i => i.PaymentMethod == "PUE" && string.IsNullOrEmpty(i.PaymentForm))
             .ToList();
         if (puesinforma.Any())
-            return BadRequest(new { message = $"{puesinforma.Count} cliente(s) con PUE no tienen forma de pago." });
+            return this.ToValidationProblem(new[] { $"{puesinforma.Count} cliente(s) con PUE no tienen forma de pago." });
 
         _logger.LogInformation("Usuario {UserId} generando {Count} facturas mensuales", userId, dto.Items.Count);
 
         var result = await _invoiceService.GenerateMonthlyInvoicesAsync(userId, dto.Items);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
 
         return Ok(new { message = "Facturas mensuales generadas exitosamente" });
     }
@@ -216,7 +227,7 @@ public class InvoicesController : ControllerBase
         }
         catch (Exception ex)
         {
-            return NotFound(new { message = ex.Message });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", ex.Message);
         }
     }
 }

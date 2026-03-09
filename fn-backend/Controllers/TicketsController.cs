@@ -1,6 +1,9 @@
-﻿using fs_backend.DTO;
+using Asp.Versioning;
+using fs_backend.DTO;
 using fs_backend.Repositories;
 using fs_backend.Attributes;
+using fs_backend.DTO.Common;
+using fs_backend.Util;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,6 +12,8 @@ using System.Security.Claims;
 namespace fs_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class TicketsController : ControllerBase
@@ -43,6 +48,7 @@ public class TicketsController : ControllerBase
     [HttpGet]
     [RequirePermission("tickets.view")]
     public async Task<IActionResult> GetTickets(
+        [FromQuery] PaginationQueryDto query,
         [FromQuery] string? status = null,
         [FromQuery] string? priority = null,
         [FromQuery] int? serviceId = null,
@@ -69,7 +75,13 @@ public class TicketsController : ControllerBase
         _logger.LogInformation("✅ Usuario {UserId} ({Role}) obtuvo {Count} tickets",
             currentUserId, User.IsInRole("Cliente") ? "Cliente" : "Staff", tickets.Count());
 
-        return Ok(tickets);
+        var pagedResult = ApiResponseHelper.Paginate(tickets, query, (t, search) =>
+            t.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || t.Description.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || t.ProjectName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || t.ClientName.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return Ok(pagedResult);
     }
 
     /// <summary>
@@ -83,7 +95,7 @@ public class TicketsController : ControllerBase
         var ticket = await _ticketService.GetTicketByIdAsync(id);
         if (ticket == null)
         {
-            return NotFound(new { message = "Ticket no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Ticket no encontrado");
         }
 
         var currentUserId = GetCurrentUserId();
@@ -111,7 +123,7 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         // Si es Cliente, LIMPIAR campos que no puede llenar
@@ -131,7 +143,7 @@ public class TicketsController : ControllerBase
         var result = await _ticketService.CreateTicketAsync(ticketDto, userId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} creó ticket #{TicketId}",
@@ -151,7 +163,7 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         // 🆕 Empleado puede editar cualquier ticket (sin restricción)
@@ -160,12 +172,12 @@ public class TicketsController : ControllerBase
         var result = await _ticketService.UpdateTicketAsync(id, ticketDto, userId);
         if (!result.Succeeded)
         {
-            return NotFound(result.Errors);
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.FirstOrDefault() ?? "Ticket no encontrado");
         }
 
         _logger.LogInformation("✅ Usuario {UserId} actualizó ticket #{TicketId}", userId, id);
 
-        return Ok(new { message = "Ticket actualizado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -182,12 +194,12 @@ public class TicketsController : ControllerBase
         var result = await _ticketService.DeleteTicketAsync(id);
         if (!result.Succeeded)
         {
-            return NotFound(result.Errors);
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.FirstOrDefault() ?? "Ticket no encontrado");
         }
 
         _logger.LogInformation("✅ Usuario {UserId} eliminó ticket #{TicketId}", userId, id);
 
-        return Ok(new { message = "Ticket eliminado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -201,13 +213,13 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         var result = await _ticketService.AddCommentAsync(id, commentDto, userId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} agregó comentario al ticket #{TicketId}",
@@ -227,13 +239,13 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         var result = await _ticketService.AddActivityAsync(id, activityDto, userId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} agregó actividad al ticket #{TicketId}",
@@ -300,13 +312,13 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         var result = await _ticketService.CompleteActivityAsync(ticketId, activityId, userId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} completó actividad {ActivityId} del ticket #{TicketId}",
@@ -326,13 +338,13 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         var result = await _ticketService.UpdateActivityAsync(ticketId, activityId, activityDto, userId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} actualizó actividad {ActivityId} del ticket #{TicketId}",
@@ -352,19 +364,19 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         var result = await _ticketService.DeleteActivityAsync(ticketId, activityId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} eliminó actividad {ActivityId} del ticket #{TicketId}",
             userId, activityId, ticketId);
 
-        return Ok(new { message = "Actividad eliminada exitosamente" });
+        return NoContent();
     }
 
     // ============================================================
@@ -385,13 +397,13 @@ public class TicketsController : ControllerBase
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { message = "Usuario no autenticado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
         var result = await _ticketService.UpdateTicketStatusAsync(id, request.Status, userId);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         _logger.LogInformation("✅ Usuario {UserId} cambió estado del ticket #{TicketId} a {NewStatus}",

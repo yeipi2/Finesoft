@@ -1,6 +1,9 @@
-﻿using fn_backend.DTO;
+﻿using Asp.Versioning;
+using fn_backend.DTO;
 using fn_backend.Services;
+using fs_backend.DTO.Common;
 using fs_backend.Attributes;
+using fs_backend.Util;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +12,8 @@ using System.Security.Claims;
 namespace fn_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class UsersController : ControllerBase
@@ -30,7 +35,7 @@ public class UsersController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize] // Solo requiere autenticación
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
+    public async Task<ActionResult<PaginatedResponseDto<UserDto>>> GetUsers([FromQuery] PaginationQueryDto query)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo usuarios", userId);
@@ -50,7 +55,13 @@ public class UsersController : ControllerBase
             // Por ahora dejamos que vean la lista para el dropdown de asignación
         }
 
-        return Ok(users);
+        var pagedResult = ApiResponseHelper.Paginate(users, query, (u, search) =>
+            u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || u.RoleName.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return Ok(pagedResult);
     }
 
     /// <summary>
@@ -64,7 +75,7 @@ public class UsersController : ControllerBase
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", $"Usuario con ID {id} no encontrado");
         }
 
         // ✅ Si es Administracion y el usuario es Admin, bloquear
@@ -96,7 +107,7 @@ public class UsersController : ControllerBase
         var result = await _userService.CreateUserAsync(userDto);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         return CreatedAtAction(nameof(GetUser), new { id = result.Data!.Id }, result.Data);
@@ -116,7 +127,7 @@ public class UsersController : ControllerBase
         var existingUser = await _userService.GetUserByIdAsync(id);
         if (existingUser == null)
         {
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", $"Usuario con ID {id} no encontrado");
         }
 
         if (User.IsInRole("Administracion") && existingUser.RoleName == "Admin")
@@ -133,9 +144,9 @@ public class UsersController : ControllerBase
         if (!result.Succeeded)
         {
             if (result.Errors.Any(e => e.Contains("no encontrado")))
-                return NotFound(result.Errors);
+                return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.First());
 
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         return NoContent();
@@ -155,7 +166,7 @@ public class UsersController : ControllerBase
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", $"Usuario con ID {id} no encontrado");
         }
 
         if (User.IsInRole("Administracion") && user.RoleName == "Admin")
@@ -167,9 +178,9 @@ public class UsersController : ControllerBase
         if (!result.Succeeded)
         {
             if (result.Errors.Any(e => e.Contains("no encontrado")))
-                return NotFound(result.Errors);
+                return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.First());
 
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         return NoContent();
@@ -189,7 +200,7 @@ public class UsersController : ControllerBase
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
-            return NotFound($"Usuario con ID {id} no encontrado");
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", $"Usuario con ID {id} no encontrado");
         }
 
         if (User.IsInRole("Administracion") && user.RoleName == "Admin")
@@ -201,9 +212,9 @@ public class UsersController : ControllerBase
         if (!result.Succeeded)
         {
             if (result.Errors.Any(e => e.Contains("no encontrado")))
-                return NotFound(result.Errors);
+                return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.First());
 
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         return Ok(new { message = "Contraseña cambiada exitosamente" });
@@ -214,10 +225,10 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetMyProfile()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (string.IsNullOrEmpty(userId)) return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var profile = await _userService.GetMyProfileAsync(userId);
-        if (profile is null) return NotFound();
+        if (profile is null) return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Perfil no encontrado");
 
         return Ok(profile);
     }
@@ -231,10 +242,10 @@ public class UsersController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
         Console.WriteLine($"[DEBUG] userId={userId} role='{role}'");
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (string.IsNullOrEmpty(userId)) return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _userService.UpdateMyProfileAsync(userId, role, dto);
-        return result.Succeeded ? Ok(new { message = "Perfil actualizado" }) : BadRequest(result.Errors);
+        return result.Succeeded ? Ok(new { message = "Perfil actualizado" }) : this.ToValidationProblem(result.Errors);
     }
 
     /// POST: api/users/me/change-password
@@ -243,10 +254,10 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> ChangeMyPassword(ChangePasswordDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (string.IsNullOrEmpty(userId)) return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _userService.ChangePasswordAsync(userId, dto);
-        return result.Succeeded ? Ok(new { message = "Contraseña cambiada exitosamente" }) : BadRequest(result.Errors);
+        return result.Succeeded ? Ok(new { message = "Contraseña cambiada exitosamente" }) : this.ToValidationProblem(result.Errors);
     }
 
     /// POST: api/users/me/images
@@ -255,10 +266,10 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> SaveMyImages([FromBody] SaveImagesDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (string.IsNullOrEmpty(userId)) return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
 
         var result = await _userService.SaveUserImagesAsync(userId, dto.AvatarDataUrl, dto.CoverDataUrl);
-        return result.Succeeded ? Ok(new { message = "Imágenes guardadas" }) : BadRequest(result.Errors);
+        return result.Succeeded ? Ok(new { message = "Imágenes guardadas" }) : this.ToValidationProblem(result.Errors);
     }
 
     // UsersController.cs — agregar al final de la clase

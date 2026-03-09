@@ -1,5 +1,7 @@
+using Asp.Versioning;
 using System.ComponentModel.DataAnnotations;
 using fn_backend.Services;
+using fs_backend.Util;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -9,6 +11,8 @@ using System.Security.Claims;
 namespace fn_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
@@ -33,7 +37,7 @@ public class AuthController : ControllerBase
     {
         var user = await _userManager.FindByEmailAsync(req.Email);
         if (user is null)
-            return Unauthorized(new { message = "Correo o contraseña incorrectos." });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Correo o contraseña incorrectos.");
 
         // ⭐ NUEVO: verificar si está bloqueado/inactivo
         var isLockedOut = user.LockoutEnabled &&
@@ -44,7 +48,7 @@ public class AuthController : ControllerBase
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, req.Password, lockoutOnFailure: false);
         if (!result.Succeeded)
-            return Unauthorized(new { message = "Correo o contraseña incorrectos." });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Correo o contraseña incorrectos.");
 
         var token = await _jwt.CreateTokenAsync(user);
         return Ok(new { accessToken = token });
@@ -72,13 +76,13 @@ public class AuthController : ControllerBase
                 User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress");
 
             if (string.IsNullOrWhiteSpace(email))
-                return Unauthorized(new { message = "No se pudo identificar al usuario" });
+                return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "No se pudo identificar al usuario");
 
             user = await _userManager.FindByEmailAsync(email);
         }
 
         if (user is null)
-            return Unauthorized(new { message = "Usuario no encontrado" });
+            return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no encontrado");
 
         var token = await _jwt.CreateTokenAsync(user);
         return Ok(new { accessToken = token });

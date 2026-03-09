@@ -1,6 +1,9 @@
-﻿using fn_backend.DTO;
+using Asp.Versioning;
+using fn_backend.DTO;
 using fs_backend.Services;
 using fs_backend.Attributes;
+using fs_backend.DTO.Common;
+using fs_backend.Util;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,6 +11,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 namespace fs_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class ClientsController : ControllerBase
@@ -27,13 +32,19 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetClients()
+    public async Task<IActionResult> GetClients([FromQuery] PaginationQueryDto query)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo clientes", userId);
 
         var clients = await _clientService.GetClientsAsync();
-        return Ok(clients);
+        var pagedResult = ApiResponseHelper.Paginate(clients, query, (c, search) =>
+            c.CompanyName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || c.ContactName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || c.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || c.RFC.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return Ok(pagedResult);
     }
 
     /// <summary>
@@ -47,7 +58,7 @@ public class ClientsController : ControllerBase
         var client = await _clientService.GetClientByIdAsync(id);
         if (client == null)
         {
-            return NotFound(new { message = "Cliente no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
         }
 
         return Ok(client);
@@ -67,7 +78,7 @@ public class ClientsController : ControllerBase
         var result = await _clientService.CreateClientAsync(clientDto);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         return CreatedAtAction(nameof(GetClientById), new { id = result.Data!.Id }, result.Data);
@@ -87,10 +98,10 @@ public class ClientsController : ControllerBase
         var result = await _clientService.UpdateClientAsync(id, clientDto);
         if (!result)
         {
-            return NotFound(new { message = "Cliente no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
         }
 
-        return Ok(new { message = "Cliente actualizado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -107,10 +118,10 @@ public class ClientsController : ControllerBase
         var result = await _clientService.DeleteClientAsync(id);
         if (!result)
         {
-            return NotFound(new { message = "Cliente no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
         }
 
-        return Ok(new { message = "Cliente eliminado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -140,7 +151,7 @@ public class ClientsController : ControllerBase
         var result = await _clientService.DeleteClientAsync(id);
         if (!result)
         {
-            return NotFound(new { message = "Cliente no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
         }
 
         return Ok(new { message = "Estado actualizado correctamente" });
