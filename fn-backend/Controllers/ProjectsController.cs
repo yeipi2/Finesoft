@@ -1,6 +1,9 @@
-﻿using fn_backend.DTO;
+using Asp.Versioning;
+using fn_backend.DTO;
 using fs_backend.Services;
 using fs_backend.Attributes;
+using fs_backend.DTO.Common;
+using fs_backend.Util;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,6 +11,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 namespace fs_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class ProjectsController : ControllerBase
@@ -27,13 +32,17 @@ public class ProjectsController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetProjects()
+    public async Task<IActionResult> GetProjects([FromQuery] PaginationQueryDto query)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo proyectos", userId);
 
         var projects = await _projectService.GetProjectsAsync();
-        return Ok(projects);
+        var pagedResult = ApiResponseHelper.Paginate(projects, query, (p, search) =>
+            p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || p.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return Ok(pagedResult);
     }
 
     /// <summary>
@@ -47,7 +56,7 @@ public class ProjectsController : ControllerBase
         var project = await _projectService.GetProjectByIdAsync(id);
         if (project == null)
         {
-            return NotFound(new { message = "Proyecto no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Proyecto no encontrado");
         }
 
         return Ok(project);
@@ -67,7 +76,7 @@ public class ProjectsController : ControllerBase
         var result = await _projectService.CreateProjectAsync(projectDto);
         if (!result.Succeeded)
         {
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
         }
 
         return CreatedAtAction(nameof(GetProjectById), new { id = result.Data!.Id }, result.Data);
@@ -87,10 +96,10 @@ public class ProjectsController : ControllerBase
         var result = await _projectService.UpdateProjectAsync(id, projectDto);
         if (!result.Succeeded)
         {
-            return NotFound(result.Errors);
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.FirstOrDefault() ?? "Proyecto no encontrado");
         }
 
-        return Ok(new { message = "Proyecto actualizado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -107,9 +116,9 @@ public class ProjectsController : ControllerBase
         var result = await _projectService.DeleteProjectAsync(id);
         if (!result.Succeeded)
         {
-            return NotFound(result.Errors);
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.FirstOrDefault() ?? "Proyecto no encontrado");
         }
 
-        return Ok(new { message = "Proyecto eliminado exitosamente" });
+        return NoContent();
     }
 }

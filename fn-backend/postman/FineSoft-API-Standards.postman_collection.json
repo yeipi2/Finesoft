@@ -1,0 +1,390 @@
+{
+  "info": {
+    "_postman_id": "3f0dbe7a-06f8-47d7-a00a-2db90d80af27",
+    "name": "FineSoft API - Standards Validation",
+    "description": "Coleccion para validar versionado, semantica HTTP, paginacion, formato de errores y rate limiting.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7211" },
+    { "key": "apiVersion", "value": "v1" },
+    { "key": "jwt", "value": "" },
+    { "key": "adminEmail", "value": "admin@finesoft.com" },
+    { "key": "adminPassword", "value": "Admin123!" },
+    { "key": "quoteNumber", "value": "Q-0001" },
+    { "key": "publicToken", "value": "replace-with-real-token" },
+    { "key": "notFoundUserId", "value": "00000000-0000-0000-0000-000000000000" },
+    { "key": "searchTerm", "value": "admin" },
+    { "key": "sortField", "value": "-createdAt" }
+  ],
+  "item": [
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/{{apiVersion}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('accessToken exists', function () { pm.expect(json.accessToken).to.be.a('string').and.not.empty; });",
+                  "pm.collectionVariables.set('jwt', json.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/{{apiVersion}}/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('accessToken exists', function () { pm.expect(json.accessToken).to.be.a('string').and.not.empty; });",
+                  "pm.collectionVariables.set('jwt', json.accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Versioning Compatibility",
+      "item": [
+        {
+          "name": "GET Users (versioned)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/users?page=1&pageSize=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Users (legacy)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users?page=1&pageSize=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Public Quotes (No GET side effects)",
+      "item": [
+        {
+          "name": "GET Legacy Accept (confirmation only)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/quotes/accept/{{quoteNumber}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () { pm.expect([200,404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Deprecated header present', function () { pm.expect(pm.response.headers.get('Deprecation')).to.eql('true'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Legacy Reject (confirmation only)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/quotes/reject/{{quoteNumber}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () { pm.expect([200,404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Deprecated header present', function () { pm.expect(pm.response.headers.get('Deprecation')).to.eql('true'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH Canonical Public Status by Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Aceptada\",\n  \"comments\": \"Aprobada por cliente\"\n}"
+            },
+            "url": "{{baseUrl}}/api/{{apiVersion}}/quotes/public/{{publicToken}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/404/422', function () { pm.expect([200,404,422]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Legacy By Number Status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "status", "value": "Aceptada", "type": "text" },
+                { "key": "comments", "value": "Confirmada desde enlace legacy", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/{{apiVersion}}/quotes/public/by-number/{{quoteNumber}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/404/422', function () { pm.expect([200,404,422]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Pagination Contract",
+      "item": [
+        {
+          "name": "Users paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/users?page=1&pageSize=5&search={{searchTerm}}&sort={{sortField}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        },
+        {
+          "name": "Clients paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/clients?page=1&pageSize=5&search={{searchTerm}}&sort=companyName" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        },
+        {
+          "name": "Projects paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/projects?page=1&pageSize=5&search={{searchTerm}}&sort=name" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        },
+        {
+          "name": "Employees paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/employees?page=1&pageSize=5&search={{searchTerm}}&sort=fullName" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        },
+        {
+          "name": "Tickets paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/tickets?page=1&pageSize=5&search={{searchTerm}}&sort=-createdAt" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        },
+        {
+          "name": "Quotes paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/quotes?page=1&pageSize=5&search={{searchTerm}}&sort=-createdAt" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        },
+        {
+          "name": "Invoices paginated",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/{{apiVersion}}/invoices?page=1&pageSize=5&search={{searchTerm}}&sort=-invoiceDate" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200/401/403', function () { pm.expect([200,401,403]).to.include(pm.response.code); });", "if (pm.response.code===200){ var j=pm.response.json(); ['items','total','page','pageSize','pages','hasNext','hasPrev'].forEach(function(k){ pm.expect(j).to.have.property(k); }); }" ] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Error Contract (ProblemDetails)",
+      "item": [
+        {
+          "name": "401 protected endpoint without token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/users?page=1&pageSize=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.response.to.have.status(401); });",
+                  "var j = pm.response.json();",
+                  "pm.test('ProblemDetails shape', function(){ ['title','status','type'].forEach(function(k){ pm.expect(j).to.have.property(k); }); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 user not found",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/users/{{notFoundUserId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404/403', function () { pm.expect([404,403]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 404) {",
+                  "  var j = pm.response.json();",
+                  "  pm.test('ProblemDetails shape', function(){ ['title','status','type','detail'].forEach(function(k){ pm.expect(j).to.have.property(k); }); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 invalid public quote status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INVALID\"\n}"
+            },
+            "url": "{{baseUrl}}/api/{{apiVersion}}/quotes/public/{{publicToken}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422/404', function () { pm.expect([422,404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 422) {",
+                  "  var j = pm.response.json();",
+                  "  pm.test('ValidationProblemDetails shape', function(){ ['title','status','type','errors'].forEach(function(k){ pm.expect(j).to.have.property(k); }); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Rate Limiting",
+      "item": [
+        {
+          "name": "Public stats single call",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/reports/public-stats"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 429', function () { pm.expect([200,429]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Public stats burst check (run folder 35x in Runner)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/reports/public-stats"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 429', function () { pm.expect([200,429]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

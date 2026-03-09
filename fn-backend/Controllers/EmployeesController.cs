@@ -1,6 +1,9 @@
-﻿using fn_backend.DTO;
+using Asp.Versioning;
+using fn_backend.DTO;
 using fs_backend.Attributes;
+using fs_backend.DTO.Common;
 using fs_backend.Services;
+using fs_backend.Util;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace fn_backend.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class EmployeesController : ControllerBase
@@ -26,13 +31,17 @@ public class EmployeesController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetEmployees()
+    public async Task<IActionResult> GetEmployees([FromQuery] PaginationQueryDto query)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo empleados", userId);
 
         var employees = await _employeeService.GetEmployeesAsync();
-        return Ok(employees);
+        var pagedResult = ApiResponseHelper.Paginate(employees, query, (e, search) =>
+            e.FullName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || e.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return Ok(pagedResult);
     }
 
     /// <summary>
@@ -44,7 +53,7 @@ public class EmployeesController : ControllerBase
     {
         var employee = await _employeeService.GetEmployeeByIdAsync(id);
         if (employee == null)
-            return NotFound(new { message = "Empleado no encontrado" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Empleado no encontrado");
 
         return Ok(employee);
     }
@@ -58,7 +67,7 @@ public class EmployeesController : ControllerBase
     {
         var employee = await _employeeService.GetEmployeeByUserIdAsync(userId);
         if (employee == null)
-            return NotFound(new { message = "Empleado no encontrado para este usuario" });
+            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Empleado no encontrado para este usuario");
 
         return Ok(employee);
     }
@@ -75,7 +84,7 @@ public class EmployeesController : ControllerBase
 
         var result = await _employeeService.CreateEmployeeAsync(dto);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return this.ToValidationProblem(result.Errors);
 
         return CreatedAtAction(nameof(GetEmployeeById), new { id = result.Data!.Id }, result.Data);
     }
@@ -94,11 +103,11 @@ public class EmployeesController : ControllerBase
         if (!result.Succeeded)
         {
             return result.Errors.Any(e => e.Contains("no encontrado"))
-                ? NotFound(result.Errors)
-                : BadRequest(result.Errors);
+                ? this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.First())
+                : this.ToValidationProblem(result.Errors);
         }
 
-        return Ok(new { message = "Empleado actualizado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -115,11 +124,11 @@ public class EmployeesController : ControllerBase
         if (!result.Succeeded)
         {
             return result.Errors.Any(e => e.Contains("no encontrado"))
-                ? NotFound(result.Errors)
-                : BadRequest(result.Errors);
+                ? this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", result.Errors.First())
+                : this.ToValidationProblem(result.Errors);
         }
 
-        return Ok(new { message = "Empleado eliminado exitosamente" });
+        return NoContent();
     }
 
     /// <summary>
@@ -133,7 +142,7 @@ public class EmployeesController : ControllerBase
         var (success, errorMessage, unassignedTickets) = await _employeeService.ToggleEmployeeStatusAsync(id);
 
         if (!success)
-            return BadRequest(errorMessage);
+            return this.ToValidationProblem(new[] { errorMessage ?? "No se pudo actualizar el estado" });
 
         // Devolvemos la cantidad de tickets desasignados para que el frontend pueda notificar
         return Ok(new { unassignedTickets });

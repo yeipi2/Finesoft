@@ -11,7 +11,7 @@ namespace fs_backend.Identity
         {
         }
 
-       
+
         public DbSet<Client> Clients { get; set; }
         public DbSet<Employee> Employees { get; set; }
         public DbSet<Project> Projects { get; set; }
