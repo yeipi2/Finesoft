@@ -11,7 +11,7 @@ public class UserApiService : IUserApiService
     }
     public async Task<List<UserDto>?> GetUsersAsync()
     {
-        try { return await _httpClient.GetFromJsonAsync<List<UserDto>>("api/users"); }
+        try { return await _httpClient.GetListFromPagedEndpointAsync<UserDto>("api/users"); }
         catch { return null; }
     }
     public async Task<UserDto?> GetUserByIdAsync(string id)

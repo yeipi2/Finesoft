@@ -24,7 +24,7 @@ public class TicketApiService : ITicketApiService
             if (!string.IsNullOrEmpty(userId)) queryParams.Add($"userId={userId}");
 
             var query = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
-            return await _httpClient.GetFromJsonAsync<List<TicketDetailDto>>($"api/tickets{query}");
+            return await _httpClient.GetListFromPagedEndpointAsync<TicketDetailDto>($"api/tickets{query}");
         }
         catch (Exception e)
         {
