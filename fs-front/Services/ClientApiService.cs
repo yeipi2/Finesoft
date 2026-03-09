@@ -16,7 +16,7 @@ public class ClientApiService : IClientApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<List<ClientDto>>("api/clients");
+            return await _httpClient.GetListFromPagedEndpointAsync<ClientDto>("api/clients");
         }
         catch (Exception e)
         {

@@ -27,7 +27,7 @@ public class InvoiceApiService : IInvoiceApiService
             if (clientId.HasValue) queryParams.Add($"clientId={clientId}");
 
             var query = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
-            return await _httpClient.GetFromJsonAsync<List<InvoiceDetailDto>>($"api/invoices{query}");
+            return await _httpClient.GetListFromPagedEndpointAsync<InvoiceDetailDto>($"api/invoices{query}");
         }
         catch (Exception e)
         {

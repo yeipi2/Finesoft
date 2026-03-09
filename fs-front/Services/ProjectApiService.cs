@@ -16,7 +16,7 @@ public class ProjectApiService : IProjectApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<List<ProjectDetailDto>>("api/projects");
+            return await _httpClient.GetListFromPagedEndpointAsync<ProjectDetailDto>("api/projects");
         }
         catch (Exception e)
         {

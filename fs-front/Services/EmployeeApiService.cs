@@ -17,7 +17,7 @@ public class EmployeeApiService : IEmployeeApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<List<EmployeeDto>>("api/employees");
+            return await _httpClient.GetListFromPagedEndpointAsync<EmployeeDto>("api/employees");
         }
         catch (Exception e)
         {
