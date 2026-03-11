@@ -2,24 +2,22 @@
 @using fs_front.DTO
 @using fs_front.Pages.Reports
 @using fs_front.Components.Reports
-@inject IReportApiService    ReportApiService
-@inject NotificationService  NotificationService
-@inject PermissionService    PermissionService
-@inject NavigationManager    NavigationManager
+@inject IReportApiService ReportApiService
+@inject NotificationService NotificationService
+@inject PermissionService PermissionService
+@inject NavigationManager NavigationManager
 
 @attribute [Authorize]
 
 <PageTitle>Finesoft - Reportes</PageTitle>
 
-@* ── Estilos compartidos de todos los sub-componentes ── *@
 <ReportsStyles />
 
-@* ── Guard de acceso ── *@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-                background:white;z-index:9999;
-                display:flex;align-items:center;justify-content:center;">
+                    background:white;z-index:9999;
+                    display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -32,14 +30,47 @@ else
     <div class="fs-index-layout reports-theme">
         <section class="fs-index-section">
 
-            @* ── Header con fechas ── *@
-            <ReportsHeader StartDate="@StartDate"
-                           EndDate="@EndDate"
-                           StartDateChanged="OnStartDateChanged"
-                           EndDateChanged="OnEndDateChanged"
-                           OnRefresh="LoadData" />
+            @* ── Header principal ── *@
+            <div class="mb-4">
 
-            @if (isLoading)
+                @* Fila 1: Título + Botones de acción alineados *@
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <ReportsHeader StartDate="@StartDate"
+                                   EndDate="@EndDate"
+                                   StartDateChanged="OnStartDateChanged"
+                                   EndDateChanged="OnEndDateChanged"
+                                   OnRefresh="LoadData" />
+                    <ReportsOptions StartDate="@StartDate"
+                                    EndDate="@EndDate"
+                                    CanExport="@canExport"
+                                    CanSendEmail="@canSendEmail"
+                                    CanConfigEmail="@canConfigEmail" />
+                </div>
+
+                @* Fila 2: Fechas + Actualizar *@
+                <div class="d-flex gap-2 align-items-end">
+                    <div>
+                        <label class="form-label small text-muted mb-1">Desde</label>
+                        <input type="date" class="form-control"
+                               value="@StartDate?.ToString("yyyy-MM-dd")"
+                               @onchange="e => OnStartDateChanged(
+                               DateTime.TryParse(e.Value?.ToString(), out var d) ? d : StartDate)" />
+                </div>
+                <div>
+                    <label class="form-label small text-muted mb-1">Hasta</label>
+                    <input type="date" class="form-control"
+                           value="@EndDate?.ToString("yyyy-MM-dd")"
+                           @onchange="e => OnEndDateChanged(
+                                                              DateTime.TryParse(e.Value?.ToString(), out var d) ? d : EndDate)" />
+                </div>
+                <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold"
+                        @onclick="LoadData">
+                    <i class="bi bi-filter"></i> Actualizar
+                </button>
+            </div>
+        </div>
+
+        @if (isLoading)
             {
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -51,10 +82,10 @@ else
             {
                 @* ── KPI cards ── *@
                 <StatGrid class="mb-5">
-                    <StatCard Title="Ingresos Totales"  Value="@RevenueText"        Accent="StatCard.StatAccent.Info"    IconClass="bi bi-cash-stack" />
+                    <StatCard Title="Ingresos Totales" Value="@RevenueText" Accent="StatCard.StatAccent.Info" IconClass="bi bi-cash-stack" />
                     <StatCard Title="Proyectos Activos" Value="@ActiveProjectsText" Accent="StatCard.StatAccent.Primary" IconClass="bi bi-kanban" />
-                    <StatCard Title="Tickets Abiertos"  Value="@OpenTicketsText"    Accent="StatCard.StatAccent.Primary" IconClass="bi bi-ticket-perforated" />
-                    <StatCard Title="Clientes Totales"  Value="@TotalClientsText"   Accent="StatCard.StatAccent.Primary" IconClass="bi bi-people" />
+                    <StatCard Title="Tickets Abiertos" Value="@OpenTicketsText" Accent="StatCard.StatAccent.Primary" IconClass="bi bi-ticket-perforated" />
+                    <StatCard Title="Clientes Totales" Value="@TotalClientsText" Accent="StatCard.StatAccent.Primary" IconClass="bi bi-people" />
                 </StatGrid>
 
                 @* ── Tabs ── *@
@@ -103,31 +134,36 @@ else
 }
 
 @code {
-    // ── Estado ──────────────────────────────────────────────────────────
+    // ── Estado ───────────────────────────────────────────────────────────
     private DateTime? StartDate;
     private DateTime? EndDate;
-    private string    activeTab      = "charts";
-    private bool      isLoading      = true;
-    private bool      _checkingAccess = true;
-    private bool      _hasAccess      = false;
+    private string activeTab = "charts";
+    private bool isLoading = true;
+    private bool _checkingAccess = true;
+    private bool _hasAccess = false;
 
-    // ── Datos de la API ─────────────────────────────────────────────────
-    private DashboardStatsDto?          dashboardStats;
-    private FinancialReportDto?         financialReport;
-    private PerformanceMetricsDto?      performanceMetrics;
-    private List<UserReportDto>?        userReports;
-    private List<ClientReportDto>?      clientReports;
-    private List<ProjectReportDto>?     projectReports;
-    private List<RevenueTrendDto>?      revenueTrends;
+    // ── Permisos ─────────────────────────────────────────────────────────
+    private bool canExport = false;
+    private bool canSendEmail = false;
+    private bool canConfigEmail = false;
+
+    // ── Datos de la API ──────────────────────────────────────────────────
+    private DashboardStatsDto? dashboardStats;
+    private FinancialReportDto? financialReport;
+    private PerformanceMetricsDto? performanceMetrics;
+    private List<UserReportDto>? userReports;
+    private List<ClientReportDto>? clientReports;
+    private List<ProjectReportDto>? projectReports;
+    private List<RevenueTrendDto>? revenueTrends;
     private List<TicketStatusChartDto>? ticketStatusChart;
-    private List<TopClientDto>?         topClients;
-    private List<ShortTrendItem>?       shortTrends;
+    private List<TopClientDto>? topClients;
+    private List<ShortTrendItem>? shortTrends;
 
     // ── Propiedades computadas ───────────────────────────────────────────
-    private string   RevenueText        => dashboardStats is null ? "-" : $"${dashboardStats.TotalRevenue:N2}";
-    private string   ActiveProjectsText => dashboardStats?.ActiveProjects.ToString() ?? "-";
-    private string   OpenTicketsText    => dashboardStats?.OpenTickets.ToString()    ?? "-";
-    private string   TotalClientsText   => dashboardStats?.TotalClients.ToString()   ?? "-";
+    private string RevenueText => dashboardStats is null ? "-" : $"${dashboardStats.TotalRevenue:N2}";
+    private string ActiveProjectsText => dashboardStats?.ActiveProjects.ToString() ?? "-";
+    private string OpenTicketsText => dashboardStats?.OpenTickets.ToString() ?? "-";
+    private string TotalClientsText => dashboardStats?.TotalClients.ToString() ?? "-";
 
     private string[] TicketColors =>
         ticketStatusChart?.Select(t => t.Color).ToArray() ?? Array.Empty<string>();
@@ -141,12 +177,14 @@ else
             new() { Label = "Vencido",   Amount = financialReport.TotalOverdue  },
         };
 
-    // ── Handlers de eventos ─────────────────────────────────────────────
+    // ── Handlers ─────────────────────────────────────────────────────────
     private void OnStartDateChanged(DateTime? d) => StartDate = d;
-    private void OnEndDateChanged(DateTime? d)   => EndDate   = d;
-    private void OnTabChanged(string tab)        => activeTab = tab;
+    private void OnEndDateChanged(DateTime? d) => EndDate = d;
+    private void OnTabChanged(string tab) => activeTab = tab;
 
-    // ── Ciclo de vida ────────────────────────────────────────────────────
+    [Inject] IJSRuntime JS { get; set; } = null!;
+
+    // ── Ciclo de vida ─────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         var canView = await PermissionService.HasPermissionAsync("reports.view");
@@ -156,16 +194,71 @@ else
             NavigationManager.NavigateTo("/dashboard", forceLoad: true);
             return;
         }
-        _hasAccess      = true;
+        _hasAccess = true;
         _checkingAccess = false;
+
+        try
+        {
+            canExport = await PermissionService.HasPermissionAsync("reports.export");
+            canSendEmail = await PermissionService.HasPermissionAsync("reports.send_email");
+
+            var userRole = await GetUserRoleAsync();
+            canConfigEmail = userRole == "Supervisor"
+                          && await PermissionService.HasPermissionAsync("reports.config_email");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Reportes] Error verificando permisos: {ex.Message}");
+        }
 
         var now = DateTime.Now;
         StartDate = new DateTime(now.Year, now.Month, 1);
-        EndDate   = StartDate.Value.AddMonths(1).AddDays(-1);
+        EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
         await LoadData();
     }
 
-    // ── Carga de datos ───────────────────────────────────────────────────
+    // ── JWT rol ───────────────────────────────────────────────────────────
+    private async Task<string> GetUserRoleAsync()
+    {
+        try
+        {
+            var token = await JS.InvokeAsync<string?>("localStorage.getItem", "authToken");
+            if (string.IsNullOrEmpty(token)) return "";
+
+            var parts = token.Split('.');
+            if (parts.Length < 2) return "";
+
+            var payload = parts[1];
+            payload = (payload.Length % 4) switch
+            {
+                2 => payload + "==",
+                3 => payload + "=",
+                _ => payload
+            };
+
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+            // Claim largo de Microsoft (usado por ASP.NET Identity)
+            var roleClaim = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+            if (doc.RootElement.TryGetProperty(roleClaim, out var roleProp))
+                return roleProp.GetString() ?? "";
+
+            // Fallback claim corto
+            if (doc.RootElement.TryGetProperty("role", out var roleShort))
+                return roleShort.GetString() ?? "";
+
+            return "";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Reportes] Error parseando JWT: {ex.Message}");
+            return "";
+        }
+    }
+
+    // ── Carga de datos ────────────────────────────────────────────────────
     private async Task LoadData()
     {
         isLoading = true;
@@ -183,20 +276,20 @@ else
             var t9 = ReportApiService.GetTopClientsAsync(5);
             await Task.WhenAll(t1, t2, t3, t4, t5, t6, t7, t8, t9);
 
-            dashboardStats     = await t1;
-            financialReport    = await t2;
+            dashboardStats = await t1;
+            financialReport = await t2;
             performanceMetrics = await t3;
-            revenueTrends      = await t4;
-            ticketStatusChart  = await t5;
-            clientReports      = await t6;
-            projectReports     = await t7;
-            userReports        = await t8;
-            topClients         = await t9;
+            revenueTrends = await t4;
+            ticketStatusChart = await t5;
+            clientReports = await t6;
+            projectReports = await t7;
+            userReports = await t8;
+            topClients = await t9;
 
             shortTrends = revenueTrends?.Select(t => new ShortTrendItem
             {
                 ShortMonth = ReportsHelpers.ShortenMonth(t.Month),
-                Revenue    = t.Revenue
+                Revenue = t.Revenue
             }).ToList();
         }
         catch (Exception ex)
@@ -204,8 +297,8 @@ else
             NotificationService.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
-                Summary  = "Error",
-                Detail   = "No se pudieron cargar los reportes.",
+                Summary = "Error",
+                Detail = "No se pudieron cargar los reportes.",
                 Duration = 4000
             });
             Console.WriteLine($"[Reportes] Error: {ex}");

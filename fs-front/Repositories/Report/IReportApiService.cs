@@ -14,4 +14,8 @@ public interface IReportApiService
     Task<List<UserReportDto>?> GetReportsByUserAsync(DateTime? startDate, DateTime? endDate);
     Task<List<TopClientDto>?> GetTopClientsAsync(int top = 10);
     Task<PublicStatsDto?> GetPublicStatsAsync();
+    Task<ReportEmailPreferenceDto?> GetEmailPreferenceAsync();
+    Task<ReportEmailPreferenceDto> UpdateEmailPreferenceAsync(UpdateReportEmailPreferenceDto dto);
+    Task<byte[]?> ExportPdfAsync(SendReportEmailRequestDto request);
+    Task<SendReportEmailResponse?> SendReportEmailAsync(SendReportEmailRequestDto request);
 }

@@ -30,6 +30,7 @@ namespace fs_backend.Identity
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<UserProfile> UserProfiles { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<ReportEmailPreference> ReportEmailPreferences { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -44,6 +45,14 @@ namespace fs_backend.Identity
                 // Sin límite de longitud para Base64
                 entity.Property(e => e.AvatarDataUrl).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.CoverDataUrl).HasColumnType("nvarchar(max)");
+            });
+
+            modelBuilder.Entity<ReportEmailPreference>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserId).IsUnique();
+                entity.Property(e => e.UserId).IsRequired().HasMaxLength(450);
+                entity.Property(e => e.Frequency).IsRequired().HasMaxLength(20);
             });
 
             // ========== CONFIGURACIÓN DE RELACIONES ==========
@@ -228,10 +237,12 @@ namespace fs_backend.Identity
             permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "Eliminar", Code = "invoices.delete", Description = "Eliminar facturas" });
             permissions.Add(new Permission { Id = id++, Module = "Facturas", Action = "RegistrarPago", Code = "invoices.payment", Description = "Registrar pagos" });
 
-            // ========== REPORTES (3 permisos) ==========
+            // ========== REPORTES (5 permisos) ==========
             permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "Ver", Code = "reports.view", Description = "Ver reportes" });
             permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "Exportar", Code = "reports.export", Description = "Exportar reportes" });
             permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "Financieros", Code = "reports.financial", Description = "Ver reportes financieros" });
+            permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "ConfigurarEmail", Code = "reports.config_email", Description = "Configurar email automático de reportes" });
+            permissions.Add(new Permission { Id = id++, Module = "Reportes", Action = "EnviarEmail", Code = "reports.send_email", Description = "Enviar reportes por email" });
 
             // ========== USUARIOS (6 permisos) ==========
             permissions.Add(new Permission { Id = id++, Module = "Usuarios", Action = "Ver", Code = "users.view", Description = "Ver lista de usuarios" });

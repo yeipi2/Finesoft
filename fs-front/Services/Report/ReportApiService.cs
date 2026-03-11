@@ -155,4 +155,60 @@ public class ReportApiService : IReportApiService
 
         return query.Count > 0 ? "?" + string.Join("&", query) : string.Empty;
     }
+
+    public async Task<ReportEmailPreferenceDto?> GetEmailPreferenceAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ReportEmailPreferenceDto>("api/reports/email-preference");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener preferencia de email: {e.Message}");
+            return null;
+        }
+    }
+
+    public async Task<ReportEmailPreferenceDto> UpdateEmailPreferenceAsync(UpdateReportEmailPreferenceDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync("api/reports/email-preference", dto);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ReportEmailPreferenceDto>() ?? new ReportEmailPreferenceDto();
+    }
+
+    public async Task<byte[]?> ExportPdfAsync(SendReportEmailRequestDto request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/reports/export-pdf", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsByteArrayAsync();
+            }
+            return null;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al exportar PDF: {e.Message}");
+            return null;
+        }
+    }
+
+    public async Task<SendReportEmailResponse?> SendReportEmailAsync(SendReportEmailRequestDto request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/reports/send-email", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<SendReportEmailResponse>();
+            }
+            return null;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al enviar email: {e.Message}");
+            return null;
+        }
+    }
 }

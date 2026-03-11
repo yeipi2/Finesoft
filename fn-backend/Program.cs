@@ -148,6 +148,8 @@ builder.Services.AddScoped<IMonthlyBillingService, MonthlyBillingService>();
 builder.Services.AddScoped<IInvoiceNumberService, InvoiceNumberService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IReportPdfGenerator, ReportPdfGenerator>();
+builder.Services.AddScoped<IReportEmailPreferenceService, ReportEmailPreferenceService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISupervisorService, SupervisorService>();
