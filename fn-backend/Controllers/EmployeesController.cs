@@ -139,13 +139,12 @@ public class EmployeesController : ControllerBase
     [HttpPut("toggle-status/{id}")]
     public async Task<IActionResult> ToggleStatus(int id)
     {
-        var (success, errorMessage, unassignedTickets) = await _employeeService.ToggleEmployeeStatusAsync(id);
+        var result = await _employeeService.ToggleEmployeeStatusAsync(id);
 
-        if (!success)
-            return this.ToValidationProblem(new[] { errorMessage ?? "No se pudo actualizar el estado" });
+        if (!result.Succeeded)
+            return this.ToValidationProblem(result.Errors);
 
-        // Devolvemos la cantidad de tickets desasignados para que el frontend pueda notificar
-        return Ok(new { unassignedTickets });
+        return Ok(new { unassignedTickets = result.Data?.UnassignedTickets ?? 0 });
     }
 
     /// <summary>

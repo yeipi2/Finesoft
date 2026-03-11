@@ -1,8 +1,15 @@
-﻿using fn_backend.DTO;
-using fn_backend.Models;
+using fn_backend.DTO;
+using fs_backend.Models;
+using fs_backend.Services;
 using fs_backend.Util;
 
 namespace fs_backend.Services;
+
+public class ToggleEmployeeResult
+{
+    public bool Success { get; set; }
+    public int UnassignedTickets { get; set; }
+}
 
 public interface IEmployeeService
 {
@@ -13,5 +20,5 @@ public interface IEmployeeService
     Task<ServiceResult<bool>> UpdateEmployeeAsync(int id, EmployeeDto dto);
     Task<ServiceResult<bool>> DeleteEmployeeAsync(int id);
     Task<List<EmployeeDto>> SearchEmployeesAsync(string query);
-    Task<(bool Success, string? ErrorMessage, int UnassignedTickets)> ToggleEmployeeStatusAsync(int id);
+    Task<ServiceResult<ToggleEmployeeResult>> ToggleEmployeeStatusAsync(int id);
 }

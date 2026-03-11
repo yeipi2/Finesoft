@@ -96,9 +96,9 @@ public class ClientsController : ControllerBase
         _logger.LogInformation("✅ Usuario {UserId} actualizando cliente {ClientId}", userId, id);
 
         var result = await _clientService.UpdateClientAsync(id, clientDto);
-        if (!result)
+        if (!result.Succeeded)
         {
-            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
+            return this.ToProblem(StatusCodes.Status400BadRequest, "Bad Request", result.Errors.FirstOrDefault() ?? "Error al actualizar");
         }
 
         return NoContent();
@@ -116,9 +116,9 @@ public class ClientsController : ControllerBase
         _logger.LogInformation("✅ Usuario {UserId} eliminando cliente {ClientId}", userId, id);
 
         var result = await _clientService.DeleteClientAsync(id);
-        if (!result)
+        if (!result.Succeeded)
         {
-            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
+            return this.ToProblem(StatusCodes.Status400BadRequest, "Bad Request", result.Errors.FirstOrDefault() ?? "Error al eliminar");
         }
 
         return NoContent();
@@ -149,9 +149,9 @@ public class ClientsController : ControllerBase
     public async Task<IActionResult> ToggleClientStatus(int id)
     {
         var result = await _clientService.DeleteClientAsync(id);
-        if (!result)
+        if (!result.Succeeded)
         {
-            return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cliente no encontrado");
+            return this.ToProblem(StatusCodes.Status400BadRequest, "Bad Request", result.Errors.FirstOrDefault() ?? "Error al cambiar estado");
         }
 
         return Ok(new { message = "Estado actualizado correctamente" });

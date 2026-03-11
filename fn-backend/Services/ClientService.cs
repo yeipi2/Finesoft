@@ -168,105 +168,115 @@ public class ClientService : IClientService
         );
     }
 
-    public async Task<bool> UpdateClientAsync(int id, ClientDto dto)
+    public async Task<ServiceResult<bool>> UpdateClientAsync(int id, ClientDto dto)
     {
-        var client = await _context.Clients.FindAsync(id);
-        if (client == null)
+        try
         {
-            return false;
-        }
-
-        // ✅ Actualizar datos del cliente
-        client.CompanyName = dto.CompanyName;
-        client.ContactName = dto.ContactName;
-        client.Email = dto.Email;
-        client.Phone = dto.Phone;
-        client.RFC = dto.RFC;
-        client.Address = dto.Address;
-        client.ServiceMode = dto.ServiceMode;
-        client.BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event";
-        client.MonthlyRate = dto.MonthlyRate;
-        client.IsActive = dto.IsActive;
-        client.MonthlyHours = dto.MonthlyHours;
-        client.UpdatedAt = DateTime.UtcNow;
-
-        if (!string.IsNullOrEmpty(client.UserId))
-        {
-            var user = await _userManager.FindByIdAsync(client.UserId);
-            if (user != null)
+            var client = await _context.Clients.FindAsync(id);
+            if (client == null)
             {
-                user.LockoutEnabled = !client.IsActive;
-                user.LockoutEnd = client.IsActive ? null : DateTimeOffset.MaxValue;
-                await _userManager.UpdateAsync(user);
+                return ServiceResult<bool>.Failure("Cliente no encontrado");
             }
+
+            client.CompanyName = dto.CompanyName;
+            client.ContactName = dto.ContactName;
+            client.Email = dto.Email;
+            client.Phone = dto.Phone;
+            client.RFC = dto.RFC;
+            client.Address = dto.Address;
+            client.ServiceMode = dto.ServiceMode;
+            client.BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event";
+            client.MonthlyRate = dto.MonthlyRate;
+            client.IsActive = dto.IsActive;
+            client.MonthlyHours = dto.MonthlyHours;
+            client.UpdatedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrEmpty(client.UserId))
+            {
+                var user = await _userManager.FindByIdAsync(client.UserId);
+                if (user != null)
+                {
+                    user.LockoutEnabled = !client.IsActive;
+                    user.LockoutEnd = client.IsActive ? null : DateTimeOffset.MaxValue;
+                    await _userManager.UpdateAsync(user);
+                }
+            }
+
+            _context.Clients.Update(client);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("✅ Cliente actualizado: {Id}", id);
+
+            await _cache.InvalidateAsync(CacheKeys.AllClients);
+            await _cache.InvalidateAsync(string.Format(CacheKeys.ClientById, id));
+
+            return ServiceResult<bool>.Success(true);
         }
-
-        _context.Clients.Update(client);
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("✅ Cliente actualizado: {Id}", id);
-
-        // Invalidar caches relacionados
-        await _cache.InvalidateAsync(CacheKeys.AllClients);
-        await _cache.InvalidateAsync(string.Format(CacheKeys.ClientById, id));
-
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error al actualizar cliente {Id}", id);
+            return ServiceResult<bool>.Failure($"Error al actualizar el cliente: {ex.Message}");
+        }
     }
 
-    public async Task<bool> DeleteClientAsync(int id)
+    public async Task<ServiceResult<bool>> DeleteClientAsync(int id)
     {
-        var client = await _context.Clients
-            .Include(c => c.Projects)  // ⭐ AGREGAR Include
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (client == null)
-            return false;
-
-        // Alternar estado del cliente
-        client.IsActive = !client.IsActive;
-        client.UpdatedAt = DateTime.UtcNow;
-
-        // ⭐ NUEVO: Sincronizar proyectos con el estado del cliente
-        if (client.Projects != null && client.Projects.Any())
+        try
         {
-            foreach (var project in client.Projects)
-            {
-                project.IsActive = client.IsActive;
-            }
-            _logger.LogInformation(
-                "✅ {Count} proyectos {Status} para cliente {Id}",
-                client.Projects.Count,
-                client.IsActive ? "reactivados" : "desactivados",
-                id);
-        }
+            var client = await _context.Clients
+                .Include(c => c.Projects)
+                .FirstOrDefaultAsync(c => c.Id == id);
 
-        // Actualizar usuario según el nuevo estado
-        if (!string.IsNullOrEmpty(client.UserId))
+            if (client == null)
+                return ServiceResult<bool>.Failure("Cliente no encontrado");
+
+            client.IsActive = !client.IsActive;
+            client.UpdatedAt = DateTime.UtcNow;
+
+            if (client.Projects != null && client.Projects.Any())
+            {
+                foreach (var project in client.Projects)
+                {
+                    project.IsActive = client.IsActive;
+                }
+                _logger.LogInformation(
+                    "✅ {Count} proyectos {Status} para cliente {Id}",
+                    client.Projects.Count,
+                    client.IsActive ? "reactivados" : "desactivados",
+                    id);
+            }
+
+            if (!string.IsNullOrEmpty(client.UserId))
+            {
+                var user = await _userManager.FindByIdAsync(client.UserId);
+                if (user != null)
+                {
+                    if (client.IsActive)
+                    {
+                        user.LockoutEnabled = false;
+                        user.LockoutEnd = null;
+                    }
+                    else
+                    {
+                        user.LockoutEnabled = true;
+                        user.LockoutEnd = DateTimeOffset.MaxValue;
+                    }
+                    await _userManager.UpdateAsync(user);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            await _cache.InvalidateAsync(CacheKeys.AllClients);
+            await _cache.InvalidateAsync(string.Format(CacheKeys.ClientById, id));
+
+            return ServiceResult<bool>.Success(true);
+        }
+        catch (Exception ex)
         {
-            var user = await _userManager.FindByIdAsync(client.UserId);
-            if (user != null)
-            {
-                if (client.IsActive)
-                {
-                    user.LockoutEnabled = false;
-                    user.LockoutEnd = null;
-                }
-                else
-                {
-                    user.LockoutEnabled = true;
-                    user.LockoutEnd = DateTimeOffset.MaxValue;
-                }
-                await _userManager.UpdateAsync(user);
-            }
+            _logger.LogError(ex, "❌ Error al eliminar cliente {Id}", id);
+            return ServiceResult<bool>.Failure($"Error al eliminar el cliente: {ex.Message}");
         }
-
-        await _context.SaveChangesAsync();
-
-        // Invalidar caches relacionados
-        await _cache.InvalidateAsync(CacheKeys.AllClients);
-        await _cache.InvalidateAsync(string.Format(CacheKeys.ClientById, id));
-
-        return true;
     }
 
 

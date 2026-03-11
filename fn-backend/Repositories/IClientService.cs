@@ -9,7 +9,7 @@ public interface IClientService
     Task<IEnumerable<ClientDto>> GetClientsAsync();  // ⭐ Client → ClientDto
     Task<Client?> GetClientByIdAsync(int id);
     Task<ServiceResult<Client>> CreateClientAsync(ClientDto userDto);
-    Task<bool> UpdateClientAsync(int id, ClientDto dto);
-    Task<bool> DeleteClientAsync(int id);
+    Task<ServiceResult<bool>> UpdateClientAsync(int id, ClientDto dto);
+    Task<ServiceResult<bool>> DeleteClientAsync(int id);
     Task<List<ClientDto>> SearchClientsAsync(string query);
 }

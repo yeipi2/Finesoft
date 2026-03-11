@@ -1,5 +1,6 @@
-﻿using fn_backend.Models;
+using fn_backend.Models;
 using fs_backend.Models;
+using fs_backend.Services;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,7 @@ namespace fs_backend.Identity
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<UserProfile> UserProfiles { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

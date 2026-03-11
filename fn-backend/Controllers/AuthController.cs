@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace fn_backend.Controllers;
 
@@ -14,6 +15,7 @@ namespace fn_backend.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
+[EnableRateLimiting("SensitiveEndpoints")]
 public class AuthController : ControllerBase
 {
     private readonly SignInManager<IdentityUser> _signInManager;

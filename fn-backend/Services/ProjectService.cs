@@ -131,66 +131,84 @@ public class ProjectService : IProjectService
 
     public async Task<ServiceResult<Project>> CreateProjectAsync(ProjectDto projectDto)
     {
-        var clientExists = await _context.Clients.AnyAsync(c => c.Id == projectDto.ClientId);
-        if (!clientExists)
-            return ServiceResult<Project>.Failure("El cliente especificado no existe");
-
-        var project = new Project
+        try
         {
-            Name = projectDto.Name,
-            Description = projectDto.Description,
-            ClientId = projectDto.ClientId,
-            IsActive = projectDto.IsActive
-        };
+            var clientExists = await _context.Clients.AnyAsync(c => c.Id == projectDto.ClientId);
+            if (!clientExists)
+                return ServiceResult<Project>.Failure("El cliente especificado no existe");
 
-        _context.Projects.Add(project);
-        await _context.SaveChangesAsync();
+            var project = new Project
+            {
+                Name = projectDto.Name,
+                Description = projectDto.Description,
+                ClientId = projectDto.ClientId,
+                IsActive = projectDto.IsActive
+            };
 
-        // Invalidar cache
-        await _cache.InvalidateAsync(CacheKeys.AllProjects);
+            _context.Projects.Add(project);
+            await _context.SaveChangesAsync();
 
-        return ServiceResult<Project>.Success(project);
+            await _cache.InvalidateAsync(CacheKeys.AllProjects);
+
+            return ServiceResult<Project>.Success(project);
+        }
+        catch (Exception ex)
+        {
+            return ServiceResult<Project>.Failure($"Error al crear el proyecto: {ex.Message}");
+        }
     }
 
     public async Task<ServiceResult<bool>> UpdateProjectAsync(int id, ProjectDto updateProjectDto)
     {
-        var project = await _context.Projects.FindAsync(id);
-        if (project == null)
-            return ServiceResult<bool>.Failure("Proyecto no encontrado");
+        try
+        {
+            var project = await _context.Projects.FindAsync(id);
+            if (project == null)
+                return ServiceResult<bool>.Failure("Proyecto no encontrado");
 
-        var clientExists = await _context.Clients.AnyAsync(c => c.Id == updateProjectDto.ClientId);
-        if (!clientExists)
-            return ServiceResult<bool>.Failure("El cliente especificado no existe");
+            var clientExists = await _context.Clients.AnyAsync(c => c.Id == updateProjectDto.ClientId);
+            if (!clientExists)
+                return ServiceResult<bool>.Failure("El cliente especificado no existe");
 
-        project.Name = updateProjectDto.Name;
-        project.Description = updateProjectDto.Description;
-        project.ClientId = updateProjectDto.ClientId;
-        project.IsActive = updateProjectDto.IsActive;
+            project.Name = updateProjectDto.Name;
+            project.Description = updateProjectDto.Description;
+            project.ClientId = updateProjectDto.ClientId;
+            project.IsActive = updateProjectDto.IsActive;
 
-        _context.Projects.Update(project);
-        await _context.SaveChangesAsync();
+            _context.Projects.Update(project);
+            await _context.SaveChangesAsync();
 
-        // Invalidar cache
-        await _cache.InvalidateAsync(CacheKeys.AllProjects);
-        await _cache.InvalidateAsync(string.Format(CacheKeys.ProjectById, id));
+            await _cache.InvalidateAsync(CacheKeys.AllProjects);
+            await _cache.InvalidateAsync(string.Format(CacheKeys.ProjectById, id));
 
-        return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            return ServiceResult<bool>.Failure($"Error al actualizar el proyecto: {ex.Message}");
+        }
     }
 
     public async Task<ServiceResult<bool>> DeleteProjectAsync(int id)
     {
-        var project = await _context.Projects.FindAsync(id);
-        if (project == null)
-            return ServiceResult<bool>.Failure("Proyecto no encontrado");
+        try
+        {
+            var project = await _context.Projects.FindAsync(id);
+            if (project == null)
+                return ServiceResult<bool>.Failure("Proyecto no encontrado");
 
-        _context.Projects.Remove(project);
-        await _context.SaveChangesAsync();
+            _context.Projects.Remove(project);
+            await _context.SaveChangesAsync();
 
-        // Invalidar cache
-        await _cache.InvalidateAsync(CacheKeys.AllProjects);
-        await _cache.InvalidateAsync(string.Format(CacheKeys.ProjectById, id));
+            await _cache.InvalidateAsync(CacheKeys.AllProjects);
+            await _cache.InvalidateAsync(string.Format(CacheKeys.ProjectById, id));
 
-        return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            return ServiceResult<bool>.Failure($"Error al eliminar el proyecto: {ex.Message}");
+        }
     }
 
     // ── Mapper con MonthlyHoursUsed ───────────────────────────────────────────

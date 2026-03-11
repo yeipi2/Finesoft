@@ -87,20 +87,19 @@ public class EmployeeService : IEmployeeService
     /// Cambia el estado activo/inactivo del empleado.
     /// Si se desactiva, desasigna todos sus tickets abiertos (Abierto, En Progreso, En Revisión).
     /// </summary>
-    public async Task<(bool Success, string? ErrorMessage, int UnassignedTickets)> ToggleEmployeeStatusAsync(int id)
+    public async Task<ServiceResult<ToggleEmployeeResult>> ToggleEmployeeStatusAsync(int id)
     {
         try
         {
             var employee = await _context.Employees.FindAsync(id);
             if (employee == null)
-                return (false, "Empleado no encontrado", 0);
+                return ServiceResult<ToggleEmployeeResult>.Failure("Empleado no encontrado");
 
             employee.IsActive = !employee.IsActive;
             employee.UpdatedAt = DateTime.UtcNow;
 
             int unassignedCount = 0;
 
-            // Si se está DESACTIVANDO el empleado, desasignar sus tickets activos
             if (!employee.IsActive)
             {
                 var statusesToUnassign = new[] { "Abierto", "En Progreso", "En Revisión" };
@@ -115,7 +114,6 @@ public class EmployeeService : IEmployeeService
                     ticket.AssignedToUserId = null;
                     ticket.UpdatedAt = DateTime.UtcNow;
 
-                    // Registrar en historial
                     _context.Set<TicketHistory>().Add(new TicketHistory
                     {
                         TicketId = ticket.Id,
@@ -140,16 +138,19 @@ public class EmployeeService : IEmployeeService
             _context.Employees.Update(employee);
             await _context.SaveChangesAsync();
 
-            // Invalidar cache
             await _cache.InvalidateAsync("employees:all");
             await _cache.InvalidateAsync($"employees:id:{id}");
 
-            return (true, null, unassignedCount);
+            return ServiceResult<ToggleEmployeeResult>.Success(new ToggleEmployeeResult
+            {
+                Success = true,
+                UnassignedTickets = unassignedCount
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Error al cambiar estado del empleado {Id}", id);
-            return (false, ex.Message, 0);
+            return ServiceResult<ToggleEmployeeResult>.Failure($"Error al cambiar estado: {ex.Message}");
         }
     }
 
@@ -217,52 +218,66 @@ public class EmployeeService : IEmployeeService
 
     public async Task<ServiceResult<bool>> UpdateEmployeeAsync(int id, EmployeeDto dto)
     {
-        var employee = await _context.Employees.FindAsync(id);
-        if (employee == null)
-            return ServiceResult<bool>.Failure("Empleado no encontrado");
+        try
+        {
+            var employee = await _context.Employees.FindAsync(id);
+            if (employee == null)
+                return ServiceResult<bool>.Failure("Empleado no encontrado");
 
-        employee.FullName = dto.FullName;
-        employee.Phone = dto.Phone;
-        employee.Position = dto.Position;
-        employee.Department = dto.Department;
-        employee.HireDate = dto.HireDate;
-        employee.IsActive = dto.IsActive;
-        employee.UpdatedAt = DateTime.UtcNow;
+            employee.FullName = dto.FullName;
+            employee.Phone = dto.Phone;
+            employee.Position = dto.Position;
+            employee.Department = dto.Department;
+            employee.HireDate = dto.HireDate;
+            employee.IsActive = dto.IsActive;
+            employee.UpdatedAt = DateTime.UtcNow;
 
-        await SyncUserAccessStateAsync(employee.UserId, employee.IsActive);
+            await SyncUserAccessStateAsync(employee.UserId, employee.IsActive);
 
-        _context.Employees.Update(employee);
-        await _context.SaveChangesAsync();
+            _context.Employees.Update(employee);
+            await _context.SaveChangesAsync();
 
-        _logger.LogInformation("✅ Empleado actualizado: {Id}", id);
+            _logger.LogInformation("✅ Empleado actualizado: {Id}", id);
 
-        // Invalidar cache
-        await _cache.InvalidateAsync("employees:all");
-        await _cache.InvalidateAsync($"employees:id:{id}");
+            await _cache.InvalidateAsync("employees:all");
+            await _cache.InvalidateAsync($"employees:id:{id}");
 
-        return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error al actualizar empleado {Id}", id);
+            return ServiceResult<bool>.Failure($"Error al actualizar el empleado: {ex.Message}");
+        }
     }
 
     public async Task<ServiceResult<bool>> DeleteEmployeeAsync(int id)
     {
-        var employee = await _context.Employees.FindAsync(id);
-        if (employee == null)
-            return ServiceResult<bool>.Failure("Empleado no encontrado");
+        try
+        {
+            var employee = await _context.Employees.FindAsync(id);
+            if (employee == null)
+                return ServiceResult<bool>.Failure("Empleado no encontrado");
 
-        var user = await _userManager.FindByIdAsync(employee.UserId);
-        if (user != null)
-            await _userManager.DeleteAsync(user);
+            var user = await _userManager.FindByIdAsync(employee.UserId);
+            if (user != null)
+                await _userManager.DeleteAsync(user);
 
-        _context.Employees.Remove(employee);
-        await _context.SaveChangesAsync();
+            _context.Employees.Remove(employee);
+            await _context.SaveChangesAsync();
 
-        _logger.LogInformation("✅ Empleado eliminado: {Id}", id);
+            _logger.LogInformation("✅ Empleado eliminado: {Id}", id);
 
-        // Invalidar cache
-        await _cache.InvalidateAsync("employees:all");
-        await _cache.InvalidateAsync($"employees:id:{id}");
+            await _cache.InvalidateAsync("employees:all");
+            await _cache.InvalidateAsync($"employees:id:{id}");
 
-        return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error al eliminar empleado {Id}", id);
+            return ServiceResult<bool>.Failure($"Error al eliminar el empleado: {ex.Message}");
+        }
     }
 
     public async Task<List<EmployeeDto>> SearchEmployeesAsync(string query)
