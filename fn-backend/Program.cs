@@ -11,10 +11,12 @@ using fs_front.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
@@ -196,6 +198,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CanCreateTicket", policy => policy.RequireAuthenticatedUser());
 });
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("Database", tags: new[] { "db", "sql" })
+    .AddCheck("self", () => HealthCheckResult.Healthy("API is running"), tags: new[] { "api" });
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -270,5 +276,45 @@ app.MapHub<QuotesHub>("/hubs/quotes");
 
 app.MapControllers();
 app.MapIdentityApi<IdentityUser>();
+
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description?.ToString(),
+                duration = e.Value.Duration.TotalMilliseconds
+            })
+        };
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+    }
+});
+
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("db"),
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            database = report.Entries.FirstOrDefault().Value.Status.ToString()
+        }));
+    }
+});
+
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("api")
+});
 
 app.Run();

@@ -25,6 +25,7 @@
     </PackageReference>
     <PackageReference Include="QuestPDF" Version="2025.7.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.20" />
   </ItemGroup>
 
 </Project>
