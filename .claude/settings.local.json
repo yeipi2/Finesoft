@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd D:/Imprimir/fineprojectweb/fn-backend && dotnet build --no-restore 2>&1 | head -50)"
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-﻿using fn_backend.DTO;
+using fn_backend.DTO;
 using fn_backend.Models;
 using fs_backend.Identity;
 using fs_backend.Util;
@@ -12,15 +12,18 @@ public class ClientService : IClientService
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly ILogger<ClientService> _logger;
+    private readonly ICacheService _cache;
 
     public ClientService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
-        ILogger<ClientService> logger)
+        ILogger<ClientService> logger,
+        ICacheService cache)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<ServiceResult<Client>> CreateClientAsync(ClientDto dto)
@@ -82,6 +85,9 @@ public class ClientService : IClientService
                 "✅ Cliente creado: {CompanyName} (User: {UserId})",
                 client.CompanyName, user.Id);
 
+            // Invalidar cache de clientes
+            await _cache.InvalidateAsync(CacheKeys.AllClients);
+
             return ServiceResult<Client>.Success(client);
         }
         catch (Exception ex)
@@ -97,57 +103,69 @@ public class ClientService : IClientService
     // ClientService.cs — GetClientsAsync
     public async Task<IEnumerable<ClientDto>> GetClientsAsync()
     {
-        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var nextMonth = currentMonth.AddMonths(1);
-
-        var clients = await _context.Clients
-            .Include(c => c.Projects)
-            .ToListAsync();
-
-        var result = new List<ClientDto>();
-
-        foreach (var c in clients)
-        {
-            // Sumar ActualHours de tickets del mes actual para este cliente
-            var projectIds = c.Projects?.Select(p => p.Id).ToList() ?? new List<int>();
-
-            decimal hoursUsed = 0;
-            if (projectIds.Any())
+        return await _cache.GetOrSetAsync(
+            CacheKeys.AllClients,
+            async () =>
             {
-                hoursUsed = await _context.Tickets
-                    .Where(t => t.ProjectId.HasValue
-                             && projectIds.Contains(t.ProjectId.Value)
-                             && t.UpdatedAt >= currentMonth
-                             && t.UpdatedAt < nextMonth)
-                    .SumAsync(t => t.ActualHours);
-            }
+                var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                var nextMonth = currentMonth.AddMonths(1);
 
-            result.Add(new ClientDto
-            {
-                Id = c.Id,
-                UserId = c.UserId,
-                CompanyName = c.CompanyName,
-                ContactName = c.ContactName,
-                Email = c.Email,
-                Phone = c.Phone,
-                RFC = c.RFC,
-                Address = c.Address,
-                ServiceMode = c.ServiceMode,
-                MonthlyRate = c.MonthlyRate,
-                MonthlyHours = c.MonthlyHours,
-                MonthlyHoursUsed = hoursUsed,
-                IsActive = c.IsActive,
-                ProjectCount = c.Projects?.Count ?? 0
-            });
-        }
+                var clients = await _context.Clients
+                    .Include(c => c.Projects)
+                    .ToListAsync();
 
-        return result;
+                var result = new List<ClientDto>();
+
+                foreach (var c in clients)
+                {
+                    // Sumar ActualHours de tickets del mes actual para este cliente
+                    var projectIds = c.Projects?.Select(p => p.Id).ToList() ?? new List<int>();
+
+                    decimal hoursUsed = 0;
+                    if (projectIds.Any())
+                    {
+                        hoursUsed = await _context.Tickets
+                            .Where(t => t.ProjectId.HasValue
+                                     && projectIds.Contains(t.ProjectId.Value)
+                                     && t.UpdatedAt >= currentMonth
+                                     && t.UpdatedAt < nextMonth)
+                            .SumAsync(t => t.ActualHours);
+                    }
+
+                    result.Add(new ClientDto
+                    {
+                        Id = c.Id,
+                        UserId = c.UserId,
+                        CompanyName = c.CompanyName,
+                        ContactName = c.ContactName,
+                        Email = c.Email,
+                        Phone = c.Phone,
+                        RFC = c.RFC,
+                        Address = c.Address,
+                        ServiceMode = c.ServiceMode,
+                        MonthlyRate = c.MonthlyRate,
+                        MonthlyHours = c.MonthlyHours,
+                        MonthlyHoursUsed = hoursUsed,
+                        IsActive = c.IsActive,
+                        ProjectCount = c.Projects?.Count ?? 0
+                    });
+                }
+
+                return result;
+            },
+            TimeSpan.FromMinutes(15) // Cache de 15 minutos
+        ) ?? new List<ClientDto>();
     }
 
     public async Task<Client?> GetClientByIdAsync(int id)
     {
-        var client = await _context.Clients.FindAsync(id);
-        return client;
+        var cacheKey = string.Format(CacheKeys.ClientById, id);
+
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () => await _context.Clients.FindAsync(id),
+            TimeSpan.FromMinutes(15)
+        );
     }
 
     public async Task<bool> UpdateClientAsync(int id, ClientDto dto)
@@ -166,7 +184,7 @@ public class ClientService : IClientService
         client.RFC = dto.RFC;
         client.Address = dto.Address;
         client.ServiceMode = dto.ServiceMode;
-        client.BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event"; 
+        client.BillingFrequency = dto.ServiceMode == "Mensual" ? "Monthly" : "Event";
         client.MonthlyRate = dto.MonthlyRate;
         client.IsActive = dto.IsActive;
         client.MonthlyHours = dto.MonthlyHours;
@@ -187,6 +205,11 @@ public class ClientService : IClientService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("✅ Cliente actualizado: {Id}", id);
+
+        // Invalidar caches relacionados
+        await _cache.InvalidateAsync(CacheKeys.AllClients);
+        await _cache.InvalidateAsync(string.Format(CacheKeys.ClientById, id));
+
         return true;
     }
 
@@ -238,12 +261,18 @@ public class ClientService : IClientService
         }
 
         await _context.SaveChangesAsync();
+
+        // Invalidar caches relacionados
+        await _cache.InvalidateAsync(CacheKeys.AllClients);
+        await _cache.InvalidateAsync(string.Format(CacheKeys.ClientById, id));
+
         return true;
     }
 
 
     public async Task<List<ClientDto>> SearchClientsAsync(string query)
     {
+        // El search no se cachea por ser dinámico
         var clients = await _context.Clients
             .Where(c => c.IsActive &&
                        (c.CompanyName.Contains(query) ||

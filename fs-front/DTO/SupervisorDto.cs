@@ -25,6 +25,7 @@ public class EmployeeSummaryDto
     public bool IsActive { get; set; }
     public DateTime HireDate { get; set; }
     public DateTime? LastActivityDate { get; set; }
+    public string? AvatarDataUrl { get; set; }
 }
 
 public class EmployeeActionDto

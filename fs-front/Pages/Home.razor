@@ -169,6 +169,23 @@
                     </div>
                 }
 
+                @if (_canViewSupervision)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm hover-card cursor-pointer" @onclick='() => NavigateTo("supervisor/empleados")'>
+                            <div class="card-body text-center p-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-purple text-white rounded-circle mb-3"
+                                     style="width: 60px; height: 60px;">
+                                    <i class="bi bi-person-lines-fill fs-3"></i>
+                                </div>
+                                <h5 class="card-title fw-bold">Supervisión</h5>
+                                <p class="card-text text-muted small">Control y seguimiento de empleados.</p>
+                                <span class="btn btn-outline-purple btn-sm rounded-pill px-3">Ver Panel</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 <AuthorizeView Roles="Admin,Administracion">
                     <Authorized>
                         <div class="col">
@@ -224,6 +241,20 @@
     .cursor-pointer {
         cursor: pointer;
     }
+
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+
+    .btn-outline-purple {
+        color: #6f42c1;
+        border-color: #6f42c1;
+    }
+
+    .btn-outline-purple:hover {
+        background-color: #6f42c1;
+        color: white;
+    }
 </style>
 
 @code {
@@ -239,6 +270,7 @@
     private bool _canViewInvoices;
     private bool _canViewReports;
     private bool _canViewUsers;
+    private bool _canViewSupervision;
 
     private string MonthlyRevenueText =>
     _stats is null ? "-" : $"${_stats.MonthlyRevenue:N2}";
@@ -265,6 +297,9 @@
         _canViewInvoices = await authProvider.HasPermissionAsync("invoices.view");
         _canViewReports = await authProvider.HasPermissionAsync("reports.view");
         _canViewUsers = await authProvider.HasPermissionAsync("users.view");
+        _canViewSupervision = await authProvider.HasPermissionAsync("supervisor.view") || 
+                              await authProvider.HasPermissionAsync("supervisor.employees") ||
+                              await authProvider.HasPermissionAsync("employees.view");
 
         _ready = true;
 

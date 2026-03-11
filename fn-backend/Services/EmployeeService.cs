@@ -1,4 +1,4 @@
-﻿using fn_backend.DTO;
+using fn_backend.DTO;
 using fn_backend.Models;
 using fs_backend.Identity;
 using fs_backend.Models;
@@ -13,45 +13,64 @@ public class EmployeeService : IEmployeeService
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly ILogger<EmployeeService> _logger;
+    private readonly ICacheService _cache;
 
     public EmployeeService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
-        ILogger<EmployeeService> logger)
+        ILogger<EmployeeService> logger,
+        ICacheService cache)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<EmployeeDto>> GetEmployeesAsync()
     {
-        var employees = await _context.Employees
-            .OrderBy(e => e.FullName)
-            .ToListAsync();
+        return await _cache.GetOrSetAsync(
+            "employees:all",
+            async () =>
+            {
+                var employees = await _context.Employees
+                    .OrderBy(e => e.FullName)
+                    .ToListAsync();
 
-        var employeeDtos = new List<EmployeeDto>();
+                var employeeDtos = new List<EmployeeDto>();
 
-        foreach (var emp in employees)
-        {
-            var user = await _userManager.FindByIdAsync(emp.UserId);
-            var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
+                foreach (var emp in employees)
+                {
+                    var user = await _userManager.FindByIdAsync(emp.UserId);
+                    var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
 
-            employeeDtos.Add(MapToDto(emp, user, roles));
-        }
+                    employeeDtos.Add(MapToDto(emp, user, roles));
+                }
 
-        return employeeDtos;
+                return employeeDtos;
+            },
+            TimeSpan.FromMinutes(15)
+        ) ?? new List<EmployeeDto>();
     }
 
     public async Task<EmployeeDto?> GetEmployeeByIdAsync(int id)
     {
-        var employee = await _context.Employees.FindAsync(id);
-        if (employee == null) return null;
+        var cacheKey = $"employees:id:{id}";
 
-        var user = await _userManager.FindByIdAsync(employee.UserId);
-        var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () =>
+            {
+                var employee = await _context.Employees.FindAsync(id);
+                if (employee == null) return null;
 
-        return MapToDto(employee, user, roles);
+                var user = await _userManager.FindByIdAsync(employee.UserId);
+                var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
+
+                return MapToDto(employee, user, roles);
+            },
+            TimeSpan.FromMinutes(15)
+        );
     }
 
     public async Task<EmployeeDto?> GetEmployeeByUserIdAsync(string userId)
@@ -121,6 +140,10 @@ public class EmployeeService : IEmployeeService
             _context.Employees.Update(employee);
             await _context.SaveChangesAsync();
 
+            // Invalidar cache
+            await _cache.InvalidateAsync("employees:all");
+            await _cache.InvalidateAsync($"employees:id:{id}");
+
             return (true, null, unassignedCount);
         }
         catch (Exception ex)
@@ -178,6 +201,10 @@ public class EmployeeService : IEmployeeService
             dto.UserId = user.Id;
 
             _logger.LogInformation("✅ Empleado creado: {FullName} (User: {UserId})", employee.FullName, user.Id);
+
+            // Invalidar cache
+            await _cache.InvalidateAsync("employees:all");
+
             return ServiceResult<EmployeeDto>.Success(dto);
         }
         catch (Exception ex)
@@ -208,6 +235,11 @@ public class EmployeeService : IEmployeeService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("✅ Empleado actualizado: {Id}", id);
+
+        // Invalidar cache
+        await _cache.InvalidateAsync("employees:all");
+        await _cache.InvalidateAsync($"employees:id:{id}");
+
         return ServiceResult<bool>.Success(true);
     }
 
@@ -225,11 +257,17 @@ public class EmployeeService : IEmployeeService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("✅ Empleado eliminado: {Id}", id);
+
+        // Invalidar cache
+        await _cache.InvalidateAsync("employees:all");
+        await _cache.InvalidateAsync($"employees:id:{id}");
+
         return ServiceResult<bool>.Success(true);
     }
 
     public async Task<List<EmployeeDto>> SearchEmployeesAsync(string query)
     {
+        // Search no se cachea por ser dinámico
         var employees = await _context.Employees
             .Where(e => e.IsActive &&
                        (e.FullName.Contains(query) ||

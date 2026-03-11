@@ -77,8 +77,6 @@ else
     private int _totalCount;
     private int _totalPages;
 
-    private System.Timers.Timer? _debounceTimer;
-
     protected override async Task OnInitializedAsync()
     {
         var canView = await PermissionService.HasPermissionAsync("supervisor.view");
@@ -211,10 +209,4 @@ else
             Detail = message,
             Duration = 4000
         });
-
-    public void Dispose()
-    {
-        _debounceTimer?.Stop();
-        _debounceTimer?.Dispose();
-    }
 }

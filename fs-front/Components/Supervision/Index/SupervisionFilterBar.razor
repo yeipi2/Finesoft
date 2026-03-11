@@ -10,7 +10,7 @@
                     <input type="text"
                            class="form-control"
                            placeholder="Nombre o email..."
-                           value="@SearchTerm"
+                           @bind="SearchTerm"
                            @oninput="OnSearchInput" />
                     @if (!string.IsNullOrEmpty(SearchTerm))
                     {
@@ -78,27 +78,13 @@
     [Parameter] public EventCallback OnClearFilters { get; set; }
     [Parameter] public EventCallback OnClearSearch { get; set; }
 
-    private System.Timers.Timer? _debounceTimer;
-
     private async Task OnSearchInput(ChangeEventArgs e)
     {
         var value = e.Value?.ToString() ?? "";
-        await SearchTermChanged.InvokeAsync(value);
-
-        _debounceTimer?.Stop();
-        _debounceTimer?.Dispose();
-
-        _debounceTimer = new System.Timers.Timer(300);
-        _debounceTimer.Elapsed += async (s, args) =>
+        if (value != SearchTerm)
         {
-            _debounceTimer?.Stop();
-            await InvokeAsync(async () =>
-            {
-                await SearchTermChanged.InvokeAsync(value);
-            });
-        };
-        _debounceTimer.AutoReset = false;
-        _debounceTimer.Start();
+            await SearchTermChanged.InvokeAsync(value);
+        }
     }
 
     private async Task OnDepartmentChange(ChangeEventArgs e)
@@ -117,11 +103,5 @@
     {
         var value = e.Value?.ToString() ?? "Todos";
         await StatusFilterChanged.InvokeAsync(value);
-    }
-
-    public void Dispose()
-    {
-        _debounceTimer?.Stop();
-        _debounceTimer?.Dispose();
     }
 }

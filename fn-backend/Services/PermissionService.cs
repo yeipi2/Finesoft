@@ -1,4 +1,4 @@
-﻿using fn_backend.DTO;
+using fn_backend.DTO;
 using fs_backend.Identity;
 using fs_backend.Models;
 using fs_backend.Repositories;
@@ -11,45 +11,66 @@ public class PermissionService : IPermissionService
 {
     private readonly ApplicationDbContext _context;
     private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly ICacheService _cache;
 
-    public PermissionService(ApplicationDbContext context, RoleManager<IdentityRole> roleManager)
+    public PermissionService(
+        ApplicationDbContext context,
+        RoleManager<IdentityRole> roleManager,
+        ICacheService cache)
     {
         _context = context;
         _roleManager = roleManager;
+        _cache = cache;
     }
 
     public async Task<List<PermissionDto>> GetAllPermissionsAsync()
     {
-        return await _context.Permissions
-            .OrderBy(p => p.Module)
-            .ThenBy(p => p.Action)
-            .Select(p => new PermissionDto
+        return await _cache.GetOrSetAsync(
+            CacheKeys.AllPermissions,
+            async () =>
             {
-                Id = p.Id,
-                Module = p.Module,
-                Action = p.Action,
-                Description = p.Description,
-                Code = p.Code
-            })
-            .ToListAsync();
+                return await _context.Permissions
+                    .OrderBy(p => p.Module)
+                    .ThenBy(p => p.Action)
+                    .Select(p => new PermissionDto
+                    {
+                        Id = p.Id,
+                        Module = p.Module,
+                        Action = p.Action,
+                        Description = p.Description,
+                        Code = p.Code
+                    })
+                    .ToListAsync();
+            },
+            TimeSpan.FromHours(1) // Cache de 1 hora para permisos
+        ) ?? new List<PermissionDto>();
     }
 
     public async Task<RolePermissionsDto?> GetRolePermissionsAsync(string roleId)
     {
-        var role = await _roleManager.FindByIdAsync(roleId);
-        if (role == null) return null;
+        var cacheKey = string.Format(CacheKeys.RolePermissions, roleId);
 
-        var permissionIds = await _context.RolePermissions
-            .Where(rp => rp.RoleId == roleId)
-            .Select(rp => rp.PermissionId)
-            .ToListAsync();
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () =>
+            {
+                var role = await _roleManager.FindByIdAsync(roleId);
+                if (role == null) return null;
 
-        return new RolePermissionsDto
-        {
-            RoleId = roleId,
-            RoleName = role.Name ?? "",
-            PermissionIds = permissionIds
-        };
+                var permissionIds = await _context.RolePermissions
+                    .Where(rp => rp.RoleId == roleId)
+                    .Select(rp => rp.PermissionId)
+                    .ToListAsync();
+
+                return new RolePermissionsDto
+                {
+                    RoleId = roleId,
+                    RoleName = role.Name ?? "",
+                    PermissionIds = permissionIds
+                };
+            },
+            TimeSpan.FromMinutes(30)
+        );
     }
 
     public async Task<List<RolePermissionsDto>> GetAllRolesPermissionsAsync()
@@ -95,6 +116,9 @@ public class PermissionService : IPermissionService
 
             await _context.RolePermissions.AddRangeAsync(newPermissions);
             await _context.SaveChangesAsync();
+
+            // Invalidar cache de permisos del rol
+            await _cache.InvalidateAsync(string.Format(CacheKeys.RolePermissions, dto.RoleId));
 
             return true;
         }

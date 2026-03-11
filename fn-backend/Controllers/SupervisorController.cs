@@ -1,9 +1,8 @@
 using fn_backend.DTO;
+using fn_backend.Services;
 using fs_backend.Identity;
-using fs_backend.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,21 +13,21 @@ namespace fn_backend.Controllers;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class SupervisorController : ControllerBase
 {
+    private readonly ISupervisorService _supervisorService;
     private readonly ApplicationDbContext _context;
-    private readonly UserManager<IdentityUser> _userManager;
     private readonly ILogger<SupervisorController> _logger;
 
     public SupervisorController(
-        ApplicationDbContext context, 
-        UserManager<IdentityUser> userManager,
+        ISupervisorService supervisorService,
+        ApplicationDbContext context,
         ILogger<SupervisorController> logger)
     {
+        _supervisorService = supervisorService;
         _context = context;
-        _userManager = userManager;
         _logger = logger;
     }
 
-    private string? GetCurrentUserId() => 
+    private string? GetCurrentUserUserId() => 
         User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
     /// <summary>
@@ -38,126 +37,21 @@ public class SupervisorController : ControllerBase
     [HttpGet("employees")]
     public async Task<IActionResult> GetEmployees([FromQuery] EmployeeHistoryRequest request)
     {
-        var userId = GetCurrentUserId();
+        var userId = GetCurrentUserUserId();
         _logger.LogInformation("Usuario {UserId} consultando lista de empleados para supervisión", userId);
 
-        var employees = await _context.Employees
-            .OrderByDescending(e => e.HireDate)
-            .ToListAsync();
+        var result = await _supervisorService.GetEmployeesAsync(
+            request.Page,
+            request.PageSize,
+            request.Search,
+            request.DepartmentFilter,
+            request.PositionFilter,
+            request.StatusFilter,
+            request.DateFrom,
+            request.DateTo
+        );
 
-        var employeeDtos = new List<EmployeeSummaryDto>();
-
-        foreach (var emp in employees)
-        {
-            var user = await _userManager.FindByIdAsync(emp.UserId);
-            var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
-            
-            var lastActivity = await GetLastActivityDateAsync(emp.UserId);
-
-            employeeDtos.Add(new EmployeeSummaryDto
-            {
-                UserId = emp.UserId,
-                FullName = emp.FullName,
-                Email = user?.Email ?? "",
-                Position = emp.Position,
-                Department = emp.Department,
-                RoleName = roles.FirstOrDefault() ?? "",
-                IsActive = emp.IsActive,
-                HireDate = emp.HireDate,
-                LastActivityDate = lastActivity
-            });
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Search))
-        {
-            var search = request.Search.ToLower();
-            employeeDtos = employeeDtos.Where(e => 
-                e.FullName.ToLower().Contains(search) ||
-                e.Email.ToLower().Contains(search) ||
-                e.Position.ToLower().Contains(search)).ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.DepartmentFilter) && request.DepartmentFilter != "Todos")
-        {
-            employeeDtos = employeeDtos.Where(e => e.Department == request.DepartmentFilter).ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.PositionFilter) && request.PositionFilter != "Todos")
-        {
-            employeeDtos = employeeDtos.Where(e => e.Position == request.PositionFilter).ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.StatusFilter) && request.StatusFilter != "Todos")
-        {
-            var isActive = request.StatusFilter == "Activos";
-            employeeDtos = employeeDtos.Where(e => e.IsActive == isActive).ToList();
-        }
-
-        if (request.DateFrom.HasValue)
-        {
-            employeeDtos = employeeDtos.Where(e => e.HireDate >= request.DateFrom.Value).ToList();
-        }
-
-        if (request.DateTo.HasValue)
-        {
-            employeeDtos = employeeDtos.Where(e => e.HireDate <= request.DateTo.Value).ToList();
-        }
-
-        var totalCount = employeeDtos.Count;
-        var pagedEmployees = employeeDtos
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToList();
-
-        return Ok(new PaginatedResult<EmployeeSummaryDto>
-        {
-            Items = pagedEmployees,
-            TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        });
-    }
-
-    private async Task<DateTime?> GetLastActivityDateAsync(string userId)
-    {
-        var lastTicket = await _context.Tickets
-            .Where(t => t.CreatedByUserId == userId || t.AssignedToUserId == userId)
-            .OrderByDescending(t => t.CreatedAt)
-            .Select(t => t.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        var lastQuote = await _context.Quotes
-            .Where(q => q.CreatedByUserId == userId)
-            .OrderByDescending(q => q.CreatedAt)
-            .Select(q => q.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        var lastInvoice = await _context.Invoices
-            .Where(i => i.CreatedByUserId == userId)
-            .OrderByDescending(i => i.InvoiceDate)
-            .Select(i => i.InvoiceDate)
-            .FirstOrDefaultAsync();
-
-        var lastActivity = await _context.TicketActivities
-            .Where(a => a.CreatedByUserId == userId)
-            .OrderByDescending(a => a.CreatedAt)
-            .Select(a => a.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        var lastComment = await _context.TicketComments
-            .Where(c => c.UserId == userId)
-            .OrderByDescending(c => c.CreatedAt)
-            .Select(c => c.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        var dates = new List<DateTime>();
-        if (lastTicket != default) dates.Add(lastTicket);
-        if (lastQuote != default) dates.Add(lastQuote);
-        if (lastInvoice != default) dates.Add(lastInvoice);
-        if (lastActivity != default) dates.Add(lastActivity);
-        if (lastComment != default) dates.Add(lastComment);
-
-        return dates.OrderByDescending(d => d).FirstOrDefault();
+        return Ok(result);
     }
 
     /// <summary>
@@ -167,7 +61,7 @@ public class SupervisorController : ControllerBase
     [HttpGet("employees/{userId}/history")]
     public async Task<IActionResult> GetEmployeeHistory(string userId, [FromQuery] EmployeeActionsRequest request)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = GetCurrentUserUserId();
         _logger.LogInformation("Usuario {UserId} consultando historial del empleado {TargetUserId}", currentUserId, userId);
 
         var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
@@ -268,7 +162,7 @@ public class SupervisorController : ControllerBase
                 RelatedProjectName = a.Ticket?.Project?.Name,
                 Date = a.CreatedAt,
                 Details = $"Horas: {a.HoursSpent} | Completada: {(a.IsCompleted ? "Sí" : "No")}",
-                IconCss = "bi-check2-square",
+                IconCss = a.IsCompleted ? "bi-check2-square" : "bi-circle",
                 ColorCss = "#059669"
             };
 
@@ -436,26 +330,16 @@ public class SupervisorController : ControllerBase
     [HttpGet("employees/{userId}/stats")]
     public async Task<IActionResult> GetEmployeeStats(string userId)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = GetCurrentUserUserId();
         _logger.LogInformation("Usuario {UserId} consultando estadísticas del empleado {TargetUserId}", currentUserId, userId);
 
         var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
         if (employee == null)
             return NotFound(new { message = "Empleado no encontrado" });
 
-        var stats = new EmployeeStatsDto
-        {
-            TotalTicketsCreados = await _context.Tickets.CountAsync(t => t.CreatedByUserId == userId),
-            TotalTicketsAsignados = await _context.Tickets.CountAsync(t => t.AssignedToUserId == userId && t.CreatedByUserId != userId),
-            TotalActividades = await _context.TicketActivities.CountAsync(a => a.CreatedByUserId == userId),
-            TotalComentarios = await _context.TicketComments.CountAsync(c => c.UserId == userId),
-            TotalCotizaciones = await _context.Quotes.CountAsync(q => q.CreatedByUserId == userId),
-            TotalFacturas = await _context.Invoices.CountAsync(i => i.CreatedByUserId == userId && i.InvoiceType != "Mensual"),
-            TotalFacturasMensuales = await _context.Invoices.CountAsync(i => i.CreatedByUserId == userId && i.InvoiceType == "Mensual"),
-            TotalPagosRegistrados = await _context.InvoicePayments.CountAsync(p => p.RecordedByUserId == userId),
-            TotalClientes = 0,
-            TotalProyectos = 0
-        };
+        var stats = await _supervisorService.GetEmployeeStatsAsync(userId);
+        stats.TotalClientes = 0;
+        stats.TotalProyectos = 0;
 
         return Ok(stats);
     }
@@ -467,30 +351,15 @@ public class SupervisorController : ControllerBase
     [HttpGet("employees/{userId}/details")]
     public async Task<IActionResult> GetEmployeeDetails(string userId)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = GetCurrentUserUserId();
         _logger.LogInformation("Usuario {UserId} consultando detalles del empleado {TargetUserId}", currentUserId, userId);
 
-        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
-        if (employee == null)
+        var details = await _supervisorService.GetEmployeeDetailsAsync(userId);
+        
+        if (details == null)
             return NotFound(new { message = "Empleado no encontrado" });
 
-        var user = await _userManager.FindByIdAsync(employee.UserId);
-        var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
-
-        var summary = new EmployeeSummaryDto
-        {
-            UserId = employee.UserId,
-            FullName = employee.FullName,
-            Email = user?.Email ?? "",
-            Position = employee.Position,
-            Department = employee.Department,
-            RoleName = roles.FirstOrDefault() ?? "",
-            IsActive = employee.IsActive,
-            HireDate = employee.HireDate,
-            LastActivityDate = await GetLastActivityDateAsync(userId)
-        };
-
-        return Ok(summary);
+        return Ok(details);
     }
 
     /// <summary>
@@ -500,19 +369,8 @@ public class SupervisorController : ControllerBase
     [HttpGet("filters")]
     public async Task<IActionResult> GetFilters()
     {
-        var departments = await _context.Employees
-            .Where(e => !string.IsNullOrEmpty(e.Department))
-            .Select(e => e.Department)
-            .Distinct()
-            .OrderBy(d => d)
-            .ToListAsync();
-
-        var positions = await _context.Employees
-            .Where(e => !string.IsNullOrEmpty(e.Position))
-            .Select(e => e.Position)
-            .Distinct()
-            .OrderBy(p => p)
-            .ToListAsync();
+        var departments = await _supervisorService.GetDepartmentsAsync();
+        var positions = await _supervisorService.GetPositionsAsync();
 
         var actionTypes = Enum.GetValues<EmployeeActionType>()
             .Select(t => new { Value = t.ToString(), Display = GetActionTypeDisplay(t) })

@@ -1,5 +1,4 @@
-﻿// fs-backend/Services/ProjectService.cs — COMPLETO ACTUALIZADO
-// Calcula MonthlyHoursUsed en el cliente para que el form de tickets muestre horas disponibles
+// fs-backend/Services/ProjectService.cs — CON CACHE
 
 using fn_backend.DTO;
 using fn_backend.Models;
@@ -12,104 +11,122 @@ namespace fs_backend.Services;
 public class ProjectService : IProjectService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICacheService _cache;
 
-    public ProjectService(ApplicationDbContext context)
+    public ProjectService(ApplicationDbContext context, ICacheService cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<ProjectDetailDto>> GetProjectsAsync()
     {
-        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var nextMonth = currentMonth.AddMonths(1);
-
-        var projects = await _context.Projects
-            .Include(p => p.Client)
-            .ToListAsync();
-
-        // ── Calcular horas usadas por cliente mensual en una sola query ────────
-        var monthlyClientIds = projects
-            .Where(p => p.Client?.ServiceMode == "Mensual" || p.Client?.BillingFrequency == "Monthly")
-            .Select(p => p.ClientId)
-            .Distinct()
-            .ToList();
-
-        // Mapa clientId → lista de projectIds
-        var clientProjectMap = projects
-            .GroupBy(p => p.ClientId)
-            .ToDictionary(g => g.Key, g => g.Select(p => p.Id).ToList());
-
-        // Una sola query de tickets para todos los proyectos mensuales
-        var hoursPerProject = new Dictionary<int, decimal>();
-        if (monthlyClientIds.Any())
-        {
-            var allMonthlyProjectIds = clientProjectMap
-                .Where(kv => monthlyClientIds.Contains(kv.Key))
-                .SelectMany(kv => kv.Value)
-                .ToList();
-
-            if (allMonthlyProjectIds.Any())
+        return await _cache.GetOrSetAsync(
+            CacheKeys.AllProjects,
+            async () =>
             {
-                var hoursSums = await _context.Tickets
-                    .Where(t => t.ProjectId.HasValue
-                             && allMonthlyProjectIds.Contains(t.ProjectId.Value)
-                             && t.UpdatedAt >= currentMonth
-                             && t.UpdatedAt < nextMonth)
-                    .GroupBy(t => t.ProjectId!.Value)
-                    .Select(g => new { ProjectId = g.Key, Hours = g.Sum(t => t.ActualHours) })
+                var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                var nextMonth = currentMonth.AddMonths(1);
+
+                var projects = await _context.Projects
+                    .Include(p => p.Client)
                     .ToListAsync();
 
-                foreach (var h in hoursSums)
-                    hoursPerProject[h.ProjectId] = h.Hours;
-            }
-        }
+                // ── Calcular horas usadas por cliente mensual en una sola query ────────
+                var monthlyClientIds = projects
+                    .Where(p => p.Client?.ServiceMode == "Mensual" || p.Client?.BillingFrequency == "Monthly")
+                    .Select(p => p.ClientId)
+                    .Distinct()
+                    .ToList();
 
-        // Suma de horas por cliente
-        var hoursPerClient = new Dictionary<int, decimal>();
-        foreach (var clientId in monthlyClientIds)
-        {
-            if (clientProjectMap.TryGetValue(clientId, out var pIds))
-            {
-                hoursPerClient[clientId] = pIds
-                    .Sum(pid => hoursPerProject.GetValueOrDefault(pid, 0));
-            }
-        }
+                // Mapa clientId → lista de projectIds
+                var clientProjectMap = projects
+                    .GroupBy(p => p.ClientId)
+                    .ToDictionary(g => g.Key, g => g.Select(p => p.Id).ToList());
 
-        return projects.Select(p =>
-            MapToDetailDto(p, hoursPerClient.GetValueOrDefault(p.ClientId, 0)));
+                // Una sola query de tickets para todos los proyectos mensuales
+                var hoursPerProject = new Dictionary<int, decimal>();
+                if (monthlyClientIds.Any())
+                {
+                    var allMonthlyProjectIds = clientProjectMap
+                        .Where(kv => monthlyClientIds.Contains(kv.Key))
+                        .SelectMany(kv => kv.Value)
+                        .ToList();
+
+                    if (allMonthlyProjectIds.Any())
+                    {
+                        var hoursSums = await _context.Tickets
+                            .Where(t => t.ProjectId.HasValue
+                                     && allMonthlyProjectIds.Contains(t.ProjectId.Value)
+                                     && t.UpdatedAt >= currentMonth
+                                     && t.UpdatedAt < nextMonth)
+                            .GroupBy(t => t.ProjectId!.Value)
+                            .Select(g => new { ProjectId = g.Key, Hours = g.Sum(t => t.ActualHours) })
+                            .ToListAsync();
+
+                        foreach (var h in hoursSums)
+                            hoursPerProject[h.ProjectId] = h.Hours;
+                    }
+                }
+
+                // Suma de horas por cliente
+                var hoursPerClient = new Dictionary<int, decimal>();
+                foreach (var clientId in monthlyClientIds)
+                {
+                    if (clientProjectMap.TryGetValue(clientId, out var pIds))
+                    {
+                        hoursPerClient[clientId] = pIds
+                            .Sum(pid => hoursPerProject.GetValueOrDefault(pid, 0));
+                    }
+                }
+
+                return projects.Select(p =>
+                    MapToDetailDto(p, hoursPerClient.GetValueOrDefault(p.ClientId, 0))).ToList();
+            },
+            TimeSpan.FromMinutes(15)
+        ) ?? new List<ProjectDetailDto>();
     }
 
     public async Task<ProjectDetailDto?> GetProjectByIdAsync(int id)
     {
-        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var nextMonth = currentMonth.AddMonths(1);
+        var cacheKey = string.Format(CacheKeys.ProjectById, id);
 
-        var project = await _context.Projects
-            .Include(p => p.Client)
-            .FirstOrDefaultAsync(p => p.Id == id);
-
-        if (project == null) return null;
-
-        decimal hoursUsed = 0;
-        if (project.Client?.ServiceMode == "Mensual" || project.Client?.BillingFrequency == "Monthly")
-        {
-            var clientProjectIds = await _context.Projects
-                .Where(p => p.ClientId == project.ClientId)
-                .Select(p => p.Id)
-                .ToListAsync();
-
-            if (clientProjectIds.Any())
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () =>
             {
-                hoursUsed = await _context.Tickets
-                    .Where(t => t.ProjectId.HasValue
-                             && clientProjectIds.Contains(t.ProjectId.Value)
-                             && t.UpdatedAt >= currentMonth
-                             && t.UpdatedAt < nextMonth)
-                    .SumAsync(t => t.ActualHours);
-            }
-        }
+                var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                var nextMonth = currentMonth.AddMonths(1);
 
-        return MapToDetailDto(project, hoursUsed);
+                var project = await _context.Projects
+                    .Include(p => p.Client)
+                    .FirstOrDefaultAsync(p => p.Id == id);
+
+                if (project == null) return null;
+
+                decimal hoursUsed = 0;
+                if (project.Client?.ServiceMode == "Mensual" || project.Client?.BillingFrequency == "Monthly")
+                {
+                    var clientProjectIds = await _context.Projects
+                        .Where(p => p.ClientId == project.ClientId)
+                        .Select(p => p.Id)
+                        .ToListAsync();
+
+                    if (clientProjectIds.Any())
+                    {
+                        hoursUsed = await _context.Tickets
+                            .Where(t => t.ProjectId.HasValue
+                                     && clientProjectIds.Contains(t.ProjectId.Value)
+                                     && t.UpdatedAt >= currentMonth
+                                     && t.UpdatedAt < nextMonth)
+                            .SumAsync(t => t.ActualHours);
+                    }
+                }
+
+                return MapToDetailDto(project, hoursUsed);
+            },
+            TimeSpan.FromMinutes(15)
+        );
     }
 
     public async Task<ServiceResult<Project>> CreateProjectAsync(ProjectDto projectDto)
@@ -128,6 +145,9 @@ public class ProjectService : IProjectService
 
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
+
+        // Invalidar cache
+        await _cache.InvalidateAsync(CacheKeys.AllProjects);
 
         return ServiceResult<Project>.Success(project);
     }
@@ -150,6 +170,10 @@ public class ProjectService : IProjectService
         _context.Projects.Update(project);
         await _context.SaveChangesAsync();
 
+        // Invalidar cache
+        await _cache.InvalidateAsync(CacheKeys.AllProjects);
+        await _cache.InvalidateAsync(string.Format(CacheKeys.ProjectById, id));
+
         return ServiceResult<bool>.Success(true);
     }
 
@@ -161,6 +185,10 @@ public class ProjectService : IProjectService
 
         _context.Projects.Remove(project);
         await _context.SaveChangesAsync();
+
+        // Invalidar cache
+        await _cache.InvalidateAsync(CacheKeys.AllProjects);
+        await _cache.InvalidateAsync(string.Format(CacheKeys.ProjectById, id));
 
         return ServiceResult<bool>.Success(true);
     }
@@ -188,8 +216,8 @@ public class ProjectService : IProjectService
                     Address = project.Client.Address,
                     ServiceMode = project.Client.ServiceMode,
                     MonthlyRate = project.Client.MonthlyRate,
-                    MonthlyHours = project.Client.MonthlyHours,       // ⭐ NUEVO
-                    MonthlyHoursUsed = monthlyHoursUsed,               // ⭐ NUEVO calculado
+                    MonthlyHours = project.Client.MonthlyHours,
+                    MonthlyHoursUsed = monthlyHoursUsed,
                     IsActive = project.Client.IsActive
                 }
         };

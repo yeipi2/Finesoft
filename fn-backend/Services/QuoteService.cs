@@ -18,63 +18,85 @@ public class QuoteService : IQuoteService
     private readonly IWebHostEnvironment _environment;
     private readonly IEmailService _emailService;
     private readonly ILogger<QuoteService> _logger;
+    private readonly ICacheService _cache;
 
     public QuoteService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
         IWebHostEnvironment environment,
         IEmailService emailService,
-        ILogger<QuoteService> logger)
+        ILogger<QuoteService> logger,
+        ICacheService cache)
     {
         _context = context;
         _userManager = userManager;
         _environment = environment;
         _emailService = emailService;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<QuoteDetailDto>> GetQuotesAsync(string? status = null, int? clientId = null)
     {
-        var query = _context.Quotes
-            .Include(q => q.Client)
-            .Include(q => q.Items)
-            .ThenInclude(i => i.Ticket)
-                .ThenInclude(t => t.Project)
-                    .ThenInclude(p => p.Client)
-            .AsQueryable();
+        // Crear clave de cache basada en parámetros
+        var cacheKey = $"quotes:list:{status ?? "all"}:{clientId?.ToString() ?? "all"}";
 
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(q => q.Status == status);
-        }
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () =>
+            {
+                var query = _context.Quotes
+                    .Include(q => q.Client)
+                    .Include(q => q.Items)
+                    .ThenInclude(i => i.Ticket)
+                        .ThenInclude(t => t.Project)
+                            .ThenInclude(p => p.Client)
+                    .AsQueryable();
 
-        if (clientId.HasValue)
-        {
-            query = query.Where(q => q.ClientId == clientId.Value);
-        }
+                if (!string.IsNullOrEmpty(status))
+                {
+                    query = query.Where(q => q.Status == status);
+                }
 
-        var quotes = await query.OrderByDescending(q => q.CreatedAt).ToListAsync();
+                if (clientId.HasValue)
+                {
+                    query = query.Where(q => q.ClientId == clientId.Value);
+                }
 
-        var quoteDtos = new List<QuoteDetailDto>();
-        foreach (var quote in quotes)
-        {
-            quoteDtos.Add(await MapToDetailDto(quote));
-        }
+                var quotes = await query.OrderByDescending(q => q.CreatedAt).ToListAsync();
 
-        return quoteDtos;
+                var quoteDtos = new List<QuoteDetailDto>();
+                foreach (var quote in quotes)
+                {
+                    quoteDtos.Add(await MapToDetailDto(quote));
+                }
+
+                return quoteDtos;
+            },
+            TimeSpan.FromMinutes(10)
+        ) ?? new List<QuoteDetailDto>();
     }
 
     public async Task<QuoteDetailDto?> GetQuoteByIdAsync(int id)
     {
-        var quote = await _context.Quotes
-            .Include(q => q.Client)
-            .Include(q => q.Items)
-            .ThenInclude(i => i.Ticket)
-                .ThenInclude(t => t.Project)
-                    .ThenInclude(p => p.Client)
-            .FirstOrDefaultAsync(q => q.Id == id);
+        var cacheKey = $"quotes:id:{id}";
 
-        return quote == null ? null : await MapToDetailDto(quote);
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () =>
+            {
+                var quote = await _context.Quotes
+                    .Include(q => q.Client)
+                    .Include(q => q.Items)
+                    .ThenInclude(i => i.Ticket)
+                        .ThenInclude(t => t.Project)
+                            .ThenInclude(p => p.Client)
+                    .FirstOrDefaultAsync(q => q.Id == id);
+
+                return quote == null ? null : await MapToDetailDto(quote);
+            },
+            TimeSpan.FromMinutes(10)
+        );
     }
 
     public async Task<ServiceResult<QuoteDetailDto>> CreateQuoteAsync(QuoteDto quoteDto, string createdByUserId)
@@ -127,6 +149,9 @@ public class QuoteService : IQuoteService
 
         _context.Quotes.Add(quote);
         await _context.SaveChangesAsync();
+
+        // Invalidar cache de cotizaciones
+        await InvalidateQuoteCacheAsync();
 
         await _context.Entry(quote).Reference(q => q.Client).LoadAsync();
         await _context.Entry(quote).Collection(q => q.Items).LoadAsync();
@@ -750,5 +775,15 @@ public class QuoteService : IQuoteService
                 TicketHourlyRate = i.Ticket?.Project?.HourlyRate
             }).ToList() ?? new List<QuoteItemDetailDto>()
         };
+    }
+
+    // Invalidar cache de cotizaciones
+    private async Task InvalidateQuoteCacheAsync()
+    {
+        // Invalidar todas las claves de lista de cotizaciones
+        await _cache.InvalidateAsync("quotes:list:all:all");
+        await _cache.InvalidateAsync("quotes:list:Pendiente:all");
+        await _cache.InvalidateAsync("quotes:list:Aprobada:all");
+        await _cache.InvalidateAsync("quotes:list:Rechazada:all");
     }
 }

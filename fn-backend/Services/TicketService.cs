@@ -12,11 +12,16 @@ public class TicketService : ITicketService
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
+    private readonly ICacheService _cache;
 
-    public TicketService(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+    public TicketService(
+        ApplicationDbContext context,
+        UserManager<IdentityUser> userManager,
+        ICacheService cache)
     {
         _context = context;
         _userManager = userManager;
+        _cache = cache;
     }
 
     // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator
@@ -341,37 +346,47 @@ public class TicketService : ITicketService
         });
     }
 
-    // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator
+    // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator y CACHE
     public async Task<TicketStatsDto> GetTicketStatsAsync(string? userId = null, bool byCreator = false)
     {
-        var query = _context.Tickets.AsQueryable();
+        // Crear clave de cache basada en parámetros
+        var cacheKey = string.Format(CacheKeys.TicketStats, userId ?? "all", byCreator.ToString());
 
-        if (!string.IsNullOrEmpty(userId))
-        {
-            if (byCreator)
+        return await _cache.GetOrSetAsync(
+            cacheKey,
+            async () =>
             {
-                // Filtrar por creador (Cliente)
-                query = query.Where(t => t.CreatedByUserId == userId);
-            }
-            else
-            {
-                // Filtrar por asignado (Empleado)
-                query = query.Where(t => t.AssignedToUserId == userId);
-            }
-        }
+                var query = _context.Tickets.AsQueryable();
 
-        var tickets = await query.ToListAsync();
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    if (byCreator)
+                    {
+                        // Filtrar por creador (Cliente)
+                        query = query.Where(t => t.CreatedByUserId == userId);
+                    }
+                    else
+                    {
+                        // Filtrar por asignado (Empleado)
+                        query = query.Where(t => t.AssignedToUserId == userId);
+                    }
+                }
 
-        return new TicketStatsDto
-        {
-            Open = tickets.Count(t => t.Status == "Abierto"),
-            InProgress = tickets.Count(t => t.Status == "En Progreso"),
-            InReview = tickets.Count(t => t.Status == "En Revisión"),
-            Closed = tickets.Count(t => t.Status == "Cerrado"),
-            Total = tickets.Count,
-            TotalEstimatedHours = tickets.Sum(t => t.EstimatedHours),
-            TotalActualHours = tickets.Sum(t => t.ActualHours)
-        };
+                var tickets = await query.ToListAsync();
+
+                return new TicketStatsDto
+                {
+                    Open = tickets.Count(t => t.Status == "Abierto"),
+                    InProgress = tickets.Count(t => t.Status == "En Progreso"),
+                    InReview = tickets.Count(t => t.Status == "En Revisión"),
+                    Closed = tickets.Count(t => t.Status == "Cerrado"),
+                    Total = tickets.Count,
+                    TotalEstimatedHours = tickets.Sum(t => t.EstimatedHours),
+                    TotalActualHours = tickets.Sum(t => t.ActualHours)
+                };
+            },
+            TimeSpan.FromMinutes(5) // Cache corto de 5 minutos para stats
+        ) ?? new TicketStatsDto();
     }
 
     // ========== MÉTODOS PARA ACTIVIDADES ==========
