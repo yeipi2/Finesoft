@@ -41,10 +41,8 @@ else
                                    EndDateChanged="OnEndDateChanged"
                                    OnRefresh="LoadData" />
                     <ReportsOptions StartDate="@StartDate"
-                                    EndDate="@EndDate"
-                                    CanExport="@canExport"
-                                    CanSendEmail="@canSendEmail"
-                                    CanConfigEmail="@canConfigEmail" />
+                                     EndDate="@EndDate"
+                                     CanExport="@canExport" />
                 </div>
 
                 @* Fila 2: Fechas + Actualizar *@
@@ -144,8 +142,6 @@ else
 
     // ── Permisos ─────────────────────────────────────────────────────────
     private bool canExport = false;
-    private bool canSendEmail = false;
-    private bool canConfigEmail = false;
 
     // ── Datos de la API ──────────────────────────────────────────────────
     private DashboardStatsDto? dashboardStats;
@@ -200,11 +196,6 @@ else
         try
         {
             canExport = await PermissionService.HasPermissionAsync("reports.export");
-            canSendEmail = await PermissionService.HasPermissionAsync("reports.send_email");
-
-            var userRole = await GetUserRoleAsync();
-            canConfigEmail = userRole == "Supervisor"
-                          && await PermissionService.HasPermissionAsync("reports.config_email");
         }
         catch (Exception ex)
         {
@@ -215,47 +206,6 @@ else
         StartDate = new DateTime(now.Year, now.Month, 1);
         EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
         await LoadData();
-    }
-
-    // ── JWT rol ───────────────────────────────────────────────────────────
-    private async Task<string> GetUserRoleAsync()
-    {
-        try
-        {
-            var token = await JS.InvokeAsync<string?>("localStorage.getItem", "authToken");
-            if (string.IsNullOrEmpty(token)) return "";
-
-            var parts = token.Split('.');
-            if (parts.Length < 2) return "";
-
-            var payload = parts[1];
-            payload = (payload.Length % 4) switch
-            {
-                2 => payload + "==",
-                3 => payload + "=",
-                _ => payload
-            };
-
-            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
-
-            // Claim largo de Microsoft (usado por ASP.NET Identity)
-            var roleClaim = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
-            if (doc.RootElement.TryGetProperty(roleClaim, out var roleProp))
-                return roleProp.GetString() ?? "";
-
-            // Fallback claim corto
-            if (doc.RootElement.TryGetProperty("role", out var roleShort))
-                return roleShort.GetString() ?? "";
-
-            return "";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Reportes] Error parseando JWT: {ex.Message}");
-            return "";
-        }
     }
 
     // ── Carga de datos ────────────────────────────────────────────────────

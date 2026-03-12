@@ -1,0 +1,327 @@
+@using fs_front.DTO
+@using fs_front.Services
+@inject IReportApiService ReportApiService
+@inject PermissionService PermissionService
+@inject NotificationService NotificationService
+
+@if (_hasEmailPermission)
+{
+<div class="card pf-card mb-4">
+    <div class="pf-card-header">
+        <div class="pf-card-title">
+            <i class="bi bi-envelope-check text-success"></i>
+            <span>Reportes Automáticos por Email</span>
+        </div>
+    </div>
+
+    <div class="card-body pf-info-body">
+        <p class="text-muted small mb-3">
+            Activa esta opción para recibir automáticamente un resumen de reportes en tu correo según la frecuencia configurada.
+        </p>
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="autoSendSwitch"
+                       checked="@emailPreference?.AutoSendEnabled"
+                       disabled="@isUpdating"
+                       @onchange="ToggleAutoSend">
+                <label class="form-check-label fw-semibold" for="autoSendSwitch">
+                    Recibir reportes automáticos por email
+                </label>
+            </div>
+            @if (emailPreference?.AutoSendEnabled == true)
+            {
+                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenSettings" title="Configurar">
+                    <i class="bi bi-gear"></i>
+                </button>
+            }
+        </div>
+
+        @if (emailPreference?.AutoSendEnabled == true)
+        {
+            <div class="alert alert-info mb-0">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <div>
+                        <strong>Frecuencia:</strong> @GetFrequencyText(emailPreference.Frequency)
+                        <br>
+                        <small class="text-muted">
+                            @if (emailPreference.LastSentAt.HasValue)
+                            {
+                                <span>Último envío: @emailPreference.LastSentAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span>No se ha enviado ningún reporte aún</span>
+                            }
+                        </small>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="alert alert-success py-2 small mt-3">
+                <i class="bi bi-check-circle-fill me-1"></i>@statusMessage
+            </div>
+        }
+    </div>
+</div>
+
+@if (_showSettings)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-gear me-2"></i>Configuración de Reportes
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseSettings"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Frecuencia de envío</label>
+                        <select class="form-select" style="max-width: 250px;" @bind="editFrequency">
+                            <option value="daily">Diario</option>
+                            <option value="weekly">Semanal</option>
+                            <option value="biweekly">Quincenal</option>
+                            <option value="monthly">Mensual</option>
+                        </select>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="fw-semibold mb-3">
+                        <i class="bi bi-sliders me-1"></i>Contenido del reporte
+                    </h6>
+                    <p class="text-muted small mb-3">Selecciona qué información deseas incluir en los reportes automáticos:</p>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="incDash" 
+                                       @bind="editIncludeDashboard">
+                                <label class="form-check-label" for="incDash">Resumen ejecutivo (KPIs)</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="incFin" 
+                                       @bind="editIncludeFinancial">
+                                <label class="form-check-label" for="incFin">Estado financiero</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="incPerf" 
+                                       @bind="editIncludePerformance">
+                                <label class="form-check-label" for="incPerf">Métricas de rendimiento</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="incClients" 
+                                       @bind="editIncludeClients">
+                                <label class="form-check-label" for="incClients">Top clientes</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="incProjects" 
+                                       @bind="editIncludeProjects">
+                                <label class="form-check-label" for="incProjects">Proyectos</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="incEmployees" 
+                                       @bind="editIncludeEmployees">
+                                <label class="form-check-label" for="incEmployees">Rendimiento empleados</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseSettings">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveSettings" disabled="@isSavingSettings">
+                        @if (isSavingSettings)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+}
+
+@code {
+    private ReportEmailPreferenceDto? emailPreference;
+    private string? statusMessage;
+    private bool isUpdating = false;
+    private bool _hasEmailPermission = false;
+    private bool _showSettings = false;
+    private bool isSavingSettings = false;
+
+    private string editFrequency = "weekly";
+    private bool editIncludeDashboard = true;
+    private bool editIncludeFinancial = true;
+    private bool editIncludePerformance = true;
+    private bool editIncludeClients = true;
+    private bool editIncludeProjects = true;
+    private bool editIncludeEmployees = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hasEmailPermission = await PermissionService.HasPermissionAsync("reports.config_email");
+        if (_hasEmailPermission)
+        {
+            await LoadEmailPreference();
+        }
+    }
+
+    private async Task LoadEmailPreference()
+    {
+        try
+        {
+            emailPreference = await ReportApiService.GetEmailPreferenceAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EmailReportSettings] Error al cargar preferencia: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleAutoSend(ChangeEventArgs e)
+    {
+        var enabled = e.Value is bool b && b;
+        await SavePreference(enabled);
+    }
+
+    private async Task SavePreference(bool autoSendEnabled)
+    {
+        if (isUpdating) return;
+        isUpdating = true;
+        statusMessage = null;
+
+        try
+        {
+            var dto = new UpdateReportEmailPreferenceDto
+            {
+                AutoSendEnabled = autoSendEnabled,
+                Frequency = emailPreference?.Frequency ?? "weekly",
+                IncludeDashboard = emailPreference?.IncludeDashboard ?? true,
+                IncludeFinancial = emailPreference?.IncludeFinancial ?? true,
+                IncludePerformance = emailPreference?.IncludePerformance ?? true,
+                IncludeClients = emailPreference?.IncludeClients ?? true,
+                IncludeProjects = emailPreference?.IncludeProjects ?? true,
+                IncludeEmployees = emailPreference?.IncludeEmployees ?? true
+            };
+
+            emailPreference = await ReportApiService.UpdateEmailPreferenceAsync(dto);
+
+            statusMessage = autoSendEnabled 
+                ? "Configuración guardada. Recibirás reportes automáticamente según la frecuencia configurada." 
+                : "Se ha desactivado el envío automático de reportes.";
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Configuración guardada",
+                Detail = statusMessage,
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EmailReportSettings] Error guardando preferencia: {ex.Message}");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "No se pudo guardar la configuración",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private void OpenSettings()
+    {
+        if (emailPreference == null) return;
+        
+        editFrequency = emailPreference.Frequency;
+        editIncludeDashboard = emailPreference.IncludeDashboard;
+        editIncludeFinancial = emailPreference.IncludeFinancial;
+        editIncludePerformance = emailPreference.IncludePerformance;
+        editIncludeClients = emailPreference.IncludeClients;
+        editIncludeProjects = emailPreference.IncludeProjects;
+        editIncludeEmployees = emailPreference.IncludeEmployees;
+        
+        _showSettings = true;
+    }
+
+    private void CloseSettings()
+    {
+        _showSettings = false;
+    }
+
+    private async Task SaveSettings()
+    {
+        if (isSavingSettings || emailPreference == null) return;
+        isSavingSettings = true;
+
+        try
+        {
+            var dto = new UpdateReportEmailPreferenceDto
+            {
+                AutoSendEnabled = emailPreference.AutoSendEnabled,
+                Frequency = editFrequency,
+                IncludeDashboard = editIncludeDashboard,
+                IncludeFinancial = editIncludeFinancial,
+                IncludePerformance = editIncludePerformance,
+                IncludeClients = editIncludeClients,
+                IncludeProjects = editIncludeProjects,
+                IncludeEmployees = editIncludeEmployees
+            };
+
+            emailPreference = await ReportApiService.UpdateEmailPreferenceAsync(dto);
+
+            _showSettings = false;
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Configuración guardada",
+                Detail = "La frecuencia y contenido del reporte se han actualizado.",
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EmailReportSettings] Error guardando configuración: {ex.Message}");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "No se pudo guardar la configuración",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            isSavingSettings = false;
+        }
+    }
+
+    private string GetFrequencyText(string frequency)
+    {
+        return frequency switch
+        {
+            "daily" => "Diario",
+            "weekly" => "Semanal",
+            "biweekly" => "Quincenal",
+            "monthly" => "Mensual",
+            _ => frequency
+        };
+    }
+}

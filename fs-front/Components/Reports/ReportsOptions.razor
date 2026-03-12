@@ -1,10 +1,9 @@
-@* Reports/ReportsOptions.razor - Opciones de exportación y configuración de email *@
+@* Reports/ReportsOptions.razor - Opciones de exportación de PDF *@
 @using fs_front.DTO
 @inject IReportApiService ReportApiService
 @inject NotificationService NotificationService
 
 <div class="d-flex gap-2 flex-wrap">
-    @* ── Botón Exportar PDF — solo si tiene reports.export ── *@
     @if (canExport)
     {
         <div class="dropdown">
@@ -20,197 +19,32 @@
             </ul>
         </div>
     }
-
-    @* ── Botón Enviar Email — solo si tiene reports.send_email ── *@
-    @if (canSendEmail)
-    {
-        <button class="btn btn-outline-success" @onclick="OpenEmailModal" disabled="@isSendingEmail">
-            <i class="bi bi-envelope me-1"></i> Enviar por Email
-        </button>
-    }
-
-    @* ── Configuración — solo Supervisor con reports.config_email ── *@
-    @if (canConfigEmail)
-    {
-        <div class="dropdown">
-            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-gear me-1"></i> Configuración
-            </button>
-            <div class="dropdown-menu p-3" style="min-width: 300px;">
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="autoSendSwitch"
-                           checked="@emailPreference?.AutoSendEnabled"
-                           @onchange="ToggleAutoSend">
-                    <label class="form-check-label" for="autoSendSwitch">
-                        Envío automático de reportes
-                    </label>
-                </div>
-                @if (emailPreference?.AutoSendEnabled == true)
-                {
-                    <div class="mb-2">
-                        <label class="form-label small">Frecuencia</label>
-                        <select class="form-select form-select-sm" @bind="selectedFrequency" @bind:after="UpdateFrequency">
-                            <option value="daily">Diario</option>
-                            <option value="weekly">Semanal</option>
-                            <option value="monthly">Mensual</option>
-                        </select>
-                    </div>
-                    @if (emailPreference?.LastSentAt != null)
-                    {
-                        <small class="text-muted">
-                            Último envío: @emailPreference.LastSentAt.Value.ToString("dd/MM/yyyy HH:mm")
-                        </small>
-                    }
-                }
-            </div>
-        </div>
-    }
 </div>
 
-@* ── Modal Enviar Email ── *@
-@if (showEmailModal)
-{
-    <div class="modal-backdrop show"></div>
-    <div class="modal show d-block" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-envelope me-2"></i>Enviar Reporte por Email
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="CloseEmailModal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted">El reporte se enviará a tu correo electrónico registrado.</p>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Fecha Inicio</label>
-                            <input type="date" class="form-control" @bind="emailStartDate">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Fecha Fin</label>
-                            <input type="date" class="form-control" @bind="emailEndDate">
-                        </div>
-                    </div>
-
-                    <h6 class="border-bottom pb-2 mb-3">Incluir en el reporte:</h6>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="incDash" @bind="includeDashboard">
-                                <label class="form-check-label" for="incDash">Resumen ejecutivo (KPIs)</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="incFin" @bind="includeFinancial">
-                                <label class="form-check-label" for="incFin">Estado financiero</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="incPerf" @bind="includePerformance">
-                                <label class="form-check-label" for="incPerf">Métricas de rendimiento</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="incClients" @bind="includeClients">
-                                <label class="form-check-label" for="incClients">Top clientes</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="incProjects" @bind="includeProjects">
-                                <label class="form-check-label" for="incProjects">Proyectos</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="incEmployees" @bind="includeEmployees">
-                                <label class="form-check-label" for="incEmployees">Rendimiento empleados</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseEmailModal">Cancelar</button>
-                    <button type="button" class="btn btn-success" @onclick="SendEmailReport" disabled="@isSendingEmail">
-                        @if (isSendingEmail)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                        }
-                        <i class="bi bi-send me-1"></i> Enviar Ahora
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
-    // ── Parámetros desde ReportsIndex ────────────────────────────────────
     [Parameter] public DateTime? StartDate { get; set; }
     [Parameter] public DateTime? EndDate { get; set; }
     [Parameter] public bool CanExport { get; set; }
-    [Parameter] public bool CanSendEmail { get; set; }  // ✅ NUEVO
-    [Parameter] public bool CanConfigEmail { get; set; }
 
-    // ── Estado interno ───────────────────────────────────────────────────
     private bool canExport = false;
-    private bool canSendEmail = false;  // ✅ NUEVO
-    private bool canConfigEmail = false;
     private bool isExporting = false;
-    private bool isSendingEmail = false;
-    private bool showEmailModal = false;
-
-    private ReportEmailPreferenceDto? emailPreference;
-    private string selectedFrequency = "weekly";
-
     private DateTime emailStartDate;
     private DateTime emailEndDate;
-    private bool includeDashboard = true;
-    private bool includeFinancial = true;
-    private bool includePerformance = true;
-    private bool includeClients = true;
-    private bool includeProjects = true;
-    private bool includeEmployees = true;
 
     [Inject] IJSRuntime JS { get; set; } = null!;
 
-    // ── Ciclo de vida ────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         canExport = CanExport;
-        canSendEmail = CanSendEmail;   // ✅ NUEVO
-        canConfigEmail = CanConfigEmail;
 
-        // Cargar preferencia de email solo si tiene el permiso
-        if (canConfigEmail)
-        {
-            await LoadEmailPreference();
-        }
-
-        // Fechas por defecto
         var now = DateTime.Now;
         emailStartDate = new DateTime(now.Year, now.Month, 1);
-        emailEndDate = emailStartDate.AddMonths(1).AddDays(-1); // ✅ sin .Value
+        emailEndDate = emailStartDate.AddMonths(1).AddDays(-1);
 
-        // Usar fechas del padre si están disponibles
         if (StartDate.HasValue) emailStartDate = StartDate.Value;
         if (EndDate.HasValue) emailEndDate = EndDate.Value;
     }
 
-    // ── Carga preferencia de email ───────────────────────────────────────
-    private async Task LoadEmailPreference()
-    {
-        try
-        {
-            emailPreference = await ReportApiService.GetEmailPreferenceAsync();
-            if (emailPreference != null)
-                selectedFrequency = emailPreference.Frequency;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ReportsOptions] Error al cargar preferencia: {ex.Message}");
-        }
-    }
-
-    // ── Exportar PDF ─────────────────────────────────────────────────────
     private async Task ExportToPdf()
     {
         isExporting = true;
@@ -264,123 +98,5 @@
     {
         var base64 = Convert.ToBase64String(content);
         await JS.InvokeVoidAsync("downloadFile", fileName, base64);
-    }
-
-    // ── Modal Email ──────────────────────────────────────────────────────
-    private void OpenEmailModal() => showEmailModal = true;
-    private void CloseEmailModal() => showEmailModal = false;
-
-    // ── Enviar Email ─────────────────────────────────────────────────────
-    private async Task SendEmailReport()
-    {
-        isSendingEmail = true;
-        try
-        {
-            var request = new SendReportEmailRequestDto
-            {
-                StartDate = emailStartDate,
-                EndDate = emailEndDate,
-                IncludeDashboard = includeDashboard,
-                IncludeFinancial = includeFinancial,
-                IncludePerformance = includePerformance,
-                IncludeClients = includeClients,
-                IncludeProjects = includeProjects,
-                IncludeEmployees = includeEmployees
-            };
-
-            var result = await ReportApiService.SendReportEmailAsync(request);
-            if (result != null && result.Success)
-            {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Éxito",
-                    Detail = "Reporte enviado por email correctamente",
-                    Duration = 3000
-                });
-                await LoadEmailPreference();
-                CloseEmailModal();
-            }
-            else
-            {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Error",
-                    Detail = result?.Message ?? "No se pudo enviar el reporte",
-                    Duration = 4000
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ReportsOptions] Error enviando email: {ex.Message}");
-            NotificationService.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Error",
-                Detail = "No se pudo enviar el reporte por email",
-                Duration = 4000
-            });
-        }
-        finally
-        {
-            isSendingEmail = false;
-        }
-    }
-
-    // ── Toggle envío automático ──────────────────────────────────────────
-    private async Task ToggleAutoSend(ChangeEventArgs e)
-    {
-        var enabled = e.Value is bool b && b;
-        try
-        {
-            var dto = new UpdateReportEmailPreferenceDto
-            {
-                AutoSendEnabled = enabled,
-                Frequency = selectedFrequency
-            };
-            emailPreference = await ReportApiService.UpdateEmailPreferenceAsync(dto);
-
-            NotificationService.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Success,
-                Summary = "Configuración actualizada",
-                Detail = enabled ? "Envío automático activado" : "Envío automático desactivado",
-                Duration = 3000
-            });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ReportsOptions] Error toggle auto-send: {ex.Message}");
-            NotificationService.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Error",
-                Detail = "No se pudo actualizar la configuración",
-                Duration = 4000
-            });
-        }
-    }
-
-    // ── Actualizar frecuencia ────────────────────────────────────────────
-    private async Task UpdateFrequency()
-    {
-        if (emailPreference?.AutoSendEnabled == true)
-        {
-            try
-            {
-                var dto = new UpdateReportEmailPreferenceDto
-                {
-                    AutoSendEnabled = true,
-                    Frequency = selectedFrequency
-                };
-                emailPreference = await ReportApiService.UpdateEmailPreferenceAsync(dto);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ReportsOptions] Error actualizando frecuencia: {ex.Message}");
-            }
-        }
     }
 }

@@ -5,6 +5,7 @@
 @inject fs_front.Services.PermissionsRealtimeClient Realtime
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IJSRuntime JsRuntime
 
 <HeadContent>
     <RadzenTheme Theme="material" />
@@ -31,7 +32,14 @@
     </header>
 
     <div class="fs-content @(_sidebarCollapsed ? "is-collapsed" : "")">
-        <SideBar Collapsed="@_sidebarCollapsed" />
+        <!-- Mobile overlay -->
+        @if (_sidebarOpen && IsMobile)
+        {
+            <div class="fs-sidebar__overlay is-open" @onclick="CloseSidebar"></div>
+        }
+        
+        <SideBar Collapsed="@_sidebarCollapsed" IsOpen="@(_sidebarOpen && IsMobile)" />
+        
         <main class="fs-main">
             @Body
         </main>
@@ -91,8 +99,70 @@
 
 @code {
     private bool _sidebarCollapsed;
+    private bool _sidebarOpen;
+    private bool IsMobile;
     private string _currentTitle = "Panel";
     private EventHandler<LocationChangedEventArgs>? _locationHandler;
+
+    protected override void OnInitialized()
+    {
+        CheckScreenSize();
+        if (JsRuntime is not null)
+        {
+            _ = InitResizeListener();
+        }
+    }
+
+    private async Task InitResizeListener()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("eval", @"
+                window.addEventListener('resize', function() {
+                    if (window.innerWidth < 993) {
+                        document.body.classList.add('is-mobile');
+                    } else {
+                        document.body.classList.remove('is-mobile');
+                    }
+                });
+                if (window.innerWidth < 993) document.body.classList.add('is-mobile');
+            ");
+        }
+        catch { }
+    }
+
+    private void CheckScreenSize()
+    {
+        if (JsRuntime is not null)
+        {
+            try
+            {
+                var width = JsRuntime.InvokeAsync<int>("eval", "window.innerWidth").Result;
+                IsMobile = width < 993;
+            }
+            catch
+            {
+                IsMobile = false;
+            }
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        if (IsMobile)
+        {
+            _sidebarOpen = !_sidebarOpen;
+        }
+        else
+        {
+            _sidebarCollapsed = !_sidebarCollapsed;
+        }
+    }
+
+    private void CloseSidebar()
+    {
+        _sidebarOpen = false;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,8 +182,6 @@
         // Intento inicial (si ya había token guardado)
         await EnsureRealtimeConnectionAsync();
     }
-
-    private void ToggleSidebar() => _sidebarCollapsed = !_sidebarCollapsed;
 
     private void SetTitleFromRoute()
     {

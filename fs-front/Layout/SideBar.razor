@@ -5,7 +5,7 @@
 
 <AuthorizeView Context="authCtx">
     <Authorized>
-        <aside class="fs-sidebar @(Collapsed ? "is-collapsed" : "")">
+        <aside class="fs-sidebar @(Collapsed ? "is-collapsed" : "") @(IsOpen ? "is-open" : "")">
 
             @if (_canViewDashboard)
             {
@@ -126,6 +126,7 @@
 
 @code {
     [Parameter] public bool Collapsed { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
 
     private bool _isAdminArea;
 

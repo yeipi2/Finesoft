@@ -150,6 +150,7 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IReportPdfGenerator, ReportPdfGenerator>();
 builder.Services.AddScoped<IReportEmailPreferenceService, ReportEmailPreferenceService>();
+builder.Services.AddHostedService<ReportEmailSchedulerService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISupervisorService, SupervisorService>();
