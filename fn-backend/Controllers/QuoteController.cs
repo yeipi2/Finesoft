@@ -28,18 +28,24 @@ public class QuotesController : ControllerBase
     private readonly IQuoteService _quoteService;
     private readonly ILogger<QuotesController> _logger;
     private readonly ApplicationDbContext _context;
-    private readonly IHubContext<QuotesHub> _quotesHub; // ⭐ NUEVO
+    private readonly IHubContext<QuotesHub> _quotesHub;
+    private readonly IHubContext<NotificationsHub> _notificationsHub;
+    private readonly ICacheService _cacheService;
 
     public QuotesController(
         IQuoteService quoteService,
         ILogger<QuotesController> logger,
         ApplicationDbContext context,
-        IHubContext<QuotesHub> quotesHub) // ⭐ NUEVO
+        IHubContext<QuotesHub> quotesHub,
+        IHubContext<NotificationsHub> notificationsHub,
+        ICacheService cacheService)
     {
         _quoteService = quoteService;
         _logger = logger;
         _context = context;
-        _quotesHub = quotesHub; // ⭐ NUEVO
+        _quotesHub = quotesHub;
+        _notificationsHub = notificationsHub;
+        _cacheService = cacheService;
     }
 
     /// <summary>
@@ -133,10 +139,23 @@ public class QuotesController : ControllerBase
     [RequirePermission("quotes.edit")]
     public async Task<IActionResult> ChangeQuoteStatus(int id, [FromBody] ChangeStatusRequest request)
     {
-        var result = await _quoteService.ChangeQuoteStatusAsync(id, request.Status);
-        if (!result.Succeeded)
-            return this.ToValidationProblem(result.Errors);
-        return Ok(new { message = "Estado actualizado exitosamente" });
+        try
+        {
+            _logger.LogInformation("🔄 Cambiando estado de cotización {QuoteId} a {NewStatus}", id, request.Status);
+            var result = await _quoteService.ChangeQuoteStatusAsync(id, request.Status);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("❌ Error al cambiar estado: {Errors}", string.Join(", ", result.Errors));
+                return this.ToValidationProblem(result.Errors);
+            }
+            _logger.LogInformation("✅ Estado cambiado exitosamente para cotización {QuoteId}", id);
+            return Ok(new { message = "Estado actualizado exitosamente" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error al cambiar estado de cotización {QuoteId}: {Message}", id, ex.Message);
+            return this.ToProblem(StatusCodes.Status500InternalServerError, "Internal server error", ex.Message);
+        }
     }
 
     /// <summary>
@@ -150,19 +169,34 @@ public class QuotesController : ControllerBase
         {
             _logger.LogInformation("📧 Iniciando envío de email para cotización {QuoteId}", id);
 
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            _logger.LogInformation("👤 Usuario autenticado: {UserId}", userId);
+
             var quote = await _context.Quotes
                 .Include(q => q.Client)
                 .FirstOrDefaultAsync(q => q.Id == id);
 
             if (quote == null)
+            {
+                _logger.LogWarning("❌ Cotización {QuoteId} no encontrada", id);
                 return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cotización no encontrada");
+            }
+
+            _logger.LogInformation("📋 Cotización {QuoteId} - Estado: {Status}, Cliente: {ClientEmail}", 
+                id, quote.Status, quote.Client?.Email);
 
             if (string.IsNullOrEmpty(quote.Client?.Email))
+            {
+                _logger.LogWarning("❌ Cliente sin email para cotización {QuoteId}", id);
                 return this.ToValidationProblem(new[] { "El cliente no tiene email registrado" });
+            }
 
             var pdfBytes = await _quoteService.GenerateQuotePdfAsync(id);
             if (pdfBytes == null || pdfBytes.Length == 0)
+            {
+                _logger.LogWarning("❌ No se pudo generar PDF para cotización {QuoteId}", id);
                 return this.ToValidationProblem(new[] { "No se pudo generar el PDF" });
+            }
 
             if (string.IsNullOrEmpty(quote.PublicToken))
             {
@@ -172,6 +206,8 @@ public class QuotesController : ControllerBase
             }
 
             var emailService = HttpContext.RequestServices.GetRequiredService<IEmailService>();
+            _logger.LogInformation("📧 Enviando email a {Email}...", quote.Client.Email);
+            
             var emailSent = await emailService.SendQuoteEmailAsync(
                 quote.Client.Email,
                 quote.Client.CompanyName,
@@ -181,11 +217,18 @@ public class QuotesController : ControllerBase
             );
 
             if (!emailSent)
+            {
+                _logger.LogError("❌ Error al enviar email para cotización {QuoteId}", id);
                 return this.ToProblem(StatusCodes.Status500InternalServerError, "Internal server error", "Error al enviar el correo electrónico");
+            }
 
             quote.Status = "Enviada";
             _context.Quotes.Update(quote);
             await _context.SaveChangesAsync();
+
+            // Invalidar caché de la cotización específica y de la lista
+            await _cacheService.InvalidateAsync($"quotes:id:{id}");
+            await _cacheService.InvalidatePatternAsync("quotes:list:*");
 
             _logger.LogInformation("✅ Email enviado y estado actualizado para cotización {QuoteId}", id);
 
@@ -193,8 +236,8 @@ public class QuotesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error al enviar email para cotización {QuoteId}", id);
-            return this.ToProblem(StatusCodes.Status500InternalServerError, "Internal server error", "Error al enviar la cotización");
+            _logger.LogError(ex, "❌ Error al enviar email para cotización {QuoteId}: {Message}", id, ex.Message);
+            return this.ToProblem(StatusCodes.Status500InternalServerError, "Internal server error", "Error al enviar la cotización: " + ex.Message);
         }
     }
 
@@ -407,6 +450,34 @@ public class QuotesController : ControllerBase
                 clientName = quoteInfo.ClientName,
                 newStatus = status
             });
+
+            // Notificar a administración
+            var isAccepted = status.Equals("Aceptada", StringComparison.OrdinalIgnoreCase);
+            var notification = new NotificationDto
+            {
+                Type = isAccepted ? "quote_accepted" : "quote_rejected",
+                Title = isAccepted ? "Cotización Aceptada" : "Cotización Rechazada",
+                Message = $"El cliente {quoteInfo.ClientName} ha {(isAccepted ? "aceptado" : "rechazado")} la cotización {quoteInfo.QuoteNumber}",
+                Link = $"/cotizaciones/{quoteInfo.Id}",
+                IconClass = isAccepted ? "bi bi-check-circle text-success" : "bi bi-x-circle text-danger",
+                IconColor = isAccepted ? "#10B981" : "#EF4444"
+            };
+            await NotificationsHub.SendToAdministracion(_notificationsHub, notification);
+
+            // Notificar al creador de la cotización
+            if (!string.IsNullOrEmpty(quoteInfo.CreatedByUserId))
+            {
+                var creatorNotification = new NotificationDto
+                {
+                    Type = isAccepted ? "quote_accepted" : "quote_rejected",
+                    Title = isAccepted ? "Tu Cotización Fue Aceptada" : "Tu Cotización Fue Rechazada",
+                    Message = $"El cliente {quoteInfo.ClientName} ha {(isAccepted ? "aceptado" : "rechazado")} tu cotización {quoteInfo.QuoteNumber}",
+                    Link = $"/cotizaciones/{quoteInfo.Id}",
+                    IconClass = isAccepted ? "bi bi-check-circle text-success" : "bi bi-x-circle text-danger",
+                    IconColor = isAccepted ? "#10B981" : "#EF4444"
+                };
+                await NotificationsHub.SendToUser(_notificationsHub, quoteInfo.CreatedByUserId, creatorNotification);
+            }
 
             _logger.LogInformation("📡 SignalR: cotización {QuoteNumber} → {Status}", quoteInfo.QuoteNumber, status);
 

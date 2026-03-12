@@ -66,41 +66,52 @@ public class ReportEmailPreferenceService : IReportEmailPreferenceService
                 IncludeClients = dto.IncludeClients,
                 IncludeProjects = dto.IncludeProjects,
                 IncludeEmployees = dto.IncludeEmployees,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                LastSentAt = null
             };
-            _context.ReportEmailPreferences.Add(pref);
-        }
-        else
-        {
-            pref.AutoSendEnabled = dto.AutoSendEnabled;
-            pref.Frequency = dto.Frequency;
-            pref.IncludeDashboard = dto.IncludeDashboard;
-            pref.IncludeFinancial = dto.IncludeFinancial;
-            pref.IncludePerformance = dto.IncludePerformance;
-            pref.IncludeClients = dto.IncludeClients;
-            pref.IncludeProjects = dto.IncludeProjects;
-            pref.IncludeEmployees = dto.IncludeEmployees;
-            pref.UpdatedAt = DateTime.UtcNow;
 
-            // Si cambió la frecuencia y AutoSendEnabled está activo, recalcular NextSendAt
-            if (pref.AutoSendEnabled && pref.NextSendAt.HasValue)
+            // Si se activa, establecer NextSendAt para que se envíe inmediatamente
+            if (dto.AutoSendEnabled)
             {
-                var oldFrequency = (await _context.ReportEmailPreferences
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.UserId == userId))?.Frequency;
-
-                if (!string.IsNullOrEmpty(oldFrequency) && oldFrequency != dto.Frequency)
-                {
-                    pref.NextSendAt = dto.Frequency switch
-                    {
-                        "daily" => DateTime.UtcNow.AddDays(1),
-                        "weekly" => DateTime.UtcNow.AddDays(7),
-                        "biweekly" => DateTime.UtcNow.AddDays(14),
-                        "monthly" => DateTime.UtcNow.AddMonths(1),
-                        _ => DateTime.UtcNow.AddDays(7)
-                    };
-                }
+                pref.NextSendAt = DateTime.UtcNow; // Se envía inmediatamente
             }
+
+            _context.ReportEmailPreferences.Add(pref);
+            await _context.SaveChangesAsync();
+
+            // Devolver el DTO
+            return new ReportEmailPreferenceDto
+            {
+                Id = pref.Id,
+                UserId = pref.UserId,
+                AutoSendEnabled = pref.AutoSendEnabled,
+                Frequency = pref.Frequency,
+                LastSentAt = pref.LastSentAt,
+                NextSendAt = pref.NextSendAt,
+                IncludeDashboard = pref.IncludeDashboard,
+                IncludeFinancial = pref.IncludeFinancial,
+                IncludePerformance = pref.IncludePerformance,
+                IncludeClients = pref.IncludeClients,
+                IncludeProjects = pref.IncludeProjects,
+                IncludeEmployees = pref.IncludeEmployees
+            };
+        }
+
+        // Actualizar preferencia existente
+        pref.AutoSendEnabled = dto.AutoSendEnabled;
+        pref.Frequency = dto.Frequency;
+        pref.IncludeDashboard = dto.IncludeDashboard;
+        pref.IncludeFinancial = dto.IncludeFinancial;
+        pref.IncludePerformance = dto.IncludePerformance;
+        pref.IncludeClients = dto.IncludeClients;
+        pref.IncludeProjects = dto.IncludeProjects;
+        pref.IncludeEmployees = dto.IncludeEmployees;
+        pref.UpdatedAt = DateTime.UtcNow;
+
+        // Si se activa y no tiene NextSendAt, establecer para envío inmediato
+        if (pref.AutoSendEnabled && !pref.NextSendAt.HasValue)
+        {
+            pref.NextSendAt = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();

@@ -7,7 +7,11 @@ using fs_backend.Util;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
+using fs_backend.Hubs;
+using fs_backend.Models;
 
 namespace fs_backend.Controllers;
 
@@ -20,13 +24,19 @@ public class TicketsController : ControllerBase
 {
     private readonly ITicketService _ticketService;
     private readonly ILogger<TicketsController> _logger;
+    private readonly IHubContext<NotificationsHub> _notificationsHub;
+    private readonly UserManager<IdentityUser> _userManager;
 
     public TicketsController(
         ITicketService ticketService,
-        ILogger<TicketsController> logger)
+        ILogger<TicketsController> logger,
+        IHubContext<NotificationsHub> notificationsHub,
+        UserManager<IdentityUser> userManager)
     {
         _ticketService = ticketService;
         _logger = logger;
+        _notificationsHub = notificationsHub;
+        _userManager = userManager;
     }
 
     // ========== HELPERS ==========
@@ -295,8 +305,30 @@ public class TicketsController : ControllerBase
     {
         var userId = GetCurrentUserId();
 
+        var ticket = await _ticketService.GetTicketByIdAsync(id);
+        if (ticket == null)
+        {
+            return NotFound(new { message = "Ticket no encontrado" });
+        }
+
+        var assignedUser = await _userManager.FindByIdAsync(dto.AssignedToUserId);
+        
         _logger.LogInformation("✅ Usuario {UserId} asignó ticket #{TicketId} a {AssignedTo}",
             userId, id, dto.AssignedToUserId);
+
+        if (assignedUser != null)
+        {
+            var notification = new NotificationDto
+            {
+                Type = "ticket_assigned",
+                Title = "Nuevo Ticket Asignado",
+                Message = $"Se te ha asignado el ticket #{id} - {ticket.Title}",
+                Link = $"/tickets/{ticket.Id}",
+                IconClass = "bi bi-ticket-detailed",
+                IconColor = "#6B46C1"
+            };
+            await NotificationsHub.SendToUser(_notificationsHub, dto.AssignedToUserId, notification);
+        }
 
         return Ok(new { message = "Ticket asignado exitosamente" });
     }

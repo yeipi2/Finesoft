@@ -276,6 +276,7 @@ app.UseStaticFiles();
 
 app.MapHub<PermissionsHub>("/hubs/permissions");
 app.MapHub<QuotesHub>("/hubs/quotes");
+app.MapHub<NotificationsHub>("/hubs/notifications");
 
 app.MapControllers();
 app.MapIdentityApi<IdentityUser>();

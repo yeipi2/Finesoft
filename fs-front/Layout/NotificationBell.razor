@@ -1,0 +1,306 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using fs_front.Services
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <div class="notification-bell-container">
+            <button type="button" class="btn btn-link notification-bell-btn" @onclick="ToggleDropdown" aria-label="Notificaciones">
+                <i class="bi bi-bell"></i>
+                @if (UnreadCount > 0)
+                {
+                    <span class="notification-badge">@(UnreadCount > 9 ? "9+" : UnreadCount.ToString())</span>
+                }
+            </button>
+
+            @if (_isDropdownOpen)
+            {
+                <div class="notification-overlay" @onclick="CloseDropdown"></div>
+                
+                <div class="notification-dropdown">
+                    <div class="notification-header">
+                        <span class="notification-title">Notificaciones</span>
+                        @if (UnreadCount > 0)
+                        {
+                            <button class="btn btn-link btn-sm mark-all-read" @onclick="MarkAllAsRead">
+                                Marcar todo como leído
+                            </button>
+                        }
+                    </div>
+
+                    <div class="notification-list">
+                        @if (Notifications.Count == 0)
+                        {
+                            <div class="notification-empty">
+                                <i class="bi bi-bell-slash"></i>
+                                <p>No hay notificaciones</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var notification in Notifications.Take(10))
+                            {
+                                <div class="notification-item @(!notification.IsRead ? "unread" : "")" 
+                                     @onclick="() => HandleNotificationClick(notification)">
+                                    <div class="notification-icon" style="color: @notification.IconColor">
+                                        <i class="@notification.IconClass"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <div class="notification-item-title">@notification.Title</div>
+                                        <div class="notification-item-message">@notification.Message</div>
+                                        <div class="notification-item-time">@GetTimeAgo(notification.CreatedAt)</div>
+                                    </div>
+                                    @if (!notification.IsRead)
+                                    {
+                                        <div class="notification-unread-dot"></div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    @if (Notifications.Count > 0)
+                    {
+                        <div class="notification-footer">
+                            <button class="btn btn-link btn-sm" @onclick="ClearAll">
+                                Limpiar notificaciones
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private bool _isDropdownOpen = false;
+    private List<NotificationItem> Notifications => fs_front.Services.AppNotifications.Notifications.ToList();
+    private int UnreadCount => fs_front.Services.AppNotifications.UnreadCount;
+
+    protected override void OnInitialized()
+    {
+        fs_front.Services.AppNotifications.OnNotificationsUpdated += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        fs_front.Services.AppNotifications.OnNotificationsUpdated -= StateHasChanged;
+    }
+
+    private void ToggleDropdown()
+    {
+        _isDropdownOpen = !_isDropdownOpen;
+    }
+
+    private void CloseDropdown()
+    {
+        _isDropdownOpen = false;
+    }
+
+    private void HandleNotificationClick(NotificationItem notification)
+    {
+        fs_front.Services.AppNotifications.MarkAsRead(notification.Id);
+        
+        if (!string.IsNullOrEmpty(notification.Link))
+        {
+            CloseDropdown();
+            Navigation.NavigateTo(notification.Link);
+        }
+    }
+
+    private void MarkAllAsRead()
+    {
+        fs_front.Services.AppNotifications.MarkAllAsRead();
+    }
+
+    private void ClearAll()
+    {
+        fs_front.Services.AppNotifications.ClearAll();
+    }
+
+    private static string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime.ToLocalTime();
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Ahora mismo";
+        if (timeSpan.TotalMinutes < 60)
+            return $"Hace {(int)timeSpan.TotalMinutes} min";
+        if (timeSpan.TotalHours < 24)
+            return $"Hace {(int)timeSpan.TotalHours} h";
+        if (timeSpan.TotalDays < 7)
+            return $"Hace {(int)timeSpan.TotalDays} días";
+        
+        return dateTime.ToLocalTime().ToString("dd/MM");
+    }
+}
+
+<style>
+    .notification-bell-container {
+        position: relative;
+    }
+
+    .notification-bell-btn {
+        position: relative;
+        padding: 8px;
+        font-size: 1.25rem;
+        color: var(--app-text-muted);
+        text-decoration: none;
+    }
+
+    .notification-bell-btn:hover {
+        color: var(--app-text);
+    }
+
+    .notification-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: #EF4444;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 10px;
+        min-width: 18px;
+        text-align: center;
+    }
+
+    .notification-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+    }
+
+    .notification-dropdown {
+        position: absolute;
+        top: 44px;
+        right: 0;
+        width: 360px;
+        max-height: 480px;
+        background: var(--app-surface-elevated);
+        border: 1px solid var(--app-border-strong);
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        z-index: 1000;
+        overflow: hidden;
+    }
+
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--app-border-soft);
+    }
+
+    .notification-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .mark-all-read {
+        font-size: 0.8rem;
+        color: #6B46C1;
+        text-decoration: none;
+    }
+
+    .notification-list {
+        max-height: 360px;
+        overflow-y: auto;
+    }
+
+    .notification-empty {
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--app-text-muted);
+    }
+
+    .notification-empty i {
+        font-size: 2rem;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .notification-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--app-border-soft);
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .notification-item:hover {
+        background: var(--app-surface-alt);
+    }
+
+    .notification-item.unread {
+        background: rgba(107, 70, 193, 0.05);
+    }
+
+    .notification-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        width: 32px;
+        text-align: center;
+    }
+
+    .notification-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notification-item-title {
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 2px;
+    }
+
+    .notification-item-message {
+        font-size: 0.8rem;
+        color: var(--app-text-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .notification-item-time {
+        font-size: 0.7rem;
+        color: var(--app-text-muted);
+        margin-top: 4px;
+    }
+
+    .notification-unread-dot {
+        width: 8px;
+        height: 8px;
+        background: #6B46C1;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 4px;
+    }
+
+    .notification-footer {
+        padding: 8px 16px;
+        text-align: center;
+        border-top: 1px solid var(--app-border-soft);
+    }
+
+    .notification-footer .btn-link {
+        font-size: 0.8rem;
+        color: var(--app-text-muted);
+        text-decoration: none;
+    }
+
+    @@media (max-width: 576px) {
+        .notification-dropdown {
+            position: fixed;
+            top: 56px;
+            left: 8px;
+            right: 8px;
+            width: auto;
+        }
+    }
+</style>

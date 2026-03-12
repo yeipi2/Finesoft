@@ -282,6 +282,10 @@ public class QuoteService : IQuoteService
         _context.Quotes.Update(quote);
         await _context.SaveChangesAsync();
 
+        // Invalidar caché de la cotización específica y de la lista
+        await _cache.InvalidateAsync($"quotes:id:{id}");
+        await _cache.InvalidatePatternAsync("quotes:list:*");
+
         return ServiceResult<bool>.Success(true);
     }
 
@@ -366,6 +370,10 @@ public class QuoteService : IQuoteService
 
         _context.Quotes.Update(quote);
         await _context.SaveChangesAsync();
+
+        // Invalidar caché de la cotización y de la lista
+        await _cache.InvalidateAsync($"quotes:id:{quote.Id}");
+        await _cache.InvalidatePatternAsync("quotes:list:*");
 
         _logger.LogInformation("✅ Cotización {QuoteId} respondida como '{Status}' por el cliente",
             quote.Id, status);

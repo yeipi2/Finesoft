@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components.Routing
 
 @inject fs_front.Services.PermissionsRealtimeClient Realtime
+@inject fs_front.Services.NotificationsRealtimeClient NotificationsRealtime
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
@@ -219,6 +220,12 @@
 
         if (!isAuth && Realtime.IsConnected)
             await Realtime.StopAsync();
+
+        if (isAuth && !NotificationsRealtime.IsConnected)
+            await NotificationsRealtime.StartAsync();
+
+        if (!isAuth && NotificationsRealtime.IsConnected)
+            await NotificationsRealtime.StopAsync();
     }
 
     private async Task OnPermissionsChanged()

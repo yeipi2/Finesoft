@@ -337,7 +337,11 @@
         try
         {
             var result = await QuoteApiService.SendQuoteEmailAsync(QuoteId);
-            if (result.Success) { Notify("Éxito", "Cotización enviada. Estado actualizado a 'Enviada'.", NotificationSeverity.Success); await LoadQuote(); }
+            if (result.Success) 
+            { 
+                Notify("Éxito", "Cotización enviada. Estado actualizado a 'Enviada'.", NotificationSeverity.Success); 
+                await LoadQuote();
+            }
             else Notify("Error", result.ErrorMessage ?? "No se pudo enviar la cotización.", NotificationSeverity.Error);
         }
         catch (Exception ex) { Notify("Error", $"Error: {ex.Message}", NotificationSeverity.Error); }
@@ -349,7 +353,11 @@
         try
         {
             var result = await QuoteApiService.ChangeQuoteStatusAsync(QuoteId, newStatus);
-            if (result.Success) { Notify("Éxito", $"Estado cambiado a '{newStatus}'.", NotificationSeverity.Success); await LoadQuote(); }
+            if (result.Success) 
+            { 
+                Notify("Éxito", $"Estado cambiado a '{newStatus}'.", NotificationSeverity.Success); 
+                await LoadQuote();
+            }
             else Notify("Error", result.ErrorMessage ?? "No se pudo cambiar el estado.", NotificationSeverity.Error);
         }
         catch (Exception ex) { Notify("Error", $"Error: {ex.Message}", NotificationSeverity.Error); }

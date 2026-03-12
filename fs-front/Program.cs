@@ -40,6 +40,7 @@ builder.Services.AddAuthorizationCore();
 // 7) Registro de servicios propios de la app (DI).
 //    Aquí se conectan las interfaces con sus implementaciones.
 builder.Services.AddScoped<PermissionsRealtimeClient>();
+builder.Services.AddScoped<NotificationsRealtimeClient>();
 builder.Services.AddScoped<IAuthService, CustomAuthStateProvider>();
 builder.Services.AddScoped<IEmployeeApiService, EmployeeApiService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();

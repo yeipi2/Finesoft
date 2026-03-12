@@ -1,12 +1,15 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using fs_front.Services
+@using fs_front.Layout
 @inject IJSRuntime JS
 @inject IUserApiService UserApi
 
 <AuthorizeView Context="authCtx">
     <Authorized>
         <div class="fs-user-menu">
+            <NotificationBell />
+
             <button type="button"
                     class="fs-avatar"
                     @onclick="ToggleDropdown"

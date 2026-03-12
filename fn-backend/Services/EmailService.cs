@@ -59,14 +59,25 @@ public class EmailService : IEmailService
             var pdfAttachment = new Attachment(pdfStream, $"Cotizacion-{quoteNumber}.pdf", "application/pdf");
             message.Attachments.Add(pdfAttachment);
 
+            _logger.LogInformation("📎 PDF tamaño: {Size} bytes - Adjuntos: {AttachmentsCount}", pdfBytes.Length, message.Attachments.Count);
+
             using var smtpClient = new SmtpClient(smtpHost, smtpPort);
             smtpClient.Credentials = new NetworkCredential(smtpUser, smtpPassword);
             smtpClient.EnableSsl = true;
+            smtpClient.Timeout = 30000;
+
+            _logger.LogInformation("📧 Enviando email SMTP a {Host}:{Port} desde {From}", smtpHost, smtpPort, from);
 
             await smtpClient.SendMailAsync(message);
 
             _logger.LogInformation("✅ Email enviado a {Email} — Cotización {QuoteNumber}", toEmail, quoteNumber);
             return true;
+        }
+        catch (SmtpException smtpEx)
+        {
+            _logger.LogError(smtpEx, "❌ Error SMTP al enviar email — Status: {StatusCode}, Message: {Message}, Inner: {Inner}",
+                smtpEx.StatusCode, smtpEx.Message, smtpEx.InnerException?.Message);
+            return false;
         }
         catch (Exception ex)
         {

@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cd D:/Imprimir/fineprojectweb/fn-backend && dotnet build --no-restore 2>&1 | head -50)"
+      "Bash(cd D:/Imprimir/fineprojectweb/fn-backend && dotnet build --no-restore 2>&1 | head -50)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | head -30)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | tail -10)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | tail -5)"
     ]
   }
 }
