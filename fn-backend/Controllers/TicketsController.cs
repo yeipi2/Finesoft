@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using fs_backend.Hubs;
 using fs_backend.Models;
+using fs_backend.Services;
 
 namespace fs_backend.Controllers;
 
@@ -26,17 +27,20 @@ public class TicketsController : ControllerBase
     private readonly ILogger<TicketsController> _logger;
     private readonly IHubContext<NotificationsHub> _notificationsHub;
     private readonly UserManager<IdentityUser> _userManager;
+    private readonly INotificationService _notificationService;
 
     public TicketsController(
         ITicketService ticketService,
         ILogger<TicketsController> logger,
         IHubContext<NotificationsHub> notificationsHub,
-        UserManager<IdentityUser> userManager)
+        UserManager<IdentityUser> userManager,
+        INotificationService notificationService)
     {
         _ticketService = ticketService;
         _logger = logger;
         _notificationsHub = notificationsHub;
         _userManager = userManager;
+        _notificationService = notificationService;
     }
 
     // ========== HELPERS ==========
@@ -316,6 +320,7 @@ public class TicketsController : ControllerBase
         _logger.LogInformation("✅ Usuario {UserId} asignó ticket #{TicketId} a {AssignedTo}",
             userId, id, dto.AssignedToUserId);
 
+        // Notificar al empleado asignado
         if (assignedUser != null)
         {
             var notification = new NotificationDto
@@ -327,7 +332,31 @@ public class TicketsController : ControllerBase
                 IconClass = "bi bi-ticket-detailed",
                 IconColor = "#6B46C1"
             };
+            await _notificationService.SaveNotificationAsync(dto.AssignedToUserId, notification);
             await NotificationsHub.SendToUser(_notificationsHub, dto.AssignedToUserId, notification);
+        }
+
+        // Notificar a Admin y Administracion
+        var adminNotification = new NotificationDto
+        {
+            Type = "ticket_assigned",
+            Title = "Ticket Asignado",
+            Message = $"El ticket #{id} - {ticket.Title} ha sido asignado a {assignedUser?.UserName ?? dto.AssignedToUserId}",
+            Link = $"/tickets/{ticket.Id}",
+            IconClass = "bi bi-person-check",
+            IconColor = "#6B46C1"
+        };
+        await NotificationsHub.SendToAdmins(_notificationsHub, adminNotification);
+        await NotificationsHub.SendToAdministracion(_notificationsHub, adminNotification);
+
+        // Guardar notificaciones para Admin y Administracion
+        var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+        var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+        var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+
+        foreach (var user in allAdminUsers)
+        {
+            await _notificationService.SaveNotificationAsync(user.Id, adminNotification);
         }
 
         return Ok(new { message = "Ticket asignado exitosamente" });

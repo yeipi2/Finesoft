@@ -13,7 +13,7 @@
 @if (_checkingAccess)
 {
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:9999;
-                display:flex;align-items:center;justify-content:center;">
+                    display:flex;align-items:center;justify-content:center;">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
@@ -51,25 +51,25 @@ else
     </div>
 }
 
-@inject IQuoteApiService  QuoteApiService
+@inject IQuoteApiService QuoteApiService
 @inject IClientApiService ClientApiService
-@inject DialogService     DialogService
+@inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
-@inject IJSRuntime        JSRuntime
+@inject IJSRuntime JSRuntime
 @inject PermissionService PermissionService
-@inject IConfiguration    Configuration
+@inject IConfiguration Configuration
 
 @code {
     private List<QuoteDetailDto>? _quotes;
-    private List<ClientDto>?      _clients;
-    private string _searchText   = string.Empty;
+    private List<ClientDto>? _clients;
+    private string _searchText = string.Empty;
     private string _statusFilter = string.Empty;
-    private int    _clientFilter = 0;
-    private bool   _isLoading    = false;
-    private bool   _checkingAccess = true;
-    private bool   _hasAccess      = false;
-    private bool   _canCreate, _canEdit, _canDelete;
+    private int _clientFilter = 0;
+    private bool _isLoading = false;
+    private bool _checkingAccess = true;
+    private bool _hasAccess = false;
+    private bool _canCreate, _canEdit, _canDelete;
     private string _sortField = "createdAt";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
@@ -92,31 +92,31 @@ else
     private IEnumerable<QuoteDetailDto> ApplySort(IEnumerable<QuoteDetailDto> q) =>
         (_sortField, _sortDir) switch
         {
-            ("number",    FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.QuoteNumber),
-            ("number",    FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.QuoteNumber),
-            ("client",    FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.ClientName),
-            ("client",    FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ClientName),
-            ("createdAt", FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.CreatedAt),
+            ("number", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.QuoteNumber),
+            ("number", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.QuoteNumber),
+            ("client", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ClientName),
+            ("client", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ClientName),
+            ("createdAt", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CreatedAt),
             ("createdAt", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedAt),
             ("validUntil", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.ValidUntil ?? DateTime.MaxValue),
-            ("validUntil", FsSortHeader.SortDirection.Desc)=> q.OrderByDescending(x => x.ValidUntil ?? DateTime.MinValue),
-            ("status",    FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Status),
-            ("status",    FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
-            ("total",     FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Total),
-            ("total",     FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Total),
-            ("createdBy", FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.CreatedByUserName),
+            ("validUntil", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.ValidUntil ?? DateTime.MinValue),
+            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Status),
+            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
+            ("total", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Total),
+            ("total", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Total),
+            ("createdBy", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.CreatedByUserName),
             ("createdBy", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedByUserName),
-            _                                              => q.OrderByDescending(x => x.CreatedAt),
+            _ => q.OrderByDescending(x => x.CreatedAt),
         };
 
-    // ── Handlers de filtros (métodos nombrados — evita CS1660) ────────────────
-    private void OnSearchChanged(string v)       => _searchText   = v;
-    private void OnStatusChanged(string v)       => _statusFilter = v;
-    private void OnClientFilterChanged(int v)    => _clientFilter = v;
+    // ── Handlers de filtros ───────────────────────────────────────────────────
+    private void OnSearchChanged(string v) => _searchText = v;
+    private void OnStatusChanged(string v) => _statusFilter = v;
+    private void OnClientFilterChanged(int v) => _clientFilter = v;
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
     {
         _sortField = s.field;
-        _sortDir   = s.dir;
+        _sortDir = s.dir;
     }
 
     // ── Ciclo de vida ─────────────────────────────────────────────────────────
@@ -131,11 +131,11 @@ else
             return;
         }
 
-        _hasAccess      = true;
+        _hasAccess = true;
         _checkingAccess = false;
 
         _canCreate = await PermissionService.HasPermissionAsync("quotes.create");
-        _canEdit   = await PermissionService.HasPermissionAsync("quotes.edit");
+        _canEdit = await PermissionService.HasPermissionAsync("quotes.edit");
         _canDelete = await PermissionService.HasPermissionAsync("quotes.delete");
 
         await LoadData();
@@ -148,7 +148,7 @@ else
         try
         {
             var apiBase = Configuration["WebApiAddress"]!.TrimEnd('/');
-            var hubUrl  = $"{apiBase}/hubs/quotes";
+            var hubUrl = $"{apiBase}/hubs/quotes";
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
@@ -157,13 +157,26 @@ else
 
             _hubConnection.On<QuoteStatusChangedEvent>("QuoteStatusChanged", async (data) =>
             {
-                var quote = _quotes?.FirstOrDefault(q => q.Id == data.QuoteId);
-                if (quote != null) quote.Status = data.NewStatus;
-                else await InvokeAsync(LoadData);
+                // ✅ FIX: si QuoteId llega en 0 significa que la deserialización falló
+                // en ese caso recargamos toda la lista para asegurar datos frescos
+                if (data.QuoteId == 0)
+                {
+                    await InvokeAsync(LoadData);
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
 
-                var emoji = data.NewStatus == "Aceptada" ? "✅" : "❌";
-                Notify($"{emoji} Cotización {data.NewStatus}", $"{data.QuoteNumber} — {data.ClientName}",
-                    data.NewStatus == "Aceptada" ? NotificationSeverity.Success : NotificationSeverity.Warning);
+                var quote = _quotes?.FirstOrDefault(q => q.Id == data.QuoteId);
+                if (quote != null)
+                {
+                    // Actualizar el estado en memoria sin recargar toda la lista
+                    quote.Status = data.NewStatus;
+                }
+                else
+                {
+                    // La cotización no está en la lista local (es nueva), recargar
+                    await InvokeAsync(LoadData);
+                }
 
                 await InvokeAsync(StateHasChanged);
             });
@@ -194,7 +207,7 @@ else
             var qt = QuoteApiService.GetQuotesAsync();
             var ct = ClientApiService.GetClientsAsync();
             await Task.WhenAll(qt, ct);
-            _quotes  = await qt;
+            _quotes = await qt;
             _clients = await ct;
         }
         catch (Exception ex) { Notify("Error", $"Error al cargar: {ex.Message}", NotificationSeverity.Error); }
@@ -207,7 +220,7 @@ else
             options: new DialogOptions
             {
                 Width = "1000px",
-                Height = "auto",              // ← auto, el CSS controla el max
+                Height = "auto",
                 CssClass = "quote-form-dialog",
                 Resizable = true,
                 Draggable = false,
@@ -235,7 +248,7 @@ else
 
     private async Task ClearFilters()
     {
-        _searchText   = string.Empty;
+        _searchText = string.Empty;
         _statusFilter = string.Empty;
         _clientFilter = 0;
         await LoadData();

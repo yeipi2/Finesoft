@@ -274,10 +274,6 @@
             {
                 if (data.QuoteId != QuoteId) return;
                 await InvokeAsync(LoadQuote);
-                var emoji = data.NewStatus == "Aceptada" ? "✅" : "❌";
-                Notify($"{emoji} Cotización {data.NewStatus}",
-                    $"El cliente {data.ClientName} respondió esta cotización.",
-                    data.NewStatus == "Aceptada" ? NotificationSeverity.Success : NotificationSeverity.Warning);
                 await InvokeAsync(StateHasChanged);
             });
 

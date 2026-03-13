@@ -4,7 +4,16 @@
       "Bash(cd D:/Imprimir/fineprojectweb/fn-backend && dotnet build --no-restore 2>&1 | head -50)",
       "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | head -30)",
       "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | tail -10)",
-      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | tail -5)"
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | tail -5)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet build --no-restore 2>&1 | head -50)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fs-front\" && dotnet build --no-restore 2>&1 | head -30)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fn-backend --no-restore 2>&1 | head -30)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fn-backend --no-restore 2>&1 | head -20)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet ef migrations add AddNotificationsTable --no-restore 2>&1)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\\\\fn-backend\" && dotnet ef migrations add AddNotificationsTable 2>&1)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fs-front --no-restore 2>&1 | head -20)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fs-front --no-restore 2>&1 | grep -E \"\\(error|Error|ERROR\\)\" | head -10)",
+      "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fn-backend --no-restore 2>&1 | grep -E \"\\(error|Error|ERROR\\)\" | head -10)"
     ]
   }
 }

@@ -1,8 +1,8 @@
-﻿using Asp.Versioning;
-using fn_backend.DTO;
+using Asp.Versioning;
+using fs_backend.DTO;
 using fs_backend.Attributes;
 using fs_backend.DTO.Common;
-using fs_backend.DTO;
+using fn_backend.DTO;
 using fs_backend.Hubs;
 using fs_backend.Identity;
 using fs_backend.Repositories;
@@ -10,6 +10,7 @@ using fs_backend.Services;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
@@ -30,7 +31,8 @@ public class QuotesController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IHubContext<QuotesHub> _quotesHub;
     private readonly IHubContext<NotificationsHub> _notificationsHub;
-    private readonly ICacheService _cacheService;
+    private readonly INotificationService _notificationService;
+    private readonly UserManager<IdentityUser> _userManager;
 
     public QuotesController(
         IQuoteService quoteService,
@@ -38,14 +40,16 @@ public class QuotesController : ControllerBase
         ApplicationDbContext context,
         IHubContext<QuotesHub> quotesHub,
         IHubContext<NotificationsHub> notificationsHub,
-        ICacheService cacheService)
+        INotificationService notificationService,
+        UserManager<IdentityUser> userManager)
     {
         _quoteService = quoteService;
         _logger = logger;
         _context = context;
         _quotesHub = quotesHub;
         _notificationsHub = notificationsHub;
-        _cacheService = cacheService;
+        _notificationService = notificationService;
+        _userManager = userManager;
     }
 
     /// <summary>
@@ -142,13 +146,29 @@ public class QuotesController : ControllerBase
         try
         {
             _logger.LogInformation("🔄 Cambiando estado de cotización {QuoteId} a {NewStatus}", id, request.Status);
+
+            // Obtener info ANTES de cambiar para tener los datos del SignalR
+            var quoteInfo = await _quoteService.GetQuoteByIdAsync(id);
+            if (quoteInfo == null)
+                return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cotización no encontrada");
+
             var result = await _quoteService.ChangeQuoteStatusAsync(id, request.Status);
             if (!result.Succeeded)
             {
                 _logger.LogWarning("❌ Error al cambiar estado: {Errors}", string.Join(", ", result.Errors));
                 return this.ToValidationProblem(result.Errors);
             }
-            _logger.LogInformation("✅ Estado cambiado exitosamente para cotización {QuoteId}", id);
+
+            // ✅ PascalCase para que el record de C# en el frontend pueda deserializar correctamente
+            await _quotesHub.Clients.Group("internal-users").SendAsync("QuoteStatusChanged", new
+            {
+                QuoteId = quoteInfo.Id,
+                QuoteNumber = quoteInfo.QuoteNumber,
+                ClientName = quoteInfo.ClientName,
+                NewStatus = request.Status
+            });
+
+            _logger.LogInformation("✅ Estado cambiado y SignalR enviado para cotización {QuoteId}", id);
             return Ok(new { message = "Estado actualizado exitosamente" });
         }
         catch (Exception ex)
@@ -182,7 +202,7 @@ public class QuotesController : ControllerBase
                 return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cotización no encontrada");
             }
 
-            _logger.LogInformation("📋 Cotización {QuoteId} - Estado: {Status}, Cliente: {ClientEmail}", 
+            _logger.LogInformation("📋 Cotización {QuoteId} - Estado: {Status}, Cliente: {ClientEmail}",
                 id, quote.Status, quote.Client?.Email);
 
             if (string.IsNullOrEmpty(quote.Client?.Email))
@@ -207,7 +227,7 @@ public class QuotesController : ControllerBase
 
             var emailService = HttpContext.RequestServices.GetRequiredService<IEmailService>();
             _logger.LogInformation("📧 Enviando email a {Email}...", quote.Client.Email);
-            
+
             var emailSent = await emailService.SendQuoteEmailAsync(
                 quote.Client.Email,
                 quote.Client.CompanyName,
@@ -226,12 +246,62 @@ public class QuotesController : ControllerBase
             _context.Quotes.Update(quote);
             await _context.SaveChangesAsync();
 
-            // Invalidar caché de la cotización específica y de la lista
-            await _cacheService.InvalidateAsync($"quotes:id:{id}");
-            await _cacheService.InvalidatePatternAsync("quotes:list:*");
+            // ✅ PascalCase + solo notificar cambio silencioso (sin emoji de cliente)
+            await _quotesHub.Clients.Group("internal-users").SendAsync("QuoteStatusChanged", new
+            {
+                QuoteId = quote.Id,
+                QuoteNumber = quote.QuoteNumber,
+                ClientName = quote.Client.CompanyName,
+                NewStatus = "Enviada"
+            });
 
-            _logger.LogInformation("✅ Email enviado y estado actualizado para cotización {QuoteId}", id);
+            // Notificar a administración que se envió una cotización
+            var adminNotification = new NotificationDto
+            {
+                Type = "quote_sent",
+                Title = "Cotización Enviada",
+                Message = $"Cotización {quote.QuoteNumber} enviada a {quote.Client.CompanyName}",
+                Link = $"/cotizaciones/{quote.Id}",
+                IconClass = "bi bi-envelope text-primary",
+                IconColor = "#3B82F6"
+            };
+            await NotificationsHub.SendToAdministracion(_notificationsHub, adminNotification);
+            await NotificationsHub.SendToAdmins(_notificationsHub, adminNotification);
 
+            // Guardar notificaciones para Admin y Administracion
+            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+            var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+
+            foreach (var user in allAdminUsers)
+            {
+                await _notificationService.SaveNotificationAsync(user.Id, adminNotification);
+            }
+
+            // Guardar notificación para el usuario actual (para persistencia)
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(currentUserId) && !allAdminUsers.Any(u => u.Id == currentUserId))
+            {
+                await _notificationService.SaveNotificationAsync(currentUserId, adminNotification);
+            }
+
+            // Notificar al cliente si tiene cuenta en el sistema (UserId no null)
+            if (!string.IsNullOrEmpty(quote.Client.UserId))
+            {
+                var clientNotification = new NotificationDto
+                {
+                    Type = "quote_received",
+                    Title = "Nueva Cotización Recibida",
+                    Message = $"Has recibido una cotización ({quote.QuoteNumber}) de FINESOFT. Revisa tu correo para más detalles.",
+                    Link = $"/cotizaciones/{quote.Id}",
+                    IconClass = "bi bi-envelope-open text-success",
+                    IconColor = "#10B981"
+                };
+                await _notificationService.SaveNotificationAsync(quote.Client.UserId, clientNotification);
+                await NotificationsHub.SendToUser(_notificationsHub, quote.Client.UserId, clientNotification);
+            }
+
+            _logger.LogInformation("✅ Email enviado, estado actualizado y SignalR enviado para cotización {QuoteId}", id);
             return Ok(new { message = "Cotización enviada exitosamente por correo electrónico", newStatus = "Enviada" });
         }
         catch (Exception ex)
@@ -306,7 +376,6 @@ public class QuotesController : ControllerBase
 
     /// <summary>
     /// PATCH: api/quotes/public/{token}/status
-    /// Endpoint canónico para actualizar estado público de cotización.
     /// </summary>
     [HttpPatch("public/{token}/status")]
     [AllowAnonymous]
@@ -318,7 +387,6 @@ public class QuotesController : ControllerBase
 
     /// <summary>
     /// POST: api/quotes/public/by-number/{quoteNumber}/status
-    /// Endpoint para flujo legacy desde links de correo.
     /// </summary>
     [HttpPost("public/by-number/{quoteNumber}/status")]
     [AllowAnonymous]
@@ -333,9 +401,7 @@ public class QuotesController : ControllerBase
             .FirstOrDefaultAsync(q => q.QuoteNumber == quoteNumber);
 
         if (quote == null)
-        {
             return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cotización no encontrada");
-        }
 
         if (string.IsNullOrWhiteSpace(quote.PublicToken))
         {
@@ -346,9 +412,7 @@ public class QuotesController : ControllerBase
 
         var result = await HandlePublicQuoteResponse(quote.PublicToken, status, comments);
         if (result is ObjectResult objectResult && objectResult.StatusCode is >= 400)
-        {
             return result;
-        }
 
         var html = string.Equals(status, "Aceptada", StringComparison.OrdinalIgnoreCase)
             ? GetAcceptedHtml(quote.QuoteNumber, quote.Client?.CompanyName ?? "Cliente")
@@ -379,11 +443,7 @@ public class QuotesController : ControllerBase
             Response.Headers.Append("Sunset", "Tue, 30 Jun 2026 00:00:00 GMT");
 
             var postUrl = $"{Request.Scheme}://{Request.Host}/api/v1/quotes/public/by-number/{Uri.EscapeDataString(quoteNumber)}/status";
-            return Content(GetLegacyConfirmationHtml(
-                quoteNumber,
-                quote.Client?.CompanyName ?? "Cliente",
-                "Aceptada",
-                postUrl), "text/html");
+            return Content(GetLegacyConfirmationHtml(quoteNumber, quote.Client?.CompanyName ?? "Cliente", "Aceptada", postUrl), "text/html");
         }
         catch (Exception ex)
         {
@@ -414,11 +474,7 @@ public class QuotesController : ControllerBase
             Response.Headers.Append("Sunset", "Tue, 30 Jun 2026 00:00:00 GMT");
 
             var postUrl = $"{Request.Scheme}://{Request.Host}/api/v1/quotes/public/by-number/{Uri.EscapeDataString(quoteNumber)}/status";
-            return Content(GetLegacyConfirmationHtml(
-                quoteNumber,
-                quote.Client?.CompanyName ?? "Cliente",
-                "Rechazada",
-                postUrl), "text/html");
+            return Content(GetLegacyConfirmationHtml(quoteNumber, quote.Client?.CompanyName ?? "Cliente", "Rechazada", postUrl), "text/html");
         }
         catch (Exception ex)
         {
@@ -433,25 +489,21 @@ public class QuotesController : ControllerBase
         {
             var quoteInfo = await _quoteService.GetQuoteByPublicTokenAsync(token);
             if (quoteInfo == null)
-            {
                 return this.ToProblem(StatusCodes.Status404NotFound, "Resource not found", "Cotización no encontrada");
-            }
 
             var result = await _quoteService.RespondToQuoteAsync(token, status, comments);
             if (!result.Succeeded)
-            {
                 return this.ToValidationProblem(result.Errors);
-            }
 
+            // ✅ PascalCase para deserialización correcta en el frontend
             await _quotesHub.Clients.Group("internal-users").SendAsync("QuoteStatusChanged", new
             {
-                quoteId = quoteInfo.Id,
-                quoteNumber = quoteInfo.QuoteNumber,
-                clientName = quoteInfo.ClientName,
-                newStatus = status
+                QuoteId = quoteInfo.Id,
+                QuoteNumber = quoteInfo.QuoteNumber,
+                ClientName = quoteInfo.ClientName,
+                NewStatus = status
             });
 
-            // Notificar a administración
             var isAccepted = status.Equals("Aceptada", StringComparison.OrdinalIgnoreCase);
             var notification = new NotificationDto
             {
@@ -462,9 +514,22 @@ public class QuotesController : ControllerBase
                 IconClass = isAccepted ? "bi bi-check-circle text-success" : "bi bi-x-circle text-danger",
                 IconColor = isAccepted ? "#10B981" : "#EF4444"
             };
+            
+            // Enviar a administración y admins
             await NotificationsHub.SendToAdministracion(_notificationsHub, notification);
+            await NotificationsHub.SendToAdmins(_notificationsHub, notification);
 
-            // Notificar al creador de la cotización
+            // Guardar notificaciones para usuarios relevantes (Admin y Administracion)
+            // Obtenemos los usuarios con esos roles
+            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+            var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+
+            foreach (var user in allAdminUsers)
+            {
+                await _notificationService.SaveNotificationAsync(user.Id, notification);
+            }
+
             if (!string.IsNullOrEmpty(quoteInfo.CreatedByUserId))
             {
                 var creatorNotification = new NotificationDto
@@ -476,6 +541,7 @@ public class QuotesController : ControllerBase
                     IconClass = isAccepted ? "bi bi-check-circle text-success" : "bi bi-x-circle text-danger",
                     IconColor = isAccepted ? "#10B981" : "#EF4444"
                 };
+                await _notificationService.SaveNotificationAsync(quoteInfo.CreatedByUserId, creatorNotification);
                 await NotificationsHub.SendToUser(_notificationsHub, quoteInfo.CreatedByUserId, creatorNotification);
             }
 
@@ -501,7 +567,6 @@ public class QuotesController : ControllerBase
 <style>*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(120deg,#8ec5fc 0%,#e0c3fc 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{background:#fff;border-radius:16px;max-width:620px;width:100%;padding:36px;box-shadow:0 20px 48px rgba(0,0,0,0.18)}}h1{{font-size:28px;color:#111827;margin-bottom:12px}}p{{color:#4b5563;line-height:1.5;margin-bottom:14px}}.meta{{margin:18px 0;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb}}button{{width:100%;padding:12px 16px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:600;font-size:15px;cursor:pointer}}</style></head>
 <body><div class='card'><h1>Confirmar respuesta</h1><p>Hola <strong>{clientName}</strong>, vas a cambiar el estado de la cotización <strong>{quoteNumber}</strong> a <strong>{nextStatus}</strong>.</p><p>Por seguridad, este enlace ya no actualiza el estado automáticamente. Confirma con el botón.</p><div class='meta'>Este enlace legacy está deprecado y será retirado en una próxima versión.</div><form method='post' action='{postUrl}'><input type='hidden' name='status' value='{nextStatus}' /><button type='submit'>Confirmar {nextStatus}</button></form></div></body></html>";
 
-    // 🎨 HTML helpers (sin cambios)
     private string GetAcceptedHtml(string quoteNumber, string clientName) => $@"
 <!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Cotización Aceptada</title>
 <style>*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}}.container{{background:white;border-radius:20px;padding:50px 40px;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center}}.icon{{font-size:80px;margin-bottom:20px}}h1{{color:#10B981;font-size:32px;margin-bottom:15px}}.quote-number{{display:inline-block;background:#D1FAE5;color:#065F46;padding:10px 20px;border-radius:8px;font-weight:600;margin:20px 0;font-size:18px}}p{{color:#6B7280;font-size:16px;line-height:1.6;margin:15px 0}}.footer{{margin-top:30px;padding-top:20px;border-top:2px solid #E5E7EB;color:#9CA3AF;font-size:14px}}.company-name{{color:#6B46C1;font-weight:600}}</style></head>
@@ -521,6 +586,5 @@ public class QuotesController : ControllerBase
 public class ChangeStatusRequest
 {
     public string Status { get; set; } = string.Empty;
-
     public string? Reason { get; set; }
 }

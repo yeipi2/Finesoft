@@ -1,6 +1,8 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using fs_front.Services
 @inject NavigationManager Navigation
+@inject NotificationsRealtimeClient NotificationsClient
+@inject HttpClient Http
 
 <AuthorizeView>
     <Authorized>
@@ -78,14 +80,31 @@
     private List<NotificationItem> Notifications => fs_front.Services.AppNotifications.Notifications.ToList();
     private int UnreadCount => fs_front.Services.AppNotifications.UnreadCount;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        fs_front.Services.AppNotifications.OnNotificationsUpdated += StateHasChanged;
+        fs_front.Services.AppNotifications.OnNotificationsUpdated += HandleNotificationsUpdated;
+
+        // Cargar notificaciones guardadas en la BD
+        await fs_front.Services.AppNotifications.LoadFromApiAsync(Http);
+
+        // Iniciar conexión de notificaciones en tiempo real
+        try
+        {
+            await NotificationsClient.StartAsync();
+        }
+        catch { }
+    }
+
+    private void HandleNotificationsUpdated()
+    {
+        InvokeAsync(() => {
+            StateHasChanged();
+        });
     }
 
     public void Dispose()
     {
-        fs_front.Services.AppNotifications.OnNotificationsUpdated -= StateHasChanged;
+        fs_front.Services.AppNotifications.OnNotificationsUpdated -= HandleNotificationsUpdated;
     }
 
     private void ToggleDropdown()
@@ -98,9 +117,9 @@
         _isDropdownOpen = false;
     }
 
-    private void HandleNotificationClick(NotificationItem notification)
+    private async void HandleNotificationClick(NotificationItem notification)
     {
-        fs_front.Services.AppNotifications.MarkAsRead(notification.Id);
+        await fs_front.Services.AppNotifications.MarkAsRead(notification.Id);
         
         if (!string.IsNullOrEmpty(notification.Link))
         {
@@ -109,19 +128,24 @@
         }
     }
 
-    private void MarkAllAsRead()
+    private async void MarkAllAsRead()
     {
-        fs_front.Services.AppNotifications.MarkAllAsRead();
+        await fs_front.Services.AppNotifications.MarkAllAsRead();
     }
 
-    private void ClearAll()
+    private async void ClearAll()
     {
-        fs_front.Services.AppNotifications.ClearAll();
+        await fs_front.Services.AppNotifications.ClearAll();
     }
 
     private static string GetTimeAgo(DateTime dateTime)
     {
-        var timeSpan = DateTime.UtcNow - dateTime.ToLocalTime();
+        var utcNow = DateTime.UtcNow;
+        if (dateTime.Kind == DateTimeKind.Unspecified)
+        {
+            dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+        }
+        var timeSpan = utcNow - dateTime;
 
         if (timeSpan.TotalMinutes < 1)
             return "Ahora mismo";
@@ -132,7 +156,11 @@
         if (timeSpan.TotalDays < 7)
             return $"Hace {(int)timeSpan.TotalDays} días";
         
-        return dateTime.ToLocalTime().ToString("dd/MM");
+        var localDateTime = dateTime.Kind == DateTimeKind.Unspecified 
+            ? DateTime.SpecifyKind(dateTime, DateTimeKind.Utc).ToLocalTime() 
+            : dateTime.ToLocalTime();
+        
+        return localDateTime.ToString("dd/MM");
     }
 }
 

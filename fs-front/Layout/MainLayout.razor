@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Routing
 
@@ -216,16 +216,31 @@
         var isAuth = state.User.Identity?.IsAuthenticated == true;
 
         if (isAuth && !Realtime.IsConnected)
+        {
             await Realtime.StartAsync();
+        }
 
         if (!isAuth && Realtime.IsConnected)
             await Realtime.StopAsync();
 
-        if (isAuth && !NotificationsRealtime.IsConnected)
-            await NotificationsRealtime.StartAsync();
-
-        if (!isAuth && NotificationsRealtime.IsConnected)
-            await NotificationsRealtime.StopAsync();
+        if (isAuth)
+        {
+            Console.WriteLine("[MainLayout] Usuario autenticado, iniciando SignalR...");
+            try 
+            {
+                await NotificationsRealtime.StartAsync();
+                Console.WriteLine("[MainLayout] NotificationsRealtime.StartAsync() completado");
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine($"[MainLayout] Error en NotificationsRealtime: {ex.Message}"); 
+            }
+        }
+        else
+        {
+            if (NotificationsRealtime.IsConnected)
+                await NotificationsRealtime.StopAsync();
+        }
     }
 
     private async Task OnPermissionsChanged()

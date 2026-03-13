@@ -31,6 +31,7 @@ namespace fs_backend.Identity
         public DbSet<UserProfile> UserProfiles { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<ReportEmailPreference> ReportEmailPreferences { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

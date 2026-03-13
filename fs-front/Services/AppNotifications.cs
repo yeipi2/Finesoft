@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+
 namespace fs_front.Services;
 
 public class NotificationItem
@@ -20,6 +22,13 @@ public static class AppNotifications
 
     private static readonly List<NotificationItem> _notifications = new();
     private static readonly object _lock = new();
+    private static bool _isLoaded = false;
+    private static HttpClient? _http;
+
+    public static void Initialize(HttpClient http)
+    {
+        _http = http;
+    }
 
     public static IReadOnlyList<NotificationItem> Notifications
     {
@@ -43,54 +52,129 @@ public static class AppNotifications
         }
     }
 
-    public static void AddNotification(NotificationItem notification)
+    public static void AddNotification(NotificationItem notification, bool isFromSignalR = false)
     {
+        Console.WriteLine($"[AppNotifications] AddNotification: {notification.Title}, isFromSignalR: {isFromSignalR}");
+        
         lock (_lock)
         {
             _notifications.Insert(0, notification);
-            
-            // Limitar a 50 notificaciones máximo
+
             if (_notifications.Count > 50)
             {
                 _notifications.RemoveAt(_notifications.Count - 1);
             }
         }
-        
+
         OnNotificationReceived?.Invoke(notification);
         OnNotificationsUpdated?.Invoke();
     }
 
-    public static void MarkAsRead(string notificationId)
+    public static async Task LoadFromApiAsync(HttpClient http)
     {
-        lock (_lock)
+        _http = http;
+        if (_isLoaded) return;
+
+        try
         {
-            var notification = _notifications.FirstOrDefault(n => n.Id == notificationId);
-            if (notification != null)
+            var response = await http.GetAsync("api/notifications");
+            if (response.IsSuccessStatusCode)
             {
-                notification.IsRead = true;
-                OnNotificationsUpdated?.Invoke();
+                var notifications = await response.Content.ReadFromJsonAsync<List<NotificationItem>>();
+                if (notifications != null && notifications.Count > 0)
+                {
+                    lock (_lock)
+                    {
+                        foreach (var notif in notifications)
+                        {
+                            if (!_notifications.Any(n => n.Id == notif.Id))
+                            {
+                                _notifications.Add(notif);
+                            }
+                        }
+                    }
+                    _isLoaded = true;
+                    OnNotificationsUpdated?.Invoke();
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AppNotifications] Error loading from API: {ex.Message}");
         }
     }
 
-    public static void MarkAllAsRead()
+    public static async Task MarkAsRead(string notificationId)
     {
+        NotificationItem? notification;
         lock (_lock)
         {
-            foreach (var notification in _notifications)
+            notification = _notifications.FirstOrDefault(n => n.Id == notificationId);
+            if (notification != null)
             {
                 notification.IsRead = true;
             }
         }
         OnNotificationsUpdated?.Invoke();
+
+        if (_http != null && notification != null)
+        {
+            try
+            {
+                await _http.PostAsync($"api/notifications/{notificationId}/read", null);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AppNotifications] Error marking as read: {ex.Message}");
+            }
+        }
     }
 
-    public static void ClearAll()
+    public static async Task MarkAllAsRead()
+    {
+        List<NotificationItem> allNotifications;
+        lock (_lock)
+        {
+            allNotifications = _notifications.ToList();
+            foreach (var notification in allNotifications)
+            {
+                notification.IsRead = true;
+            }
+        }
+        OnNotificationsUpdated?.Invoke();
+
+        if (_http != null)
+        {
+            try
+            {
+                await _http.PostAsync("api/notifications/read-all", null);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AppNotifications] Error marking all as read: {ex.Message}");
+            }
+        }
+    }
+
+    public static async Task ClearAll()
     {
         lock (_lock)
         {
             _notifications.Clear();
+            _isLoaded = false;
         }
         OnNotificationsUpdated?.Invoke();
+
+        if (_http != null)
+        {
+            try
+            {
+                await _http.DeleteAsync("api/notifications");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AppNotifications] Error clearing notifications: {ex.Message}");
+            }
+        }
     }
 }

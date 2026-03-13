@@ -154,6 +154,7 @@ builder.Services.AddHostedService<ReportEmailSchedulerService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISupervisorService, SupervisorService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSignalR();
 
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -179,6 +180,20 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwt["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
         ClockSkew = TimeSpan.FromMinutes(1)
+    };
+    // Para que SignalR pueda autenticarse con JWT
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 

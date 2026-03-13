@@ -1,9 +1,11 @@
-﻿using fs_backend.DTO;
+using fs_backend.DTO;
+using fs_backend.Hubs;
 using fs_backend.Identity;
 using fs_backend.Models;
 using fs_backend.Repositories;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace fs_backend.Services;
@@ -13,15 +15,21 @@ public class TicketService : ITicketService
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly ICacheService _cache;
+    private readonly IHubContext<NotificationsHub> _notificationsHub;
+    private readonly INotificationService _notificationService;
 
     public TicketService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
-        ICacheService cache)
+        ICacheService cache,
+        IHubContext<NotificationsHub> notificationsHub,
+        INotificationService notificationService)
     {
         _context = context;
         _userManager = userManager;
         _cache = cache;
+        _notificationsHub = notificationsHub;
+        _notificationService = notificationService;
     }
 
     // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator
@@ -152,6 +160,46 @@ public class TicketService : ITicketService
 
         await _context.SaveChangesAsync();
 
+        // Notificaciones por ticket creado
+        var adminNotification = new NotificationDto
+        {
+            Type = "ticket_created",
+            Title = "Nuevo Ticket Creado",
+            Message = $"Se ha creado el ticket #{ticket.Id} - {ticket.Title}",
+            Link = $"/tickets/{ticket.Id}",
+            IconClass = "bi bi-ticket-detailed",
+            IconColor = "#6B46C1"
+        };
+
+        // Notificar a Admin y Administracion
+        await NotificationsHub.SendToAdmins(_notificationsHub, adminNotification);
+        await NotificationsHub.SendToAdministracion(_notificationsHub, adminNotification);
+
+        var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+        var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+        var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+
+        foreach (var user in allAdminUsers)
+        {
+            await _notificationService.SaveNotificationAsync(user.Id, adminNotification);
+        }
+
+        // Notificar al empleado asignado si existe
+        if (!string.IsNullOrEmpty(ticket.AssignedToUserId))
+        {
+            var assignedNotification = new NotificationDto
+            {
+                Type = "ticket_assigned",
+                Title = "Nuevo Ticket Asignado",
+                Message = $"Se te ha asignado el ticket #{ticket.Id} - {ticket.Title}",
+                Link = $"/tickets/{ticket.Id}",
+                IconClass = "bi bi-ticket-detailed",
+                IconColor = "#6B46C1"
+            };
+            await _notificationService.SaveNotificationAsync(ticket.AssignedToUserId, assignedNotification);
+            await NotificationsHub.SendToUser(_notificationsHub, ticket.AssignedToUserId, assignedNotification);
+        }
+
         // Cargar Project solo si existe
         if (ticket.ProjectId.HasValue)
         {
@@ -255,6 +303,38 @@ public class TicketService : ITicketService
                 NewValue = newUserName,
                 ChangedAt = DateTime.UtcNow
             });
+
+            // Notificar al empleado cuando se le asigna un ticket
+            if (!string.IsNullOrEmpty(ticketDto.AssignedToUserId))
+            {
+                var assignedNotification = new NotificationDto
+                {
+                    Type = "ticket_assigned",
+                    Title = "Nuevo Ticket Asignado",
+                    Message = $"Se te ha asignado el ticket #{id} - {ticket.Title}",
+                    Link = $"/tickets/{id}",
+                    IconClass = "bi bi-ticket-detailed",
+                    IconColor = "#6B46C1"
+                };
+
+                // Notificar al empleado asignado
+                await _notificationService.SaveNotificationAsync(ticketDto.AssignedToUserId, assignedNotification);
+                await NotificationsHub.SendToUser(_notificationsHub, ticketDto.AssignedToUserId, assignedNotification);
+
+                // Notificar a Admin y Administracion (grupos SignalR)
+                await NotificationsHub.SendToAdmins(_notificationsHub, assignedNotification);
+                await NotificationsHub.SendToAdministracion(_notificationsHub, assignedNotification);
+
+                // Guardar notificaciones para Admin y Administracion
+                var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+                var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+                var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+
+                foreach (var user in allAdminUsers)
+                {
+                    await _notificationService.SaveNotificationAsync(user.Id, assignedNotification);
+                }
+            }
         }
 
         ticket.Title = ticketDto.Title;
@@ -560,7 +640,10 @@ public class TicketService : ITicketService
 
     public async Task<ServiceResult<bool>> UpdateTicketStatusAsync(int ticketId, string newStatus, string userId)
     {
-        var ticket = await _context.Tickets.FindAsync(ticketId);
+        var ticket = await _context.Tickets
+            .Include(t => t.Project)
+                .ThenInclude(p => p.Client)
+            .FirstOrDefaultAsync(t => t.Id == ticketId);
 
         if (ticket == null)
         {
@@ -571,7 +654,6 @@ public class TicketService : ITicketService
         ticket.Status = newStatus;
         ticket.UpdatedAt = DateTime.UtcNow;
 
-        // Si se cierra el ticket, registrar la fecha
         if (newStatus == "Cerrado")
         {
             ticket.ClosedAt = DateTime.UtcNow;
@@ -579,7 +661,6 @@ public class TicketService : ITicketService
 
         _context.Tickets.Update(ticket);
 
-        // Registrar el cambio en el historial
         var history = new TicketHistory
         {
             TicketId = ticketId,
@@ -592,6 +673,48 @@ public class TicketService : ITicketService
 
         _context.Set<TicketHistory>().Add(history);
         await _context.SaveChangesAsync();
+
+        if (newStatus == "Cerrado" && ticket.Project?.Client != null)
+        {
+            // Notificar al cliente/empleado que creó el ticket
+            if (!string.IsNullOrEmpty(ticket.CreatedByUserId))
+            {
+                var clientNotification = new NotificationDto
+                {
+                    Type = "ticket_closed",
+                    Title = "Ticket Cerrado",
+                    Message = $"Tu ticket #{ticket.Id} ha sido cerrado.",
+                    Link = $"/tickets/{ticket.Id}",
+                    IconClass = "bi bi-check-circle text-success",
+                    IconColor = "#10B981"
+                };
+                await _notificationService.SaveNotificationAsync(ticket.CreatedByUserId, clientNotification);
+                await NotificationsHub.SendToUser(_notificationsHub, ticket.CreatedByUserId, clientNotification);
+            }
+
+            // Notificar a Admin y Administracion
+            var adminNotification = new NotificationDto
+            {
+                Type = "ticket_closed",
+                Title = "Ticket Cerrado",
+                Message = $"El ticket #{ticket.Id} de {ticket.Project.Client.CompanyName} ha sido cerrado.",
+                Link = $"/tickets/{ticket.Id}",
+                IconClass = "bi bi-check-circle text-success",
+                IconColor = "#10B981"
+            };
+            await NotificationsHub.SendToAdministracion(_notificationsHub, adminNotification);
+            await NotificationsHub.SendToAdmins(_notificationsHub, adminNotification);
+
+            // Guardar notificaciones para Admin y Administracion
+            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+            var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+
+            foreach (var user in allAdminUsers)
+            {
+                await _notificationService.SaveNotificationAsync(user.Id, adminNotification);
+            }
+        }
 
         return ServiceResult<bool>.Success(true);
     }

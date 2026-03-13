@@ -24,6 +24,25 @@ namespace fs_front.Services
             if (token != null)
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                
+                try
+                {
+                    var handler = new JwtSecurityTokenHandler();
+                    var jwt = handler.ReadJwtToken(token);
+                    
+                    var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role");
+                    if (roleClaim != null)
+                    {
+                        _localStorage.SetItem("userRole", roleClaim.Value);
+                    }
+                    
+                    var userIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == "sub");
+                    if (userIdClaim != null)
+                    {
+                        _localStorage.SetItem("userId", userIdClaim.Value);
+                    }
+                }
+                catch { }
             }
         }
 
@@ -98,6 +117,19 @@ namespace fs_front.Services
                 _localStorage.SetItem("accessToken", accessToken);
                 _localStorage.RemoveItem("refreshToken");
 
+                var handler = new JwtSecurityTokenHandler();
+                var jwt = handler.ReadJwtToken(accessToken);
+                var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == "role");
+                if (roleClaim != null)
+                {
+                    _localStorage.SetItem("userRole", roleClaim.Value);
+                }
+                var userIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == "sub");
+                if (userIdClaim != null)
+                {
+                    _localStorage.SetItem("userId", userIdClaim.Value);
+                }
+
                 _httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -154,6 +186,8 @@ namespace fs_front.Services
         {
             _localStorage.RemoveItem("accessToken");
             _localStorage.RemoveItem("refreshToken");
+            _localStorage.RemoveItem("userRole");
+            _localStorage.RemoveItem("userId");
             _httpClient.DefaultRequestHeaders.Authorization = null;
             NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }
