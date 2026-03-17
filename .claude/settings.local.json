@@ -14,7 +14,8 @@
       "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fs-front --no-restore 2>&1 | head -20)",
       "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fs-front --no-restore 2>&1 | grep -E \"\\(error|Error|ERROR\\)\" | head -10)",
       "Bash(cd \"D:\\\\Imprimir\\\\fineprojectweb\" && dotnet build fn-backend --no-restore 2>&1 | grep -E \"\\(error|Error|ERROR\\)\" | head -10)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(dotnet build:*)"
     ]
   }
 }

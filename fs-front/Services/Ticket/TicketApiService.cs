@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using fs_front.DTO;
 
 namespace fs_front.Services;
@@ -13,7 +13,7 @@ public class TicketApiService : ITicketApiService
     }
 
     public async Task<List<TicketDetailDto>?> GetTicketsAsync(string? status = null, string? priority = null,
-        int? serviceId = null, string? userId = null)
+        int? serviceId = null, string? userId = null, int page = 1, int pageSize = 20)
     {
         try
         {
@@ -22,6 +22,8 @@ public class TicketApiService : ITicketApiService
             if (!string.IsNullOrEmpty(priority)) queryParams.Add($"priority={priority}");
             if (serviceId.HasValue) queryParams.Add($"serviceId={serviceId}");
             if (!string.IsNullOrEmpty(userId)) queryParams.Add($"userId={userId}");
+            queryParams.Add($"page={page}");
+            queryParams.Add($"pageSize={pageSize}");
 
             var query = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
             return await _httpClient.GetListFromPagedEndpointAsync<TicketDetailDto>($"api/tickets{query}");
@@ -29,6 +31,50 @@ public class TicketApiService : ITicketApiService
         catch (Exception e)
         {
             Console.WriteLine($"Error al obtener tickets: {e.Message}");
+            return null;
+        }
+    }
+
+    public async Task<PaginatedResponseDto<TicketDetailDto>?> GetTicketsPaginatedAsync(string? status = null, string? priority = null,
+        int? serviceId = null, string? userId = null, int page = 1, int pageSize = 20, string? search = null, string? sortField = null, bool sortDescending = true)
+    {
+        try
+        {
+            var queryParams = new List<string>();
+
+            // Agregar page y pageSize primero
+            queryParams.Add($"page={page}");
+            queryParams.Add($"pageSize={pageSize}");
+
+            // Agregar filtros
+            if (!string.IsNullOrEmpty(status))
+                queryParams.Add($"status={Uri.EscapeDataString(status)}");
+            if (!string.IsNullOrEmpty(priority))
+                queryParams.Add($"priority={Uri.EscapeDataString(priority)}");
+            if (serviceId.HasValue)
+                queryParams.Add($"serviceId={serviceId}");
+            if (!string.IsNullOrEmpty(userId))
+                queryParams.Add($"userId={Uri.EscapeDataString(userId)}");
+            if (!string.IsNullOrEmpty(search))
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+
+            // Agregar ordenamiento
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                var sortPrefix = sortDescending ? "-" : "";
+                queryParams.Add($"sort={sortPrefix}{sortField}");
+            }
+
+            var query = "?" + string.Join("&", queryParams);
+            var url = $"api/tickets{query}";
+
+            Console.WriteLine($"[DEBUG] Request URL: {url}");
+
+            return await _httpClient.GetFromJsonAsync<PaginatedResponseDto<TicketDetailDto>>(url);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener tickets paginados: {e.Message}");
             return null;
         }
     }

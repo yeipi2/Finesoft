@@ -33,4 +33,17 @@ public interface ITicketService
 
     // 🆕 NUEVO MÉTODO para actualizar solo el estado
     Task<ServiceResult<bool>> UpdateTicketStatusAsync(int ticketId, string newStatus, string userId);
+
+    // 🆕 NUEVO MÉTODO con paginación a nivel de base de datos
+    Task<(List<TicketDetailDto> Items, int Total)> GetTicketsPaginatedAsync(
+        string? status = null,
+        string? priority = null,
+        int? serviceId = null,
+        string? userId = null,
+        bool byCreator = false,
+        string? search = null,
+        string? sortField = null,
+        bool sortDescending = true,
+        int page = 1,
+        int pageSize = 20);
 }

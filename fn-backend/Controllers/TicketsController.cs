@@ -76,6 +76,9 @@ public class TicketsController : ControllerBase
     {
         var currentUserId = GetCurrentUserId();
 
+        _logger.LogInformation("📥 GET /tickets - Status: {Status}, Priority: {Priority}, Page: {Page}, PageSize: {PageSize}, Search: {Search}",
+            status, priority, query.Page, query.PageSize, query.Search);
+
         // 🆕 Solo Cliente filtra por creador, los demás ven TODO
         if (IsInRole("Cliente"))
         {
@@ -89,16 +92,24 @@ public class TicketsController : ControllerBase
             byCreator = false;
         }
 
-        var tickets = await _ticketService.GetTicketsAsync(status, priority, serviceId, userId, byCreator);
+        // 🆕 Usar paginación a nivel de base de datos
+        var (tickets, total) = await _ticketService.GetTicketsPaginatedAsync(
+            status: status,
+            priority: priority,
+            serviceId: serviceId,
+            userId: userId,
+            byCreator: byCreator,
+            search: query.Search,
+            sortField: query.Sort,
+            sortDescending: string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-"),
+            page: query.NormalizedPage,
+            pageSize: query.NormalizedPageSize
+        );
 
-        _logger.LogInformation("✅ Usuario {UserId} ({Role}) obtuvo {Count} tickets",
-            currentUserId, User.IsInRole("Cliente") ? "Cliente" : "Staff", tickets.Count());
+        _logger.LogInformation("✅ Usuario {UserId} ({Role}) obtuvo {Count} tickets (total: {Total})",
+            currentUserId, User.IsInRole("Cliente") ? "Cliente" : "Staff", tickets.Count, total);
 
-        var pagedResult = ApiResponseHelper.Paginate(tickets, query, (t, search) =>
-            t.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || t.Description.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || t.ProjectName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || t.ClientName.Contains(search, StringComparison.OrdinalIgnoreCase));
+        var pagedResult = PaginatedResponseDto<TicketDetailDto>.Create(tickets, total, query.NormalizedPage, query.NormalizedPageSize);
 
         return Ok(pagedResult);
     }

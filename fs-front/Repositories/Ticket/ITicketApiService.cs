@@ -9,7 +9,8 @@ namespace fs_front.Services;
 
 public interface ITicketApiService
 {
-    Task<List<TicketDetailDto>?> GetTicketsAsync(string? status = null, string? priority = null, int? serviceId = null, string? userId = null);
+    Task<List<TicketDetailDto>?> GetTicketsAsync(string? status = null, string? priority = null, int? serviceId = null, string? userId = null, int page = 1, int pageSize = 20);
+    Task<PaginatedResponseDto<TicketDetailDto>?> GetTicketsPaginatedAsync(string? status = null, string? priority = null, int? serviceId = null, string? userId = null, int page = 1, int pageSize = 20, string? search = null, string? sortField = null, bool sortDescending = true);
     Task<TicketDetailDto?> GetTicketByIdAsync(int id);
     Task<TicketStatsDto?> GetTicketStatsAsync(string? userId = null);
     Task<(bool Success, TicketDetailDto? CreatedTicket, string? ErrorMessage)> CreateTicketAsync(TicketDto ticket);

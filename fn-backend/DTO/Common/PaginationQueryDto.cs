@@ -2,7 +2,7 @@ namespace fs_backend.DTO.Common;
 
 public class PaginationQueryDto
 {
-    private const int MaxPageSize = 100;
+    private const int MaxPageSize = 3000;
 
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;

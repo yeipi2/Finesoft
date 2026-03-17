@@ -44,12 +44,10 @@ public class TicketService : ITicketService
         string? userId = null,
         bool byCreator = false)
     {
+        // Optimizado: incluir Project y Client en una sola consulta
         var query = _context.Tickets
             .Include(t => t.Project)
-                .ThenInclude(p => p.Client)
-            .Include(t => t.Comments)
-            .Include(t => t.Attachments)
-            .Include(t => t.Activities)
+                .ThenInclude(p => p != null ? p.Client : null)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
@@ -67,23 +65,118 @@ public class TicketService : ITicketService
         {
             if (byCreator)
             {
-                // Filtrar por creador (Cliente)
                 query = query.Where(t => t.CreatedByUserId == userId);
             }
             else
             {
-                // Filtrar por asignado (Empleado)
                 query = query.Where(t => t.AssignedToUserId == userId);
             }
         }
 
         var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
 
-        var ticketDtos = new List<TicketDetailDto>();
+        // Obtener todos los userIds necesarios de una vez
+        var allUserIds = tickets
+            .Where(t => !string.IsNullOrEmpty(t.AssignedToUserId) || !string.IsNullOrEmpty(t.CreatedByUserId))
+            .SelectMany(t => new[] { t.AssignedToUserId, t.CreatedByUserId }.Where(id => !string.IsNullOrEmpty(id)))
+            .Distinct()
+            .ToList();
 
+        var users = new Dictionary<string, IdentityUser>();
+        if (allUserIds.Any())
+        {
+            var userList = await _context.Users
+                .Where(u => allUserIds.Contains(u.Id))
+                .ToListAsync();
+            users = userList.ToDictionary(u => u.Id);
+        }
+
+        // Obtener todos los empleados de una vez
+        var allEmployeeUserIds = tickets
+            .Where(t => !string.IsNullOrEmpty(t.AssignedToUserId))
+            .Select(t => t.AssignedToUserId!)
+            .Distinct()
+            .ToList();
+        
+        var employees = new Dictionary<string, string>();
+        if (allEmployeeUserIds.Any())
+        {
+            var employeeList = await _context.Employees
+                .Where(e => allEmployeeUserIds.Contains(e.UserId))
+                .Select(e => new { e.UserId, e.FullName })
+                .ToListAsync();
+            employees = employeeList.ToDictionary(e => e.UserId, e => e.FullName);
+        }
+
+        // Obtener todos los clientIds de una vez
+        var allClientIds = tickets
+            .Where(t => t.Project?.Client != null)
+            .Select(t => t.Project!.Client!.Id)
+            .Distinct()
+            .ToList();
+        
+        // Agregar ClientId directo si existe
+        var directClientIds = tickets.Where(t => t.ClientId.HasValue).Select(t => t.ClientId!.Value);
+        allClientIds.AddRange(directClientIds);
+        allClientIds = allClientIds.Distinct().ToList();
+
+        var clients = new Dictionary<int, Client>();
+        if (allClientIds.Any())
+        {
+            var clientList = await _context.Clients
+                .Where(c => allClientIds.Contains(c.Id))
+                .ToListAsync();
+            clients = clientList.ToDictionary(c => c.Id);
+        }
+
+        var ticketDtos = new List<TicketDetailDto>();
         foreach (var ticket in tickets)
         {
-            ticketDtos.Add(await MapToDetailDto(ticket));
+            var assignedUser = !string.IsNullOrEmpty(ticket.AssignedToUserId) && users.ContainsKey(ticket.AssignedToUserId) 
+                ? users[ticket.AssignedToUserId] : null;
+            var createdByUser = !string.IsNullOrEmpty(ticket.CreatedByUserId) && users.ContainsKey(ticket.CreatedByUserId) 
+                ? users[ticket.CreatedByUserId] : null;
+
+            var assignedFullName = !string.IsNullOrEmpty(ticket.AssignedToUserId) && employees.ContainsKey(ticket.AssignedToUserId)
+                ? employees[ticket.AssignedToUserId]
+                : assignedUser?.UserName;
+
+            // Obtener client info
+            var clientId = ticket.Project?.Client?.Id ?? ticket.ClientId;
+            var clientName = ticket.Project?.Client?.CompanyName;
+            
+            if (string.IsNullOrEmpty(clientName) && clientId.HasValue && clients.ContainsKey(clientId.Value))
+            {
+                clientName = clients[clientId.Value].CompanyName;
+            }
+
+            ticketDtos.Add(new TicketDetailDto
+            {
+                Id = ticket.Id,
+                Title = ticket.Title,
+                Description = ticket.Description,
+                ServiceId = ticket.ServiceId ?? 0,
+                ServiceName = string.Empty,
+                ProjectId = ticket.ProjectId ?? 0,
+                ProjectName = ticket.Project?.Name ?? "Sin asignar",
+                ClientName = clientName ?? "Sin asignar",
+                ClientId = clientId,
+                Status = ticket.Status,
+                Priority = ticket.Priority,
+                AssignedToUserId = ticket.AssignedToUserId,
+                AssignedToUserName = assignedFullName,
+                CreatedByUserId = ticket.CreatedByUserId,
+                CreatedByUserName = createdByUser?.UserName ?? string.Empty,
+                CreatedAt = ticket.CreatedAt,
+                UpdatedAt = ticket.UpdatedAt,
+                ClosedAt = ticket.ClosedAt,
+                EstimatedHours = ticket.EstimatedHours,
+                ActualHours = ticket.ActualHours,
+                HourlyRate = 0,
+                Comments = new List<TicketCommentDto>(),
+                Activities = new List<TicketActivityDto>(),
+                Attachments = new List<TicketAttachmentDto>()
+            });
         }
 
         return ticketDtos;
@@ -427,7 +520,189 @@ public class TicketService : ITicketService
         });
     }
 
-    // 🆕 MÉTODO ACTUALIZADO con parámetro byCreator y CACHE
+    // 🆕 NUEVO MÉTODO con paginación a nivel de base de datos
+    public async Task<(List<TicketDetailDto> Items, int Total)> GetTicketsPaginatedAsync(
+        string? status = null,
+        string? priority = null,
+        int? serviceId = null,
+        string? userId = null,
+        bool byCreator = false,
+        string? search = null,
+        string? sortField = null,
+        bool sortDescending = true,
+        int page = 1,
+        int pageSize = 20)
+    {
+        // Construir query base con incluye necesarios
+        var query = _context.Tickets
+            .Include(t => t.Project)
+                .ThenInclude(p => p != null ? p.Client : null)
+            .AsQueryable();
+
+        // Aplicar filtros
+        if (!string.IsNullOrEmpty(status))
+        {
+            query = query.Where(t => t.Status == status);
+        }
+
+        if (!string.IsNullOrEmpty(priority))
+        {
+            query = query.Where(t => t.Priority == priority);
+        }
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            if (byCreator)
+            {
+                query = query.Where(t => t.CreatedByUserId == userId);
+            }
+            else
+            {
+                query = query.Where(t => t.AssignedToUserId == userId);
+            }
+        }
+
+        // Aplicar búsqueda en base de datos (busca en múltiples campos)
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(t =>
+                t.Title.ToLower().Contains(searchLower) ||
+                (t.Description != null && t.Description.ToLower().Contains(searchLower)) ||
+                (t.Project != null && t.Project.Name.ToLower().Contains(searchLower)) ||
+                (t.Project != null && t.Project.Client != null && t.Project.Client.CompanyName.ToLower().Contains(searchLower)));
+        }
+
+        // Obtener total ANTES de paginar
+        var total = await query.CountAsync();
+
+        // Aplicar ordenamiento
+        query = sortField?.ToLower() switch
+        {
+            "id" => sortDescending ? query.OrderByDescending(t => t.Id) : query.OrderBy(t => t.Id),
+            "title" => sortDescending ? query.OrderByDescending(t => t.Title) : query.OrderBy(t => t.Title),
+            "priority" => sortDescending
+                ? query.OrderByDescending(t => t.Priority == "Urgente" ? 4 : t.Priority == "Alta" ? 3 : t.Priority == "Media" ? 2 : 1)
+                : query.OrderBy(t => t.Priority == "Urgente" ? 4 : t.Priority == "Alta" ? 3 : t.Priority == "Media" ? 2 : 1),
+            "status" => sortDescending ? query.OrderByDescending(t => t.Status) : query.OrderBy(t => t.Status),
+            "createdat" => sortDescending ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt),
+            _ => query.OrderByDescending(t => t.CreatedAt) // default
+        };
+
+        // Aplicar paginación
+        var skip = (page - 1) * pageSize;
+        var tickets = await query
+            .Skip(skip)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // Obtener todos los userIds necesarios de una vez
+        var allUserIds = tickets
+            .Where(t => !string.IsNullOrEmpty(t.AssignedToUserId) || !string.IsNullOrEmpty(t.CreatedByUserId))
+            .SelectMany(t => new[] { t.AssignedToUserId, t.CreatedByUserId }.Where(id => !string.IsNullOrEmpty(id)))
+            .Distinct()
+            .ToList();
+
+        var users = new Dictionary<string, IdentityUser>();
+        if (allUserIds.Any())
+        {
+            var userList = await _context.Users
+                .Where(u => allUserIds.Contains(u.Id))
+                .ToListAsync();
+            users = userList.ToDictionary(u => u.Id);
+        }
+
+        // Obtener todos los empleados de una vez
+        var allEmployeeUserIds = tickets
+            .Where(t => !string.IsNullOrEmpty(t.AssignedToUserId))
+            .Select(t => t.AssignedToUserId!)
+            .Distinct()
+            .ToList();
+
+        var employees = new Dictionary<string, string>();
+        if (allEmployeeUserIds.Any())
+        {
+            var employeeList = await _context.Employees
+                .Where(e => allEmployeeUserIds.Contains(e.UserId))
+                .Select(e => new { e.UserId, e.FullName })
+                .ToListAsync();
+            employees = employeeList.ToDictionary(e => e.UserId, e => e.FullName);
+        }
+
+        // Obtener todos los clientIds de una vez
+        var allClientIds = tickets
+            .Where(t => t.Project?.Client != null)
+            .Select(t => t.Project!.Client!.Id)
+            .Distinct()
+            .ToList();
+
+        var directClientIds = tickets.Where(t => t.ClientId.HasValue).Select(t => t.ClientId!.Value);
+        allClientIds.AddRange(directClientIds);
+        allClientIds = allClientIds.Distinct().ToList();
+
+        var clients = new Dictionary<int, Client>();
+        if (allClientIds.Any())
+        {
+            var clientList = await _context.Clients
+                .Where(c => allClientIds.Contains(c.Id))
+                .ToListAsync();
+            clients = clientList.ToDictionary(c => c.Id);
+        }
+
+        // Mapear a DTOs
+        var ticketDtos = new List<TicketDetailDto>();
+        foreach (var ticket in tickets)
+        {
+            var assignedUser = !string.IsNullOrEmpty(ticket.AssignedToUserId) && users.ContainsKey(ticket.AssignedToUserId)
+                ? users[ticket.AssignedToUserId] : null;
+            var createdByUser = !string.IsNullOrEmpty(ticket.CreatedByUserId) && users.ContainsKey(ticket.CreatedByUserId)
+                ? users[ticket.CreatedByUserId] : null;
+
+            var assignedFullName = !string.IsNullOrEmpty(ticket.AssignedToUserId) && employees.ContainsKey(ticket.AssignedToUserId)
+                ? employees[ticket.AssignedToUserId]
+                : assignedUser?.UserName;
+
+            var clientId = ticket.Project?.Client?.Id ?? ticket.ClientId;
+            var clientName = ticket.Project?.Client?.CompanyName;
+
+            if (string.IsNullOrEmpty(clientName) && clientId.HasValue && clients.ContainsKey(clientId.Value))
+            {
+                clientName = clients[clientId.Value].CompanyName;
+            }
+
+            ticketDtos.Add(new TicketDetailDto
+            {
+                Id = ticket.Id,
+                Title = ticket.Title,
+                Description = ticket.Description,
+                ServiceId = ticket.ServiceId ?? 0,
+                ServiceName = string.Empty,
+                ProjectId = ticket.ProjectId ?? 0,
+                ProjectName = ticket.Project?.Name ?? "Sin asignar",
+                ClientName = clientName ?? "Sin asignar",
+                ClientId = clientId,
+                Status = ticket.Status,
+                Priority = ticket.Priority,
+                AssignedToUserId = ticket.AssignedToUserId,
+                AssignedToUserName = assignedFullName,
+                CreatedByUserId = ticket.CreatedByUserId,
+                CreatedByUserName = createdByUser?.UserName ?? string.Empty,
+                CreatedAt = ticket.CreatedAt,
+                UpdatedAt = ticket.UpdatedAt,
+                ClosedAt = ticket.ClosedAt,
+                EstimatedHours = ticket.EstimatedHours,
+                ActualHours = ticket.ActualHours,
+                HourlyRate = 0,
+                Comments = new List<TicketCommentDto>(),
+                Activities = new List<TicketActivityDto>(),
+                Attachments = new List<TicketAttachmentDto>()
+            });
+        }
+
+        return (ticketDtos, total);
+    }
+
+    // 🆕 MÉTODO OPTIMIZADO con contador en base de datos
     public async Task<TicketStatsDto> GetTicketStatsAsync(string? userId = null, bool byCreator = false)
     {
         // Crear clave de cache basada en parámetros
@@ -437,33 +712,48 @@ public class TicketService : ITicketService
             cacheKey,
             async () =>
             {
-                var query = _context.Tickets.AsQueryable();
+                var baseQuery = _context.Tickets.AsQueryable();
 
                 if (!string.IsNullOrEmpty(userId))
                 {
                     if (byCreator)
                     {
                         // Filtrar por creador (Cliente)
-                        query = query.Where(t => t.CreatedByUserId == userId);
+                        baseQuery = baseQuery.Where(t => t.CreatedByUserId == userId);
                     }
                     else
                     {
                         // Filtrar por asignado (Empleado)
-                        query = query.Where(t => t.AssignedToUserId == userId);
+                        baseQuery = baseQuery.Where(t => t.AssignedToUserId == userId);
                     }
                 }
 
-                var tickets = await query.ToListAsync();
+                // Contar directamente en la base de datos (mucho más eficiente)
+                var open = await baseQuery.CountAsync(t => t.Status == "Abierto");
+                var inProgress = await baseQuery.CountAsync(t => t.Status == "En Progreso");
+                var inReview = await baseQuery.CountAsync(t => t.Status == "En Revisión");
+                var closed = await baseQuery.CountAsync(t => t.Status == "Cerrado");
+                var total = await baseQuery.CountAsync();
+
+                // Obtener horas directamente de la base de datos
+                var stats = await baseQuery
+                    .GroupBy(x => 1)
+                    .Select(g => new
+                    {
+                        TotalEstimated = g.Sum(t => t.EstimatedHours),
+                        TotalActual = g.Sum(t => t.ActualHours)
+                    })
+                    .FirstOrDefaultAsync();
 
                 return new TicketStatsDto
                 {
-                    Open = tickets.Count(t => t.Status == "Abierto"),
-                    InProgress = tickets.Count(t => t.Status == "En Progreso"),
-                    InReview = tickets.Count(t => t.Status == "En Revisión"),
-                    Closed = tickets.Count(t => t.Status == "Cerrado"),
-                    Total = tickets.Count,
-                    TotalEstimatedHours = tickets.Sum(t => t.EstimatedHours),
-                    TotalActualHours = tickets.Sum(t => t.ActualHours)
+                    Open = open,
+                    InProgress = inProgress,
+                    InReview = inReview,
+                    Closed = closed,
+                    Total = total,
+                    TotalEstimatedHours = stats?.TotalEstimated ?? 0,
+                    TotalActualHours = stats?.TotalActual ?? 0
                 };
             },
             TimeSpan.FromMinutes(5) // Cache corto de 5 minutos para stats
