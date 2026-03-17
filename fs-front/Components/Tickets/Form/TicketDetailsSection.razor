@@ -9,7 +9,7 @@
 
     <div class="row g-3">
 
-        @* ── Proyecto (autocomplete) ── *@
+        @* ── Proyecto (autocomplete o dropdown para clientes) ── *@
         <div class="col-12">
             <label for="ProjectSearch" class="form-label small fw-bold">
                 Proyecto <span class="text-danger">*</span>
@@ -24,10 +24,45 @@
             }
             else if (Projects == null || !Projects.Any())
             {
-                <div class="alert alert-warning mb-0 py-2">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    No hay proyectos disponibles.
-                </div>
+                @if (IsClientMode)
+                {
+                    @* Cliente sin proyectos - puede crear ticket sin proyecto *@
+                    <div class="alert alert-info mb-0 py-2">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No tienes proyectos asignados. Puedes crear el ticket sin proyecto y un administrador lo asignará después.
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0 py-2">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        No hay proyectos disponibles. Contacta a administración.
+                    </div>
+                }
+            }
+            else if (IsClientMode)
+            {
+                @* Modo cliente: dropdown simple con opción de "Sin proyecto" *@
+                <select class="form-select form-select-sm" @onchange="OnClientProjectSelected">
+                    <option value="">-- Sin proyecto (se asignará después) --</option>
+                    @if (Projects != null)
+                    {
+                        @foreach (var project in Projects)
+                        {
+                            <option value="@project.Id" selected="@(Model.ProjectId == project.Id)">
+                                @project.Name
+                                @if (project.Client?.ServiceMode == "Mensual")
+                                {
+                                    @(" (Póliza)")
+                                }
+                            </option>
+                        }
+                    }
+                </select>
+                <small class="text-muted mt-1 d-block">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Si no seleccionas un proyecto, un administrador lo asignará después.
+                </small>
             }
             else
             {
@@ -241,6 +276,7 @@
     [Parameter] public string ProjectSearchText { get; set; } = string.Empty;
     [Parameter] public bool IsLoadingUsers { get; set; }
     [Parameter] public List<EmployeeDto>? Employees { get; set; }
+    [Parameter] public bool IsClientMode { get; set; }
     [Parameter] public EventCallback<ChangeEventArgs> OnProjectSearchInput { get; set; }
     [Parameter] public EventCallback<ProjectDetailDto> OnProjectSelected { get; set; }
 
@@ -250,6 +286,28 @@
     {
         _showSuggestions = false;
         await OnProjectSelected.InvokeAsync(project);
+    }
+
+    private async Task OnClientProjectSelected(ChangeEventArgs e)
+    {
+        if (e.Value == null || string.IsNullOrEmpty(e.Value.ToString()))
+        {
+            // Limpiar selección
+            SelectedProject = null;
+            Model.ProjectId = null;
+            return;
+        }
+
+        if (int.TryParse(e.Value.ToString(), out int projectId))
+        {
+            var project = Projects?.FirstOrDefault(p => p.Id == projectId);
+            if (project != null)
+            {
+                SelectedProject = project;
+                Model.ProjectId = projectId;
+                await OnProjectSelected.InvokeAsync(project);
+            }
+        }
     }
 
     private void HandleKeyDown(KeyboardEventArgs e)

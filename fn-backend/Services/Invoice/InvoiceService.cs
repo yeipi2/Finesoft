@@ -6,6 +6,7 @@ using fs_backend.Repositories;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using fn_backend.Models;
 
 
 namespace fs_backend.Services;
@@ -21,6 +22,7 @@ public class InvoiceService : IInvoiceService
     private readonly IInvoiceMapper _invoiceMapper;
     private readonly IMonthlyBillingService _monthlyBillingService;
     private readonly IInvoiceNumberService _invoiceNumberService;
+    private readonly INotificationHelper _notificationHelper;
 
     public InvoiceService(ApplicationDbContext context, UserManager<IdentityUser> userManager,
         IPaymentPolicy paymentPolicy,
@@ -29,7 +31,8 @@ public class InvoiceService : IInvoiceService
         IInvoicePdfGenerator invoicePdfGenerator,
         IInvoiceMapper invoiceMapper,
         IMonthlyBillingService monthlyBillingService,
-        IInvoiceNumberService invoiceNumberService)
+        IInvoiceNumberService invoiceNumberService,
+        INotificationHelper notificationHelper)
     {
         _context = context;
         _userManager = userManager;
@@ -40,6 +43,7 @@ public class InvoiceService : IInvoiceService
         _invoiceMapper = invoiceMapper;
         _monthlyBillingService = monthlyBillingService;
         _invoiceNumberService = invoiceNumberService;
+        _notificationHelper = notificationHelper;
     }
 
     public async Task<IEnumerable<InvoiceDetailDto>> GetInvoicesAsync(string? status = null,
@@ -165,6 +169,16 @@ public class InvoiceService : IInvoiceService
 
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
+
+        // Notificaciones de factura creada
+        var invoiceNotification = await _notificationHelper.CreateNotificationWithCreatorAsync(
+            NotificationType.InvoiceCreated,
+            "Nueva Factura Creada",
+            $"Se ha creado la factura #{invoice.InvoiceNumber}",
+            createdByUserId,
+            $"/invoices/{invoice.Id}");
+        await _notificationHelper.SendToAdminsAsync(invoiceNotification);
+        await _notificationHelper.SendToAdministracionAsync(invoiceNotification);
 
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
@@ -428,6 +442,28 @@ public class InvoiceService : IInvoiceService
         invoice.Status = newStatus;
         await _context.SaveChangesAsync();
 
+        // Notificaciones según el nuevo estado
+        if (newStatus == InvoiceConstants.Status.Cancelled)
+        {
+            var cancelNotification = _notificationHelper.CreateNotification(
+                NotificationType.InvoiceCancelled,
+                "Factura Cancelada",
+                $"La factura #{invoice.InvoiceNumber} ha sido cancelada",
+                $"/invoices/{invoice.Id}");
+            await _notificationHelper.SendToAdminsAsync(cancelNotification);
+            await _notificationHelper.SendToAdministracionAsync(cancelNotification);
+        }
+        else if (newStatus == InvoiceConstants.Status.Paid)
+        {
+            var paidNotification = _notificationHelper.CreateNotification(
+                NotificationType.InvoicePaid,
+                "Factura Pagada",
+                $"La factura #{invoice.InvoiceNumber} ha sido marcada como pagada",
+                $"/invoices/{invoice.Id}");
+            await _notificationHelper.SendToAdminsAsync(paidNotification);
+            await _notificationHelper.SendToAdministracionAsync(paidNotification);
+        }
+
         return ServiceResult<bool>.Success(true);
     }
 
@@ -479,6 +515,18 @@ public class InvoiceService : IInvoiceService
         _invoiceStatusService.ApplyAfterPayment(invoice, newBalance);
 
         await _context.SaveChangesAsync();
+
+        // Notificar si la factura quedó pagada
+        if (invoice.Status == InvoiceConstants.Status.Paid)
+        {
+            var paidNotification = _notificationHelper.CreateNotification(
+                NotificationType.InvoicePaid,
+                "Factura Pagada",
+                $"Se registró un pago de {payment.Amount:C} para la factura #{invoice.InvoiceNumber}",
+                $"/invoices/{invoiceId}");
+            await _notificationHelper.SendToAdminsAsync(paidNotification);
+            await _notificationHelper.SendToAdministracionAsync(paidNotification);
+        }
 
         var user = await _userManager.FindByIdAsync(userId);
 

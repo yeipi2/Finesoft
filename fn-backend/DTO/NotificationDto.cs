@@ -1,3 +1,5 @@
+using fn_backend.Models;
+
 namespace fs_backend.DTO;
 
 public class NotificationDto
@@ -11,6 +13,9 @@ public class NotificationDto
     public bool IsRead { get; set; } = false;
     public string IconClass { get; set; } = "bi bi-bell";
     public string IconColor { get; set; } = "#6B46C1";
+    // Nuevos campos
+    public string? TargetRole { get; set; }
+    public string Severity { get; set; } = "info";
 }
 
 public class SendNotificationDto
@@ -23,4 +28,5 @@ public class SendNotificationDto
     public string? TargetRole { get; set; } // Admin, Empleado, Administracion, etc.
     public string IconClass { get; set; } = "bi bi-bell";
     public string IconColor { get; set; } = "#6B46C1";
+    public string Severity { get; set; } = "info";
 }

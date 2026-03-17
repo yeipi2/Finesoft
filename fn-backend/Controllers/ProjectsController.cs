@@ -46,6 +46,44 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
+    /// GET: api/projects/by-client/{clientId}
+    /// Obtiene los proyectos de un cliente específico (para tickets de clientes)
+    /// </summary>
+    [HttpGet("by-client/{clientId}")]
+    [Authorize]
+    public async Task<IActionResult> GetProjectsByClient(int clientId)
+    {
+        _logger.LogInformation("✅ Obteniendo proyectos del cliente {ClientId}", clientId);
+        var projects = await _projectService.GetProjectsByClientIdAsync(clientId);
+        var projectList = projects?.ToList() ?? new List<ProjectDetailDto>();
+        _logger.LogInformation("✅ Proyectos encontrados para cliente {ClientId}: {Count}", clientId, projectList.Count);
+        foreach (var p in projectList)
+        {
+            _logger.LogInformation("   - Proyecto: {Id} - {Name}", p.Id, p.Name);
+        }
+        return Ok(projectList);
+    }
+
+    /// <summary>
+    /// GET: api/projects/by-user-email/{email}
+    /// Obtiene los proyectos del cliente por su email
+    /// </summary>
+    [HttpGet("by-user-email/{email}")]
+    [Authorize]
+    public async Task<IActionResult> GetProjectsByUserEmail(string email)
+    {
+        _logger.LogInformation("✅ Obteniendo proyectos para email {Email}", email);
+        var projects = await _projectService.GetProjectsByUserEmailAsync(email);
+        var projectList = projects?.ToList() ?? new List<ProjectDetailDto>();
+        _logger.LogInformation("✅ Proyectos encontrados para email {Email}: {Count}", email, projectList.Count);
+        foreach (var p in projectList)
+        {
+            _logger.LogInformation("   - Proyecto: {Id} - {Name}", p.Id, p.Name);
+        }
+        return Ok(projectList);
+    }
+
+    /// <summary>
     /// GET: api/projects/{id}
     /// Requiere permiso: projects.view_detail
     /// </summary>

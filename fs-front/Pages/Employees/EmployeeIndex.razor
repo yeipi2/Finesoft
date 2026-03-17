@@ -1,4 +1,4 @@
-﻿@page "/empleados"
+@page "/empleados"
 @using fs_front.DTO
 @using fs_front.Services
 @using fs_front.Repositories
@@ -8,7 +8,7 @@
 @inject ITicketApiService TicketApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
-@inject PermissionService PermissionService
+@inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager
 
 @attribute [Authorize]

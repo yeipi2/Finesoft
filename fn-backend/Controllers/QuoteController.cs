@@ -265,17 +265,15 @@ public class QuotesController : ControllerBase
                 IconClass = "bi bi-envelope text-primary",
                 IconColor = "#3B82F6"
             };
-            await NotificationsHub.SendToAdministracion(_notificationsHub, adminNotification);
-            await NotificationsHub.SendToAdmins(_notificationsHub, adminNotification);
-
-            // Guardar notificaciones para Admin y Administracion
+            // Notificar a Admin y Administracion (evitar duplicados)
             var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
             var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
-            var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+            var allAdminUsers = adminUsers.Concat(adminUsers2).DistinctBy(u => u.Id).ToList();
 
             foreach (var user in allAdminUsers)
             {
                 await _notificationService.SaveNotificationAsync(user.Id, adminNotification);
+                await NotificationsHub.SendToUser(_notificationsHub, user.Id, adminNotification);
             }
 
             // Guardar notificación para el usuario actual (para persistencia)
@@ -505,6 +503,13 @@ public class QuotesController : ControllerBase
             });
 
             var isAccepted = status.Equals("Aceptada", StringComparison.OrdinalIgnoreCase);
+            
+            // Obtener usuarios Admin y Administracion para evitar duplicados
+            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
+            var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct().ToList();
+            var adminUserIds = allAdminUsers.Select(u => u.Id).ToHashSet();
+
             var notification = new NotificationDto
             {
                 Type = isAccepted ? "quote_accepted" : "quote_rejected",
@@ -515,22 +520,15 @@ public class QuotesController : ControllerBase
                 IconColor = isAccepted ? "#10B981" : "#EF4444"
             };
             
-            // Enviar a administración y admins
-            await NotificationsHub.SendToAdministracion(_notificationsHub, notification);
-            await NotificationsHub.SendToAdmins(_notificationsHub, notification);
-
-            // Guardar notificaciones para usuarios relevantes (Admin y Administracion)
-            // Obtenemos los usuarios con esos roles
-            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
-            var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
-            var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
-
+            // Guardar y enviar a Admin y Administracion (evitar duplicados)
             foreach (var user in allAdminUsers)
             {
                 await _notificationService.SaveNotificationAsync(user.Id, notification);
+                await NotificationsHub.SendToUser(_notificationsHub, user.Id, notification);
             }
 
-            if (!string.IsNullOrEmpty(quoteInfo.CreatedByUserId))
+            // Solo enviar notificación separada al creador si NO es Admin ni Administración
+            if (!string.IsNullOrEmpty(quoteInfo.CreatedByUserId) && !adminUserIds.Contains(quoteInfo.CreatedByUserId))
             {
                 var creatorNotification = new NotificationDto
                 {

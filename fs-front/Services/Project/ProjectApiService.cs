@@ -38,6 +38,32 @@ public class ProjectApiService : IProjectApiService
         }
     }
 
+    public async Task<List<ProjectDetailDto>?> GetProjectsByClientIdAsync(int clientId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<List<ProjectDetailDto>>($"api/projects/by-client/{clientId}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener proyectos del cliente {clientId}: {e.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<ProjectDetailDto>?> GetProjectsByUserEmailAsync(string email)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<List<ProjectDetailDto>>($"api/projects/by-user-email/{email}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener proyectos para email {email}: {e.Message}");
+            return null;
+        }
+    }
+
     public async Task<(bool Success, ProjectDto? CreatedProject, string? ErrorMessage)> CreateProjectAsync(
         ProjectDto project)
     {

@@ -56,16 +56,18 @@ else
                           SortField="@_sortField"
                           SortDir="@_sortDir"
                           SortChanged="OnSortChanged"
-                          OnViewDetails="ViewTicketDetails" />
+                          OnViewDetails="ViewTicketDetails"
+                          OnCompleteInfo="ShowCompleteInfoModal" />
         </section>
     </div>
 }
 
 @inject ITicketApiService TicketApiService
+@inject IProjectApiService ProjectApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
-@inject fs_front.Services.PermissionService PermissionService
+@inject IPermissionService PermissionService
 
 @code {
     private List<TicketDetailDto>? _tickets;
@@ -158,10 +160,29 @@ else
         _currentUserId = await PermissionService.GetUserIdAsync();
         _currentRole   = await PermissionService.GetRoleAsync();
 
+        // También verificar por clientId para detectar si es cliente
+        var clientId = await PermissionService.GetClientIdAsync();
+
+        // Si tiene clientId pero el rol viene vacío, forzar rol Cliente
+        if (clientId.HasValue && string.IsNullOrEmpty(_currentRole))
+        {
+            _currentRole = "Cliente";
+        }
+
         _canCreate  = await PermissionService.HasPermissionAsync("tickets.create");
         _canEdit    = await PermissionService.HasPermissionAsync("tickets.edit");
         _canDelete  = await PermissionService.HasPermissionAsync("tickets.delete");
         _canViewAll = _currentRole is "Admin" or "Administracion" or "Empleado" or "Supervisor";
+    }
+
+    // Método auxiliar para verificar si es cliente por proyectos
+    private async Task<bool> IsClientByProjectsAsync()
+    {
+        var clientEmail = await PermissionService.GetUserEmailAsync();
+        if (string.IsNullOrEmpty(clientEmail)) return false;
+
+        var projects = await ProjectApiService.GetProjectsByUserEmailAsync(clientEmail);
+        return projects != null && projects.Count > 0;
     }
 
     // ── Carga de datos ────────────────────────────────────────────────────────
@@ -193,10 +214,46 @@ else
     {
         bool? result;
 
-        if (_currentRole == "Cliente")
+        // Verificar si es cliente: por rol O por tener proyectos
+        var isCliente = _currentRole == "Cliente" || await IsClientByProjectsAsync();
+
+        if (isCliente)
         {
+            // Obtener datos del cliente para pasar al formulario
+            var clientEmail = await PermissionService.GetUserEmailAsync();
+            var clientId = await PermissionService.GetClientIdAsync();
+
+            // Obtener proyectos del cliente
+            List<ProjectDetailDto> projects = new();
+            if (clientId.HasValue)
+            {
+                var projList = await ProjectApiService.GetProjectsByClientIdAsync(clientId.Value);
+                if (projList != null) projects = projList;
+            }
+            else if (!string.IsNullOrEmpty(clientEmail))
+            {
+                // Si no tenemos clientId, intentar por email
+                var projList = await ProjectApiService.GetProjectsByUserEmailAsync(clientEmail);
+                if (projList != null) projects = projList;
+            }
+
+            // Depuración: mostrar cuántos proyectos se encontraron
+            if (projects.Count == 0)
+            {
+                Notify("Info", $"Cliente: {clientEmail}, ClientId: {clientId}, Proyectos: 0", NotificationSeverity.Info);
+            }
+
+            // Pasar parámetros al formulario del cliente
+            var parameters = new Dictionary<string, object>
+            {
+                { "ClientEmail", clientEmail ?? string.Empty },
+                { "ClientId", clientId },
+                { "Projects", projects }
+            };
+
             result = await DialogService.OpenAsync<TicketFormCliente>("Crear Ticket",
-                options: new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
+                parameters,
+                new DialogOptions { Width = "600px", Resizable = false, Draggable = false });
         }
         else
         {
@@ -209,6 +266,19 @@ else
 
     private void ViewTicketDetails(int ticketId) =>
         NavigationManager.NavigateTo($"/tickets/{ticketId}");
+
+    private async Task ShowCompleteInfoModal(int ticketId)
+    {
+        var result = await DialogService.OpenAsync<CompleteTicketInfo>("Completar información",
+            new Dictionary<string, object> { { "TicketId", ticketId } },
+            new DialogOptions { Width = "500px", Resizable = false });
+
+        if (result == true)
+        {
+            // Recargar tickets
+            await LoadData();
+        }
+    }
 
     private async Task ClearFilters()
     {

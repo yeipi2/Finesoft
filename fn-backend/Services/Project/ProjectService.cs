@@ -12,11 +12,13 @@ public class ProjectService : IProjectService
 {
     private readonly ApplicationDbContext _context;
     private readonly ICacheService _cache;
+    private readonly INotificationHelper _notificationHelper;
 
-    public ProjectService(ApplicationDbContext context, ICacheService cache)
+    public ProjectService(ApplicationDbContext context, ICacheService cache, INotificationHelper notificationHelper)
     {
         _context = context;
         _cache = cache;
+        _notificationHelper = notificationHelper;
     }
 
     public async Task<IEnumerable<ProjectDetailDto>> GetProjectsAsync()
@@ -148,6 +150,15 @@ public class ProjectService : IProjectService
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
 
+            // Notificación de proyecto creado
+            var projectNotification = _notificationHelper.CreateNotification(
+                NotificationType.ProjectCreated,
+                "Nuevo Proyecto Creado",
+                $"Se ha creado el proyecto {project.Name}",
+                $"/projects/{project.Id}");
+            await _notificationHelper.SendToAdminsAsync(projectNotification);
+            await _notificationHelper.SendToAdministracionAsync(projectNotification);
+
             await _cache.InvalidateAsync(CacheKeys.AllProjects);
 
             return ServiceResult<Project>.Success(project);
@@ -239,5 +250,44 @@ public class ProjectService : IProjectService
                     IsActive = project.Client.IsActive
                 }
         };
+    }
+
+    /// <summary>
+    /// Obtiene los proyectos de un cliente específico
+    /// </summary>
+    public async Task<IEnumerable<ProjectDetailDto>> GetProjectsByClientIdAsync(int clientId)
+    {
+        var projects = await _context.Projects
+            .Where(p => p.ClientId == clientId && p.IsActive)
+            .Include(p => p.Client)
+            .ToListAsync();
+
+        // Calcular horas usadas del cliente
+        var monthlyHoursUsed = 0m;
+        if (projects.Any() && projects.First().Client?.ServiceMode == "Mensual")
+        {
+            var projectIds = projects.Select(p => p.Id).ToList();
+            var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+            monthlyHoursUsed = await _context.Tickets
+                .Where(t => t.ProjectId.HasValue && projectIds.Contains(t.ProjectId.Value) 
+                    && t.CreatedAt >= currentMonth)
+                .SumAsync(t => t.ActualHours);
+        }
+
+        return projects.Select(p => MapToDetailDto(p, monthlyHoursUsed));
+    }
+
+    /// <summary>
+    /// Obtiene los proyectos de un cliente por su email
+    /// </summary>
+    public async Task<IEnumerable<ProjectDetailDto>> GetProjectsByUserEmailAsync(string email)
+    {
+        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Email == email);
+        if (client == null)
+        {
+            return Enumerable.Empty<ProjectDetailDto>();
+        }
+
+        return await GetProjectsByClientIdAsync(client.Id);
     }
 }

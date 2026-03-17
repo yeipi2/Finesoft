@@ -54,6 +54,16 @@ public class JwtTokenService : IJwtTokenService
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));
 
+        // ⭐ Agregar clientId si el usuario es Cliente
+        if (roles.Contains("Cliente"))
+        {
+            var client = await _context.Clients.FirstOrDefaultAsync(c => c.UserId == user.Id);
+            if (client != null)
+            {
+                claims.Add(new Claim("clientId", client.Id.ToString()));
+            }
+        }
+
         // ⭐ NUEVO: Cargar permisos desde SQL Server usando tu estructura existente
         var userRole = roles.FirstOrDefault();
         if (userRole != null)

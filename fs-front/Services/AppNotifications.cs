@@ -13,6 +13,7 @@ public class NotificationItem
     public bool IsRead { get; set; } = false;
     public string IconClass { get; set; } = "bi bi-bell";
     public string IconColor { get; set; } = "#6B46C1";
+    public string Severity { get; set; } = "info"; // "info" | "warning" | "error" | "success" | "action"
 }
 
 public static class AppNotifications

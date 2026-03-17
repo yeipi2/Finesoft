@@ -12,6 +12,9 @@ public class Ticket
     public int? ProjectId { get; set; }
     public Project? Project { get; set; }
 
+    // ClientId para guardar el cliente directamente (cuando el admin completa info)
+    public int? ClientId { get; set; }
+
     // ServiceId también nullable (ya lo tenías así)
     public int? ServiceId { get; set; }
 

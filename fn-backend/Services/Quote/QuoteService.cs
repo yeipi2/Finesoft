@@ -5,6 +5,7 @@ using fs_backend.Repositories;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using fn_backend.Models;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -19,6 +20,7 @@ public class QuoteService : IQuoteService
     private readonly IEmailService _emailService;
     private readonly ILogger<QuoteService> _logger;
     private readonly ICacheService _cache;
+    private readonly INotificationHelper _notificationHelper;
 
     public QuoteService(
         ApplicationDbContext context,
@@ -26,7 +28,8 @@ public class QuoteService : IQuoteService
         IWebHostEnvironment environment,
         IEmailService emailService,
         ILogger<QuoteService> logger,
-        ICacheService cache)
+        ICacheService cache,
+        INotificationHelper notificationHelper)
     {
         _context = context;
         _userManager = userManager;
@@ -34,6 +37,7 @@ public class QuoteService : IQuoteService
         _emailService = emailService;
         _logger = logger;
         _cache = cache;
+        _notificationHelper = notificationHelper;
     }
 
     public async Task<IEnumerable<QuoteDetailDto>> GetQuotesAsync(string? status = null, int? clientId = null)
@@ -131,8 +135,19 @@ public class QuoteService : IQuoteService
         _context.Quotes.Add(quote);
         await _context.SaveChangesAsync();
 
+        // Cargar el cliente primero para poder usarlo en la notificación
         await _context.Entry(quote).Reference(q => q.Client).LoadAsync();
         await _context.Entry(quote).Collection(q => q.Items).LoadAsync();
+
+        // Notificación de cotización creada
+        var quoteNotification = await _notificationHelper.CreateNotificationWithCreatorAsync(
+            NotificationType.QuoteCreated,
+            "Nueva Cotización Creada",
+            $"Se ha creado la cotización #{quote.QuoteNumber} para {quote.Client.CompanyName}",
+            createdByUserId,
+            $"/quotes/{quote.Id}");
+        await _notificationHelper.SendToAdminsAsync(quoteNotification);
+        await _notificationHelper.SendToAdministracionAsync(quoteNotification);
 
         foreach (var item in quote.Items)
         {

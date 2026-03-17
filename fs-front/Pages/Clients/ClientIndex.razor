@@ -1,11 +1,11 @@
-﻿@page "/clientes"
+@page "/clientes"
 @using fs_front.DTO
 @using fs_front.Components.Clients.Index
 @using fs_front.Components.Clients.Shared
 @inject IClientApiService ClientApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
-@inject PermissionService PermissionService
+@inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager
 
 @attribute [Authorize]

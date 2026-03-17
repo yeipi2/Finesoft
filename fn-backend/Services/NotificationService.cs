@@ -38,12 +38,14 @@ public class NotificationService : INotificationService
             IconClass = notification.IconClass,
             IconColor = notification.IconColor,
             IsRead = false,
-            CreatedAt = notification.CreatedAt == default ? DateTime.UtcNow : notification.CreatedAt
+            CreatedAt = notification.CreatedAt == default ? DateTime.UtcNow : notification.CreatedAt,
+            TargetRole = notification.TargetRole,
+            Severity = notification.Severity
         };
 
         _context.Notifications.Add(notificationEntity);
         await _context.SaveChangesAsync();
-        
+
         notification.Id = notificationEntity.Id.ToString();
         return notificationEntity.Id;
     }
@@ -60,7 +62,9 @@ public class NotificationService : INotificationService
             IconClass = n.Notification.IconClass,
             IconColor = n.Notification.IconColor,
             IsRead = false,
-            CreatedAt = n.Notification.CreatedAt == default ? DateTime.UtcNow : n.Notification.CreatedAt
+            CreatedAt = n.Notification.CreatedAt == default ? DateTime.UtcNow : n.Notification.CreatedAt,
+            TargetRole = n.Notification.TargetRole,
+            Severity = n.Notification.Severity
         });
 
         await _context.Notifications.AddRangeAsync(entities);
@@ -92,7 +96,9 @@ public class NotificationService : INotificationService
             IconClass = n.IconClass,
             IconColor = n.IconColor,
             IsRead = n.IsRead,
-            CreatedAt = n.CreatedAt
+            CreatedAt = n.CreatedAt,
+            TargetRole = n.TargetRole,
+            Severity = n.Severity
         }).ToList();
     }
 

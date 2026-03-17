@@ -11,6 +11,9 @@ public class TicketDto
     // - Empleado/Admin: debe enviarlo obligatoriamente
     public int? ProjectId { get; set; }
 
+    // ClientId para guardar el cliente directamente (usado cuando el admin completa info)
+    public int? ClientId { get; set; }
+
     // ServiceId opcional
     public int? ServiceId { get; set; }
 

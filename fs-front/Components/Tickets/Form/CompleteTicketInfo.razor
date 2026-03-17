@@ -1,0 +1,394 @@
+@* Formulario para completar información del ticket *@
+@* Cliente del ticket, proyectos filtrados por ese cliente *@
+@using fs_front.DTO
+@using fs_front.Repositories
+
+<div class="complete-ticket-info">
+    <h5 class="mb-3">
+        <i class="bi bi-pencil-square text-primary me-2"></i>
+        Completar información del ticket
+    </h5>
+
+    <p class="text-muted small mb-3">
+        Asigna el cliente y proyecto para este ticket.
+    </p>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            <span>Cargando...</span>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @* ── Cliente (solo lectura) ── *@
+            <div class="col-12">
+                <label class="form-label fw-bold small">Cliente</label>
+                <input type="text" class="form-control form-control-sm" value="@_clientInfo" disabled />
+            </div>
+
+            @* ── Proyecto ── *@
+            <div class="col-12">
+                <label class="form-label fw-bold small">
+                    Proyecto <span class="text-danger">*</span>
+                </label>
+                @if (_isLoadingProjects)
+                {
+                    <div class="d-flex align-items-center">
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span>Cargando proyectos...</span>
+                    </div>
+                }
+                else if (_projects == null || !_projects.Any())
+                {
+                    <div class="alert alert-warning py-2 mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Este cliente no tiene proyectos
+                    </div>
+                }
+                else if (_projects.Count == 1)
+                {
+                    @* Un solo proyecto - auto-seleccionado *@
+                    <input type="text" class="form-control form-control-sm" value="@_projects[0].Name" disabled />
+                    <small class="text-success">Proyecto auto-seleccionado</small>
+                }
+                else
+                {
+                    @* Varios proyectos - dropdown *@
+                    <select class="form-select form-select-sm" @onchange="OnProjectChanged">
+                        <option value="">-- Selecciona un proyecto --</option>
+                        @foreach (var project in _projects)
+                        {
+                            <option value="@project.Id">
+                                @project.Name
+                            </option>
+                        }
+                    </select>
+                }
+            </div>
+
+            @* ── Título (solo lectura) ── *@
+            <div class="col-12">
+                <label class="form-label fw-bold small">Título</label>
+                <input type="text" class="form-control form-control-sm" value="@_ticketTitle" disabled />
+            </div>
+
+            @* ── Horas Estimadas ── *@
+            <div class="col-md-6">
+                <label class="form-label fw-bold small">Horas Estimadas</label>
+                <input type="number" class="form-control form-control-sm" @bind="_estimatedHours" min="0" max="1000" />
+            </div>
+
+            @* ── Prioridad ── *@
+            <div class="col-md-6">
+                <label class="form-label fw-bold small">Prioridad <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm" @bind="_priority">
+                    <option value="Baja">Baja</option>
+                    <option value="Media">Media</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Urgente">Urgente</option>
+                </select>
+            </div>
+
+            @* ── Empleado Asignado ── *@
+            <div class="col-12">
+                <label class="form-label fw-bold small">Asignar a</label>
+                @if (_isLoadingEmployees)
+                {
+                    <div class="d-flex align-items-center">
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span>Cargando...</span>
+                    </div>
+                }
+                else
+                {
+                    <select class="form-select form-select-sm" @bind="_assignedToUserId">
+                        <option value="">-- Sin asignar --</option>
+                        @if (_employees != null)
+                        {
+                            @foreach (var emp in _employees)
+                            {
+                                <option value="@emp.UserId">@emp.FullName</option>
+                            }
+                        }
+                    </select>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary btn-sm" @onclick="OnCancel">Cancelar</button>
+            <button type="button" class="btn btn-primary btn-sm" disabled="@(_isSaving || !CanSave)" @onclick="Save">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                Guardar
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mt-3 py-2">@_errorMessage</div>
+        }
+    }
+</div>
+
+@inject ITicketApiService TicketApiService
+@inject IProjectApiService ProjectApiService
+@inject IEmployeeApiService EmployeeApiService
+@inject IClientApiService ClientApiService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+
+    private string _ticketTitle = string.Empty;
+    private string _ticketDescription = string.Empty;
+    private string _clientInfo = string.Empty;
+    private decimal _estimatedHours = 0;
+    private string _priority = "Media";
+    private string? _assignedToUserId;
+
+    private List<ProjectDetailDto>? _projects;
+    private List<EmployeeDto>? _employees;
+    private int? _ticketClientId;
+
+    private int? _selectedProjectId;
+
+    private bool _isLoading = true;
+    private bool _isLoadingProjects = false;
+    private bool _isLoadingEmployees = false;
+    private bool _isSaving = false;
+    private string? _errorMessage;
+
+    private bool CanSave => _selectedProjectId.HasValue && _selectedProjectId > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("[CompletarInfo] Iniciando...");
+        
+        await LoadTicket();
+        
+        _isLoading = false;
+        Console.WriteLine($"[CompletarInfo] Completado. ClientId: {_ticketClientId}");
+    }
+
+    private async Task LoadTicket()
+    {
+        try
+        {
+            var ticket = await TicketApiService.GetTicketByIdAsync(TicketId);
+            if (ticket != null)
+            {
+                _ticketTitle = ticket.Title ?? "";
+                _ticketDescription = ticket.Description ?? "";
+                _estimatedHours = ticket.EstimatedHours;
+                _priority = ticket.Priority ?? "Media";
+                _assignedToUserId = ticket.AssignedToUserId;
+                _selectedProjectId = ticket.ProjectId > 0 ? ticket.ProjectId : null;
+                _ticketClientId = ticket.ClientId;
+
+                Console.WriteLine($"[CompletarInfo] Ticket cargado. ClientId: {_ticketClientId}, ProjectId: {ticket.ProjectId}, CreatedByUserId: {ticket.CreatedByUserId}");
+
+                // Cargar info del cliente
+                if (_ticketClientId.HasValue && _ticketClientId > 0)
+                {
+                    await LoadClientAndProjects();
+                }
+                else if (!string.IsNullOrEmpty(ticket.CreatedByUserId))
+                {
+                    // Si no hay ClientId, intentar buscar cliente por el usuario que creó el ticket
+                    Console.WriteLine($"[CompletarInfo] ClientId vacío, buscando por CreatedByUserId...");
+                    await LoadClientByUserId(ticket.CreatedByUserId);
+                }
+                
+                await LoadEmployees();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CompletarInfo] Error cargando ticket: {ex.Message}");
+            _errorMessage = $"Error al cargar ticket: {ex.Message}";
+        }
+    }
+
+    // Nuevo método para buscar cliente por UserId
+    private async Task LoadClientByUserId(string userId)
+    {
+        _isLoadingProjects = true;
+        try
+        {
+            var clients = await ClientApiService.GetClientsAsync();
+            var client = clients?.FirstOrDefault(c => c.UserId == userId);
+
+            if (client != null)
+            {
+                _ticketClientId = client.Id;
+                _clientInfo = $"{client.Email} ({client.CompanyName})";
+                Console.WriteLine($"[CompletarInfo] Cliente encontrado por UserId: {_clientInfo}");
+
+                // Cargar proyectos del cliente
+                await LoadClientAndProjects();
+            }
+            else
+            {
+                Console.WriteLine($"[CompletarInfo] No se encontró cliente para UserId: {userId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CompletarInfo] Error buscando cliente por UserId: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingProjects = false;
+        }
+    }
+
+    private async Task LoadClientAndProjects()
+    {
+        if (!_ticketClientId.HasValue || _ticketClientId <= 0) return;
+
+        _isLoadingProjects = true;
+        try
+        {
+            // Obtener cliente
+            var clients = await ClientApiService.GetClientsAsync();
+            var client = clients?.FirstOrDefault(c => c.Id == _ticketClientId.Value);
+            
+            if (client != null)
+            {
+                _clientInfo = $"{client.Email} ({client.CompanyName})";
+                Console.WriteLine($"[CompletarInfo] Cliente: {_clientInfo}");
+
+                // Cargar proyectos por email del cliente
+                if (!string.IsNullOrEmpty(client.Email))
+                {
+                    _projects = await ProjectApiService.GetProjectsByUserEmailAsync(client.Email);
+                    Console.WriteLine($"[CompletarInfo] Proyectos cargados: {_projects?.Count ?? 0}");
+
+                    // Si ya tenía proyecto, verificar que existe
+                    if (_selectedProjectId.HasValue && _projects != null)
+                    {
+                        var projectExists = _projects.Any(p => p.Id == _selectedProjectId.Value);
+                        if (!projectExists)
+                        {
+                            _selectedProjectId = null;
+                        }
+                    }
+
+                    // Si no tiene proyecto y tiene 1 solo, auto-seleccionar
+                    if (!_selectedProjectId.HasValue && _projects != null && _projects.Count == 1)
+                    {
+                        _selectedProjectId = _projects[0].Id;
+                        Console.WriteLine($"[CompletarInfo] Auto-seleccionado proyecto: {_projects[0].Name}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CompletarInfo] Error cargando cliente/proyectos: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingProjects = false;
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        _isLoadingEmployees = true;
+        try
+        {
+            var employees = await EmployeeApiService.GetEmployeesAsync();
+            _employees = employees?.Where(e => e.IsActive && e.RoleName == "Empleado").ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CompletarInfo] Error cargando empleados: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingEmployees = false;
+        }
+    }
+
+    private void OnProjectChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int projectId))
+        {
+            _selectedProjectId = projectId;
+        }
+        else
+        {
+            _selectedProjectId = null;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (!CanSave)
+        {
+            _errorMessage = "Debes seleccionar un proyecto.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var updateDto = new TicketDto
+            {
+                Id = TicketId,
+                Title = _ticketTitle,
+                Description = _ticketDescription,
+                ProjectId = _selectedProjectId,
+                ClientId = _ticketClientId,
+                ServiceId = null,
+                Status = "Abierto",
+                Priority = _priority,
+                AssignedToUserId = string.IsNullOrEmpty(_assignedToUserId) ? null : _assignedToUserId,
+                EstimatedHours = _estimatedHours,
+                ActualHours = 0
+            };
+
+            var result = await TicketApiService.UpdateTicketAsync(TicketId, updateDto);
+
+            if (result.Success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Éxito",
+                    Detail = "Información del ticket actualizada correctamente.",
+                    Duration = 4000
+                });
+                DialogService.Close(true);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "No se pudo actualizar el ticket.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void OnCancel() => DialogService.Close(false);
+}

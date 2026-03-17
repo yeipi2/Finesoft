@@ -13,6 +13,9 @@ public class TicketDetailDto
     public string ProjectName { get; set; } = string.Empty;
     public string ClientName { get; set; } = string.Empty;
 
+    // ⭐ ClientId directo para poder identificar al cliente en el frontend
+    public int? ClientId { get; set; }
+
     public string Status { get; set; } = string.Empty;
     public string Priority { get; set; } = string.Empty;
 

@@ -25,10 +25,15 @@ public class TicketDtoValidator : AbstractValidator<TicketDto>
             .Must(x => x == "Baja" || x == "Media" || x == "Alta" || x == "Urgente")
             .WithMessage("Prioridad inválida");
 
+        // Las horas estimadas son opcionales para clientes que crean tickets básicos
+        // Se permite null, 0 o cualquier valor positivo
         RuleFor(x => x.EstimatedHours)
-            .GreaterThan(0).WithMessage("Las horas estimadas deben ser mayores a 0")
+            .Must(x => x == null || x >= 0)
+            .WithMessage("Las horas estimadas no pueden ser negativas");
+
+        RuleFor(x => x.EstimatedHours)
             .LessThanOrEqualTo(1000).WithMessage("Las horas estimadas no pueden exceder 1000")
-            .When(x => x.EstimatedHours.HasValue);
+            .When(x => x.EstimatedHours.HasValue && x.EstimatedHours > 0);
     }
 }
 

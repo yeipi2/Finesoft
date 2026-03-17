@@ -4,11 +4,13 @@ using fs_backend.Repositories;
 using fs_backend.Attributes;
 using fs_backend.DTO.Common;
 using fs_backend.Util;
+using fs_backend.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using fs_backend.Hubs;
 using fs_backend.Models;
@@ -28,19 +30,22 @@ public class TicketsController : ControllerBase
     private readonly IHubContext<NotificationsHub> _notificationsHub;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly INotificationService _notificationService;
+    private readonly ApplicationDbContext _context;
 
     public TicketsController(
         ITicketService ticketService,
         ILogger<TicketsController> logger,
         IHubContext<NotificationsHub> notificationsHub,
         UserManager<IdentityUser> userManager,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        ApplicationDbContext context)
     {
         _ticketService = ticketService;
         _logger = logger;
         _notificationsHub = notificationsHub;
         _userManager = userManager;
         _notificationService = notificationService;
+        _context = context;
     }
 
     // ========== HELPERS ==========
@@ -140,18 +145,33 @@ public class TicketsController : ControllerBase
             return this.ToProblem(StatusCodes.Status401Unauthorized, "Unauthorized", "Usuario no autenticado");
         }
 
-        // Si es Cliente, LIMPIAR campos que no puede llenar
+        // Si es Cliente, LIMPIAR campos que no puede llenar PERO mantener ProjectId si lo envía
         if (IsInRole("Cliente"))
         {
-            ticketDto.ProjectId = null;
+            // Validar que el ProjectId pertenezca al cliente si se envía
+            if (ticketDto.ProjectId.HasValue && ticketDto.ProjectId.Value > 0)
+            {
+                var projectExists = await _context.Projects
+                    .AnyAsync(p => p.Id == ticketDto.ProjectId.Value && p.Client.UserId == userId);
+                if (!projectExists)
+                {
+                    // El proyecto no existe o no pertenece al cliente, ignorarlo
+                    ticketDto.ProjectId = null;
+                    _logger.LogWarning("⚠️ Cliente {UserId} intentó usar proyecto no autorizado {ProjectId}", userId, ticketDto.ProjectId);
+                }
+                // Si el proyecto es válido, mantenerlo
+            }
+            else
+            {
+                ticketDto.ProjectId = null;
+            }
+
             ticketDto.ServiceId = 0;
             ticketDto.Status = "Abierto";
             ticketDto.Priority = "Media";
             ticketDto.AssignedToUserId = null;
-            ticketDto.EstimatedHours = 0;
-            ticketDto.ActualHours = 0;
 
-            _logger.LogInformation("ℹ️ Cliente {UserId} creó ticket con campos limitados", userId);
+            _logger.LogInformation("ℹ️ Cliente {UserId} creó ticket con ProjectId={ProjectId}", userId, ticketDto.ProjectId);
         }
 
         var result = await _ticketService.CreateTicketAsync(ticketDto, userId);

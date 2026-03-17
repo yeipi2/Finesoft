@@ -83,6 +83,15 @@
             <td class="text-center">
                 @if (CurrentRole != "Cliente")
                 {
+                    @* Botón para completar info si falta cliente/proyecto o datos importantes *@
+                    @if (OnCompleteInfo.HasDelegate && TicketNeedsCompletion(ticket))
+                    {
+                        <button class="btn btn-sm btn-warning me-1"
+                                @onclick="() => OnCompleteInfo.InvokeAsync(ticket.Id)"
+                                title="Completar información del ticket">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    }
                     <button class="btn btn-sm btn-outline-primary"
                             @onclick="() => OnViewDetails.InvokeAsync(ticket.Id)"
                             title="Ver detalles">
@@ -108,6 +117,31 @@
 
     // Acciones
     [Parameter] public EventCallback<int> OnViewDetails { get; set; }
+    [Parameter] public EventCallback<int> OnCompleteInfo { get; set; }
+
+    private bool TicketNeedsCompletion(TicketDetailDto ticket)
+    {
+        // Falta cliente o proyecto
+        if (string.IsNullOrEmpty(ticket.ClientName) || ticket.ClientName == "Sin asignar" ||
+            string.IsNullOrEmpty(ticket.ProjectName) || ticket.ProjectName == "Sin asignar")
+        {
+            return true;
+        }
+
+        // Faltan horas estimadas
+        if (ticket.EstimatedHours <= 0)
+        {
+            return true;
+        }
+
+        // Falta empleado asignado
+        if (string.IsNullOrEmpty(ticket.AssignedToUserId))
+        {
+            return true;
+        }
+
+        return false;
+    }
 
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
         => SortChanged.InvokeAsync(s);

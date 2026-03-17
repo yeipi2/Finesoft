@@ -1,5 +1,5 @@
-﻿@* Formulario simplificado para que clientes creen tickets.
-   Solo título y descripción — el equipo interno asigna el resto. *@
+@* Formulario para que clientes creen tickets.
+   El proyecto se asigna automáticamente si tiene uno. *@
 @using fs_front.DTO
 
 @inject ITicketApiService TicketApiService
@@ -7,10 +7,31 @@
 @inject NotificationService NotificationService
 
 <section class="container px-0">
-    <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
-        <i class="bi bi-info-circle-fill fs-5"></i>
-        <span>Describe tu solicitud o problema. Nuestro equipo lo revisará y asignará al área correspondiente.</span>
+    @* Información del cliente *@
+    <div class="alert alert-primary d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-person-circle fs-5"></i>
+        <div>
+            <strong>Ticket para:</strong> @ClientEmail
+        </div>
     </div>
+
+    @* Información del proyecto (solo informativo, no se puede cambiar) *@
+    @if (_projects != null && _projects.Count > 0)
+    {
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+            <i class="bi bi-folder-check fs-5"></i>
+            <div>
+                <strong>Proyecto:</strong> @_projectName
+            </div>
+        </div>
+    }
+    else if (_hasProjectsLoaded)
+    {
+        <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+            <i class="bi bi-exclamation-triangle fs-5"></i>
+            <span>No tienes proyectos activos. Un miembro del equipo asignará tu ticket.</span>
+        </div>
+    }
 
     <EditForm Model="_ticketDto" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
@@ -59,6 +80,11 @@
 </section>
 
 @code {
+    // Parámetros recibidos desde TicketsIndex
+    [Parameter] public string? ClientEmail { get; set; }
+    [Parameter] public int? ClientId { get; set; }
+    [Parameter] public List<ProjectDetailDto>? Projects { get; set; }
+
     private TicketDto _ticketDto = new()
     {
         Status = "Abierto",
@@ -69,6 +95,24 @@
 
     private bool _isSaving = false;
     private string? _errorMessage;
+    private List<ProjectDetailDto>? _projects;
+    private bool _hasProjectsLoaded = false;
+    private string _projectName = "";
+
+    protected override void OnParametersSet()
+    {
+        _projects = Projects;
+
+        // Solo asignar automáticamente si hay EXACTAMENTE 1 proyecto
+        // Si tiene 2+ proyectos, el admin completará la info después
+        if (_projects != null && _projects.Count == 1)
+        {
+            _ticketDto.ProjectId = _projects[0].Id;
+            _projectName = _projects[0].Name;
+        }
+
+        _hasProjectsLoaded = true;
+    }
 
     private async Task HandleSubmit()
     {
@@ -84,7 +128,7 @@
                 {
                     Severity = NotificationSeverity.Success,
                     Summary = "Solicitud enviada",
-                    Detail = "Tu ticket ha sido creado. Nuestro equipo lo clasificará y te notificará sobre su avance.",
+                    Detail = "Tu ticket ha sido creado. Nuestro equipo lo revisará y te notificará sobre su avance.",
                     Duration = 5000
                 });
                 DialogService.Close(true);

@@ -8,6 +8,8 @@
 @inject ITicketApiService TicketApiService
 @inject IProjectApiService ProjectApiService
 @inject IEmployeeApiService EmployeeApiService
+@inject IPermissionService PermissionService
+@inject IUserApiService UserApi
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
@@ -63,6 +65,7 @@
                                   SelectedProject="_selectedProject"
                                   ProjectSearchText="@_projectSearchText"
                                   Employees="_employees"
+                                  IsClientMode="_isClienteMode"
                                   OnProjectSearchInput="OnProjectSearchInput"
                                   OnProjectSelected="SelectProject" />
         </div>
@@ -108,11 +111,25 @@
     private bool _isLoadingProjects = false;
     private bool _isLoadingUsers = false;
     private string? _errorMessage;
-    private string? _priorityReason;   // texto explicativo de por que se asigno esa prioridad
+    private string? _priorityReason;
+
+    private string? _currentRole;
+    private int? _clientId;  // ID del cliente logueado
+    private bool _isClienteMode = false;  // Modo cliente para nuevos tickets
 
     private bool _isEditMode => TicketId.HasValue;
     private bool _section1Complete = false;
-    private bool _section2Complete => _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0;
+    // Para clientes creando nuevo ticket: permitir sin proyecto
+    // Para admin/empleado o edición: proyecto es obligatorio
+    private bool _section2Complete
+    {
+        get
+        {
+            if (_isClienteMode && !_isEditMode)
+                return true; // Cliente creando nuevo ticket no necesita proyecto
+            return _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0;
+        }
+    }
     private bool _allSectionsComplete => _section1Complete && _section2Complete;
 
     // Umbral de tarifa mensual para Urgente vs Alta
@@ -136,32 +153,107 @@
         _isLoadingProjects = true;
         _isLoadingUsers = true;
         StateHasChanged();
+
+        // Obtener rol del usuario
+        _currentRole = await PermissionService.GetRoleAsync();
+        // Cliente siempre ve sus proyectos (nuevo y edición)
+        _isClienteMode = _currentRole == "Cliente";
+        Console.WriteLine($"[DEBUG] Role: {_currentRole}, EditMode: {_isEditMode}, ClienteMode: {_isClienteMode}");
+
         try
         {
-            try
+            // Si es cliente, cargar solo sus proyectos (nuevo y edición)
+            if (_isClienteMode)
             {
-                _projects = await ProjectApiService.GetProjectsAsync();
-                _filteredProjects = _projects ?? new List<ProjectDetailDto>();
+                _clientId = await PermissionService.GetClientIdAsync();
+                Console.WriteLine($"[DEBUG] ClientId desde servicio: {_clientId}");
+                
+                if (_clientId.HasValue && _clientId > 0)
+                {
+                    try
+                    {
+                        var clientProjects = await ProjectApiService.GetProjectsByClientIdAsync(_clientId.Value);
+                        _projects = clientProjects ?? new List<ProjectDetailDto>();
+                        _filteredProjects = _projects;
+                        Console.WriteLine($"[DEBUG] Proyectos cargados por clientId: {_projects.Count}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error al cargar proyectos por clientId: {ex.Message}");
+                    }
+                }
+                
+                // Si no hay proyectos, intentar por email
+                if (_projects == null || !_projects.Any())
+                {
+                    try
+                    {
+                        var profile = await UserApi.GetMyProfileAsync();
+                        if (profile?.Email != null)
+                        {
+                            Console.WriteLine($"[DEBUG] Intentando por email: {profile.Email}");
+                            var projectsByEmail = await ProjectApiService.GetProjectsByUserEmailAsync(profile.Email);
+                            _projects = projectsByEmail ?? new List<ProjectDetailDto>();
+                            _filteredProjects = _projects;
+                            Console.WriteLine($"[DEBUG] Proyectos cargados por email: {_projects.Count}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error al cargar proyectos por email: {ex.Message}");
+                    }
+                }
+
+                // En edición, mantener el proyecto actual si ya estaba asignado
+                if (_isEditMode && _ticketDto.ProjectId.HasValue && _ticketDto.ProjectId > 0)
+                {
+                    // El proyecto ya está en el ticket, no cambiarlo
+                    Console.WriteLine($"[DEBUG] Edición - manteniendo proyecto actual: {_ticketDto.ProjectId}");
+                }
+                // En nuevo, auto-seleccionar si tiene 1 solo proyecto
+                else if (!_isEditMode && _projects != null && _projects.Count == 1)
+                {
+                    _selectedProject = _projects.First();
+                    _ticketDto.ProjectId = _selectedProject.Id;
+                    Console.WriteLine($"[DEBUG] Proyecto auto-seleccionado: {_selectedProject.Name}");
+                    // Forzar re-render para actualizar el dropdown
+                    StateHasChanged();
+                }
+                
+                Console.WriteLine($"[DEBUG] Total proyectos finales: {_projects?.Count ?? 0}");
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"Error al cargar proyectos: {ex.Message}");
-                _projects = new List<ProjectDetailDto>();
-                _filteredProjects = new List<ProjectDetailDto>();
+                // Cargar todos los proyectos (para Admin, Empleado, etc.)
+                try
+                {
+                    _projects = await ProjectApiService.GetProjectsAsync();
+                    _filteredProjects = _projects ?? new List<ProjectDetailDto>();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error al cargar proyectos: {ex.Message}");
+                    _projects = new List<ProjectDetailDto>();
+                    _filteredProjects = new List<ProjectDetailDto>();
+                }
             }
 
-            try
+            // Solo cargar empleados si no es cliente
+            if (!_isClienteMode)
             {
-                var employees = await EmployeeApiService.GetEmployeesAsync();
-                _employees = employees?
-                    .Where(e => e.IsActive && e.RoleName.Equals("Empleado", StringComparison.OrdinalIgnoreCase))
-                    .ToList()
-                    ?? new List<EmployeeDto>();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al cargar empleados: {ex.Message}");
-                _employees = new List<EmployeeDto>();
+                try
+                {
+                    var employees = await EmployeeApiService.GetEmployeesAsync();
+                    _employees = employees?
+                        .Where(e => e.IsActive && e.RoleName.Equals("Empleado", StringComparison.OrdinalIgnoreCase))
+                        .ToList()
+                        ?? new List<EmployeeDto>();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error al cargar empleados: {ex.Message}");
+                    _employees = new List<EmployeeDto>();
+                }
             }
         }
         finally
@@ -321,9 +413,17 @@
 
     private async Task HandleSubmit()
     {
-        if (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0)
+        // Los clientes pueden crear tickets sin proyecto (será asignado por admin/empleado después)
+        // Solo validamos proyecto si NO es cliente creando un nuevo ticket
+        if (_isClienteMode && !_isEditMode && (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0))
         {
-            _errorMessage = "Debe seleccionar un proyecto valido de la lista.";
+            // Cliente creando nuevo ticket sin proyecto - permitido, se asignará después
+            Console.WriteLine("[DEBUG] Cliente creando ticket sin proyecto - permitido");
+        }
+        else if (!_ticketDto.ProjectId.HasValue || _ticketDto.ProjectId.Value <= 0)
+        {
+            // Admin/Empleado deben seleccionar proyecto
+            _errorMessage = "Debe seleccionar un proyecto válido de la lista.";
             StateHasChanged();
             return;
         }

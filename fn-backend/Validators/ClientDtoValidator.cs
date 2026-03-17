@@ -42,7 +42,7 @@ public class ClientDtoValidator : AbstractValidator<ClientDto>
 
         RuleFor(x => x.ServiceMode)
             .NotEmpty().WithMessage("El modo de servicio es obligatorio")
-            .Must(x => x == "Mensual" || x == "Por evento" || x == "混合")
+            .Must(x => x == "Mensual" || x == "Por Evento" || x == "Por evento")
             .WithMessage("Modo de servicio inválido");
 
         RuleFor(x => x.MonthlyRate)

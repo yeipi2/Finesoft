@@ -1,5 +1,6 @@
 using fn_backend.DTO;
 using fn_backend.Models;
+using fn_backend.Models;
 using fs_backend.Identity;
 using fs_backend.Util;
 using Microsoft.AspNetCore.Identity;
@@ -13,17 +14,20 @@ public class ClientService : IClientService
     private readonly UserManager<IdentityUser> _userManager;
     private readonly ILogger<ClientService> _logger;
     private readonly ICacheService _cache;
+    private readonly INotificationHelper _notificationHelper;
 
     public ClientService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
         ILogger<ClientService> logger,
-        ICacheService cache)
+        ICacheService cache,
+        INotificationHelper notificationHelper)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
         _cache = cache;
+        _notificationHelper = notificationHelper;
     }
 
     public async Task<ServiceResult<Client>> CreateClientAsync(ClientDto dto)
@@ -80,6 +84,15 @@ public class ClientService : IClientService
         {
             _context.Clients.Add(client);
             await _context.SaveChangesAsync();
+
+            // Notificación de cliente creado
+            var clientNotification = _notificationHelper.CreateNotification(
+                NotificationType.ClientCreated,
+                "Nuevo Cliente Creado",
+                $"Se ha creado el cliente {client.CompanyName}",
+                $"/clients/{client.Id}");
+            await _notificationHelper.SendToAdminsAsync(clientNotification);
+            await _notificationHelper.SendToAdministracionAsync(clientNotification);
 
             _logger.LogInformation(
                 "✅ Cliente creado: {CompanyName} (User: {UserId})",

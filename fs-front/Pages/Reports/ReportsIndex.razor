@@ -1,10 +1,10 @@
-﻿@page "/reportes"
+@page "/reportes"
 @using fs_front.DTO
 @using fs_front.Pages.Reports
 @using fs_front.Components.Reports
 @inject IReportApiService ReportApiService
 @inject NotificationService NotificationService
-@inject PermissionService PermissionService
+@inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager
 
 @attribute [Authorize]

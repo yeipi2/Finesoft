@@ -14,17 +14,20 @@ public class EmployeeService : IEmployeeService
     private readonly UserManager<IdentityUser> _userManager;
     private readonly ILogger<EmployeeService> _logger;
     private readonly ICacheService _cache;
+    private readonly INotificationHelper _notificationHelper;
 
     public EmployeeService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
         ILogger<EmployeeService> logger,
-        ICacheService cache)
+        ICacheService cache,
+        INotificationHelper notificationHelper)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
         _cache = cache;
+        _notificationHelper = notificationHelper;
     }
 
     public async Task<IEnumerable<EmployeeDto>> GetEmployeesAsync()
@@ -137,6 +140,18 @@ public class EmployeeService : IEmployeeService
 
             _context.Employees.Update(employee);
             await _context.SaveChangesAsync();
+
+            // Notificación de empleado inactivado
+            if (!employee.IsActive)
+            {
+                var employeeNotification = _notificationHelper.CreateNotification(
+                    NotificationType.EmployeeDeactivated,
+                    "Empleado Inactivado",
+                    $"El empleado {employee.FullName} ha sido inactivado. {unassignedCount} ticket(s) fueron desasignados.",
+                    $"/empleados/{employee.Id}");
+                await _notificationHelper.SendToAdminsAsync(employeeNotification);
+                await _notificationHelper.SendToAdministracionAsync(employeeNotification);
+            }
 
             await _cache.InvalidateAsync("employees:all");
             await _cache.InvalidateAsync($"employees:id:{id}");

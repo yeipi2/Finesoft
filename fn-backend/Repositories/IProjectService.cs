@@ -11,4 +11,6 @@ public interface IProjectService
     Task<ServiceResult<Project>> CreateProjectAsync(ProjectDto projectDto);
     Task<ServiceResult<bool>> UpdateProjectAsync(int id, ProjectDto updateProjectDto);
     Task<ServiceResult<bool>> DeleteProjectAsync(int id);
+    Task<IEnumerable<ProjectDetailDto>> GetProjectsByClientIdAsync(int clientId);
+    Task<IEnumerable<ProjectDetailDto>> GetProjectsByUserEmailAsync(string email);
 }
