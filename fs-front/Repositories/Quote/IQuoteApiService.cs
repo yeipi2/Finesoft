@@ -3,6 +3,14 @@
 public interface IQuoteApiService
 {
     Task<List<QuoteDetailDto>?> GetQuotesAsync(string? status = null, int? clientId = null);
+    Task<PaginatedResponseDto<QuoteDetailDto>?> GetQuotesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        int? clientId = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortField = null,
+        bool sortDescending = false);
     Task<QuoteDetailDto?> GetQuoteByIdAsync(int id);
     Task<(bool Success, QuoteDetailDto? CreatedQuote, string? ErrorMessage)> CreateQuoteAsync(QuoteDto quote);
     Task<(bool Success, string? ErrorMessage)> UpdateQuoteAsync(int id, QuoteDto quote);

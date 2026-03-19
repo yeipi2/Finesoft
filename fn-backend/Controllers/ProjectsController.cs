@@ -37,11 +37,18 @@ public class ProjectsController : ControllerBase
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo proyectos", userId);
 
-        var projects = await _projectService.GetProjectsAsync();
-        var pagedResult = ApiResponseHelper.Paginate(projects, query, (p, search) =>
-            p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || p.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
+        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
 
+        var (projects, total) = await _projectService.GetProjectsPaginatedAsync(
+            search: query.Search,
+            sortField: string.IsNullOrEmpty(sortField) ? "name" : sortField,
+            sortDescending: sortDescending,
+            page: query.NormalizedPage,
+            pageSize: query.NormalizedPageSize
+        );
+
+        var pagedResult = PaginatedResponseDto<ProjectDetailDto>.Create(projects, total, query.NormalizedPage, query.NormalizedPageSize);
         return Ok(pagedResult);
     }
 

@@ -4,6 +4,7 @@
 @using fs_front.Repositories
 @using fs_front.Components.Employees.Index
 @using fs_front.Components.Employees.Form
+@using fs_front.Components.Shared
 @inject IEmployeeApiService EmployeeApiService
 @inject ITicketApiService TicketApiService
 @inject DialogService DialogService
@@ -40,10 +41,10 @@ else
             <FilterBar
                        SearchPlaceholder="Buscar empleados..."
                        SearchValue="@_searchTerm"
-                       SearchValueChanged="@(v => { _searchTerm = v; FilterEmployees(); })"
+                       SearchValueChanged="@OnSearchChanged"
                        OnClear="ClearFilters">
                 <Filters>
-                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange" @bind:after="FilterEmployees">
+                    <select class="form-select" @bind="_statusFilter" @bind:event="onchange" @bind:after="OnStatusFilterChanged">
                         <option value="Todos">Estados</option>
                         <option value="Activos">Activos</option>
                         <option value="Inactivos">Inactivos</option>
@@ -53,7 +54,7 @@ else
         </section>
 
         <section class="fs-index-section">
-            <EmployeesTable Items="_sortedEmployees"
+            <EmployeesTable Items="_employees"
                             IsLoading="_isLoading"
                             CanEdit="_canEdit"
                             SortField="_sortField"
@@ -64,12 +65,22 @@ else
                             EmptyTitle="@(_employees == null || !_employees.Any() ? "No hay empleados registrados" : "No se encontraron empleados")" />
         </section>
 
+        @if (_totalPages > 0)
+        {
+            <section class="fs-index-section">
+                <Pagination CurrentPage="_currentPage"
+                            PageSize="_pageSize"
+                            TotalCount="_totalCount"
+                            PageChanged="OnPageChanged"
+                            PageSizeChanged="OnPageSizeChanged" />
+            </section>
+        }
+
     </div>
 }
 
 @code {
-    private List<EmployeeDto>? _employees = new();
-    private List<EmployeeDto>? _filteredEmployees = new();
+    private List<EmployeeDto> _employees = new();
     private string _statusFilter = "Todos";
 
     private bool _checkingAccess = true;
@@ -79,35 +90,21 @@ else
     private bool _isLoading = false;
 
     private string _searchTerm = "";
-    private string _sortField = "name";
+    private string _sortField = "fullName";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
+
+    // Paginación
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _totalCount = 0;
+    private int _totalPages => _pageSize > 0 ? (int)Math.Ceiling(_totalCount / (double)_pageSize) : 0;
 
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
     {
         _sortField = s.field;
         _sortDir = s.dir;
+        _ = LoadEmployees();
     }
-
-    private IEnumerable<EmployeeDto> _sortedEmployees
-        => ApplySort(_filteredEmployees ?? Enumerable.Empty<EmployeeDto>());
-
-    private IEnumerable<EmployeeDto> ApplySort(IEnumerable<EmployeeDto> q) =>
-        (_sortField, _sortDir) switch
-        {
-            ("name", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.FullName),
-            ("name", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.FullName),
-            ("email", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Email),
-            ("email", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Email),
-            ("position", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Position),
-            ("position", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Position),
-            ("department", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.Department),
-            ("department", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Department),
-            ("role", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.RoleName),
-            ("role", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.RoleName),
-            ("status", FsSortHeader.SortDirection.Asc) => q.OrderBy(x => x.IsActive),
-            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
-            _ => q.OrderByDescending(x => x.FullName),
-        };
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,8 +132,29 @@ else
         _isLoading = true;
         try
         {
-            _employees = await EmployeeApiService.GetEmployeesAsync();
-            _filteredEmployees = _employees;
+            var sortDescending = _sortDir == FsSortHeader.SortDirection.Desc;
+
+            var statusParam = _statusFilter == "Todos" ? null : _statusFilter;
+
+            var result = await EmployeeApiService.GetEmployeesPaginatedAsync(
+                search: string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm,
+                status: statusParam,
+                page: _currentPage,
+                pageSize: _pageSize,
+                sortField: _sortField,
+                sortDescending: sortDescending
+            );
+
+            if (result != null)
+            {
+                _employees = result.Items;
+                _totalCount = result.Total;
+            }
+            else
+            {
+                _employees = new List<EmployeeDto>();
+                _totalCount = 0;
+            }
             StateHasChanged();
         }
         catch (Exception e)
@@ -150,25 +168,39 @@ else
         }
     }
 
-    private void FilterEmployees()
+    private async Task OnSearchChanged(string value)
     {
-        if (_employees == null) return;
+        if (_searchTerm == value) return;
+        _searchTerm = value;
+        _currentPage = 1;
+        await LoadEmployees();
+    }
 
-        IEnumerable<EmployeeDto> query = _employees;
+    private async Task OnStatusFilterChanged()
+    {
+        _currentPage = 1;
+        await LoadEmployees();
+    }
 
-        if (!string.IsNullOrWhiteSpace(_searchTerm))
-        {
-            query = query.Where(e =>
-                e.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                e.Email.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                e.Position.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                e.Department.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
-        }
+    private async Task ClearFilters()
+    {
+        _searchTerm = string.Empty;
+        _statusFilter = "Todos";
+        _currentPage = 1;
+        await LoadEmployees();
+    }
 
-        if (_statusFilter == "Activos") query = query.Where(e => e.IsActive);
-        else if (_statusFilter == "Inactivos") query = query.Where(e => !e.IsActive);
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadEmployees();
+    }
 
-        _filteredEmployees = query.ToList();
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        _pageSize = newSize;
+        _currentPage = 1;
+        await LoadEmployees();
     }
 
     private async Task ShowCreateModal()
@@ -270,13 +302,6 @@ else
         {
             ShowNotification("Error", ex.Message, NotificationSeverity.Error);
         }
-    }
-
-    private void ClearFilters()
-    {
-        _searchTerm = string.Empty;
-        _statusFilter = "Todos";
-        FilterEmployees();
     }
 
     private void ShowNotification(string title, string message, NotificationSeverity severity) =>

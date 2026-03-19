@@ -31,16 +31,24 @@ public class EmployeesController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetEmployees([FromQuery] PaginationQueryDto query)
+    public async Task<IActionResult> GetEmployees([FromQuery] PaginationQueryDto query, [FromQuery] string? status = null)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo empleados", userId);
 
-        var employees = await _employeeService.GetEmployeesAsync();
-        var pagedResult = ApiResponseHelper.Paginate(employees, query, (e, search) =>
-            e.FullName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || e.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
+        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
 
+        var (employees, total) = await _employeeService.GetEmployeesPaginatedAsync(
+            search: query.Search,
+            status: status,
+            sortField: string.IsNullOrEmpty(sortField) ? "fullName" : sortField,
+            sortDescending: sortDescending,
+            page: query.NormalizedPage,
+            pageSize: query.NormalizedPageSize
+        );
+
+        var pagedResult = PaginatedResponseDto<EmployeeDto>.Create(employees, total, query.NormalizedPage, query.NormalizedPageSize);
         return Ok(pagedResult);
     }
 

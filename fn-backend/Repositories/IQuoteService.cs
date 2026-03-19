@@ -6,6 +6,14 @@ namespace fs_backend.Repositories;
 public interface IQuoteService
 {
     Task<IEnumerable<QuoteDetailDto>> GetQuotesAsync(string? status = null, int? clientId = null);
+    Task<(List<QuoteDetailDto> Items, int Total)> GetQuotesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        int? clientId = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20);
     Task<QuoteDetailDto?> GetQuoteByIdAsync(int id);
     Task<ServiceResult<QuoteDetailDto>> CreateQuoteAsync(QuoteDto quoteDto, string createdByUserId);
     Task<ServiceResult<QuoteDetailDto>> UpdateQuoteAsync(int id, QuoteDto quoteDto);

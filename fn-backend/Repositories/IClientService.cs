@@ -7,6 +7,13 @@ namespace fs_backend.Services;
 public interface IClientService
 {
     Task<IEnumerable<ClientDto>> GetClientsAsync();  // ⭐ Client → ClientDto
+    Task<(List<ClientDto> Items, int Total)> GetClientsPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20);
     Task<Client?> GetClientByIdAsync(int id);
     Task<ServiceResult<Client>> CreateClientAsync(ClientDto userDto);
     Task<ServiceResult<bool>> UpdateClientAsync(int id, ClientDto dto);

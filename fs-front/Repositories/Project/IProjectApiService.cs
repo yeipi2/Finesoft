@@ -5,6 +5,12 @@ namespace fs_front.Services;
 public interface IProjectApiService
 {
     Task<List<ProjectDetailDto>?> GetProjectsAsync();
+    Task<PaginatedResponseDto<ProjectDetailDto>?> GetProjectsPaginatedAsync(
+        string? search = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortField = null,
+        bool sortDescending = false);
     Task<ProjectDetailDto?> GetProjectByIdAsync(int id);
     Task<List<ProjectDetailDto>?> GetProjectsByClientIdAsync(int clientId);
     Task<List<ProjectDetailDto>?> GetProjectsByUserEmailAsync(string email);

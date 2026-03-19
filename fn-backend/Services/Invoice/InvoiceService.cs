@@ -79,6 +79,75 @@ public class InvoiceService : IInvoiceService
         return invoiceDtos;
     }
 
+    public async Task<(List<InvoiceDetailDto> Items, int Total)> GetInvoicesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? invoiceType = null,
+        int? clientId = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var query = _context.Invoices
+            .Include(i => i.Client)
+            .Include(i => i.Items)
+                .ThenInclude(item => item.Ticket)
+                    .ThenInclude(t => t!.Project)
+                        .ThenInclude(p => p!.Client)
+            .Include(i => i.Payments)
+            .Include(i => i.Quote)
+            .AsNoTracking()
+            .AsSplitQuery()
+            .AsQueryable();
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(i =>
+                i.InvoiceNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (i.Client != null && i.Client.CompanyName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (i.Client != null && i.Client.RFC != null && i.Client.RFC.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(i => i.Status == status);
+
+        if (!string.IsNullOrWhiteSpace(invoiceType))
+            query = query.Where(i => i.InvoiceType == invoiceType);
+
+        if (clientId.HasValue)
+            query = query.Where(i => i.ClientId == clientId.Value);
+
+        // Contar total
+        var total = await query.CountAsync();
+
+        // Aplicar ordenamiento
+        query = sortField?.ToLower() switch
+        {
+            "invoicenumber" or "number" => sortDescending ? query.OrderByDescending(i => i.InvoiceNumber) : query.OrderBy(i => i.InvoiceNumber),
+            "clientname" or "client" => sortDescending ? query.OrderByDescending(i => i.Client!.CompanyName) : query.OrderBy(i => i.Client!.CompanyName),
+            "invoicedate" or "date" => sortDescending ? query.OrderByDescending(i => i.InvoiceDate) : query.OrderBy(i => i.InvoiceDate),
+            "duedate" or "due" => sortDescending ? query.OrderByDescending(i => i.DueDate ?? DateTime.MinValue) : query.OrderBy(i => i.DueDate ?? DateTime.MaxValue),
+            "invoicetype" or "type" => sortDescending ? query.OrderByDescending(i => i.InvoiceType) : query.OrderBy(i => i.InvoiceType),
+            "status" => sortDescending ? query.OrderByDescending(i => i.Status) : query.OrderBy(i => i.Status),
+            "total" => sortDescending ? query.OrderByDescending(i => i.Total) : query.OrderBy(i => i.Total),
+            _ => query.OrderByDescending(i => i.InvoiceDate)
+        };
+
+        // Paginación
+        var invoices = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var invoiceDtos = new List<InvoiceDetailDto>();
+        foreach (var invoice in invoices)
+            invoiceDtos.Add(await _invoiceMapper.MapToDetailDtoAsync(invoice));
+
+        return (invoiceDtos, total);
+    }
+
     public async Task<InvoiceDetailDto?> GetInvoiceByIdAsync(int id)
     {
         var invoice = await _context.Invoices

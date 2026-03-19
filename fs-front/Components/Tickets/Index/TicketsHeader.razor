@@ -5,7 +5,11 @@
         <i class="bi bi-ticket-perforated fs-1 text-primary me-3"></i>
         <div>
             <p class="display-6 fw-bolder mb-2">
-                @if (CanViewAll)
+                @if (IsLoading)
+                {
+                    <span>Cargando...</span>
+                }
+                else if (CanViewAll)
                 {
                     <span>Sistema de Tickets</span>
                 }
@@ -15,7 +19,11 @@
                 }
             </p>
             <p class="text-muted mb-0">
-                @if (CanViewAll)
+                @if (IsLoading)
+                {
+                    <span>Obteniendo permisos...</span>
+                }
+                else if (CanViewAll)
                 {
                     <span>Gestión completa de solicitudes y soporte técnico</span>
                 }
@@ -31,7 +39,7 @@
         </div>
     </div>
 
-    @if (CanCreate)
+    @if (!IsLoading && CanCreate)
     {
         <button @onclick="OnCreate" class="btn btn-primary d-flex align-items-center gap-2 fw-bold">
             <i class="bi bi-plus-lg"></i>
@@ -43,6 +51,7 @@
 @code {
     [Parameter] public bool CanCreate { get; set; }
     [Parameter] public bool CanViewAll { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string? CurrentRole { get; set; }
     [Parameter] public EventCallback OnCreate { get; set; }
 }

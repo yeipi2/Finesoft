@@ -89,6 +89,95 @@ public class ProjectService : IProjectService
         ) ?? new List<ProjectDetailDto>();
     }
 
+    public async Task<(List<ProjectDetailDto> Items, int Total)> GetProjectsPaginatedAsync(
+        string? search = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
+
+        var query = _context.Projects.Include(p => p.Client).AsQueryable();
+
+        // Aplicar filtros de búsqueda
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(p =>
+                p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                p.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (p.Client != null && p.Client.CompanyName.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Contar total
+        var total = await query.CountAsync();
+
+        // Aplicar ordenamiento
+        query = sortField?.ToLower() switch
+        {
+            "name" => sortDescending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+            "client" => sortDescending ? query.OrderByDescending(p => p.Client!.CompanyName) : query.OrderBy(p => p.Client!.CompanyName),
+            "isactive" or "status" => sortDescending ? query.OrderByDescending(p => p.IsActive) : query.OrderBy(p => p.IsActive),
+            _ => query.OrderBy(p => p.Name)
+        };
+
+        // Paginación
+        var projects = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // Calcular horas mensuales
+        var monthlyClientIds = projects
+            .Where(p => p.Client?.ServiceMode == "Mensual" || p.Client?.BillingFrequency == "Monthly")
+            .Select(p => p.ClientId)
+            .Distinct()
+            .ToList();
+
+        var clientProjectMap = projects
+            .GroupBy(p => p.ClientId)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.Id).ToList());
+
+        var hoursPerProject = new Dictionary<int, decimal>();
+        if (monthlyClientIds.Any())
+        {
+            var allMonthlyProjectIds = clientProjectMap
+                .Where(kv => monthlyClientIds.Contains(kv.Key))
+                .SelectMany(kv => kv.Value)
+                .ToList();
+
+            if (allMonthlyProjectIds.Any())
+            {
+                var hoursSums = await _context.Tickets
+                    .Where(t => t.ProjectId.HasValue
+                             && allMonthlyProjectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .GroupBy(t => t.ProjectId!.Value)
+                    .Select(g => new { ProjectId = g.Key, Hours = g.Sum(t => t.ActualHours) })
+                    .ToListAsync();
+
+                foreach (var h in hoursSums)
+                    hoursPerProject[h.ProjectId] = h.Hours;
+            }
+        }
+
+        var hoursPerClient = new Dictionary<int, decimal>();
+        foreach (var clientId in monthlyClientIds)
+        {
+            if (clientProjectMap.TryGetValue(clientId, out var pIds))
+            {
+                hoursPerClient[clientId] = pIds.Sum(pid => hoursPerProject.GetValueOrDefault(pid, 0));
+            }
+        }
+
+        var projectDtos = projects.Select(p =>
+            MapToDetailDto(p, hoursPerClient.GetValueOrDefault(p.ClientId, 0))).ToList();
+
+        return (projectDtos, total);
+    }
+
     public async Task<ProjectDetailDto?> GetProjectByIdAsync(int id)
     {
         var cacheKey = string.Format(CacheKeys.ProjectById, id);

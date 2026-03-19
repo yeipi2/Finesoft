@@ -24,16 +24,17 @@ else
         <section class="fs-index-section">
             <TicketsHeader CanCreate="@_canCreate"
                            CanViewAll="@_canViewAll"
+                           IsLoading="@_loadingPermissions"
                            CurrentRole="@_currentRole"
                            OnCreate="ShowCreateModal" />
 
             @if (_stats != null)
             {
                 <StatGrid>
-                    <StatCard Title="Abiertos"    Value="@_stats.Open.ToString()"       Accent="StatCard.StatAccent.Primary" IconClass="bi bi-inbox" />
-                    <StatCard Title="En Progreso" Value="@_stats.InProgress.ToString()" Accent="StatCard.StatAccent.Info"    IconClass="bi bi-clock-history" />
-                    <StatCard Title="En Revisión" Value="@_stats.InReview.ToString()"   Accent="StatCard.StatAccent.Info"    IconClass="bi bi-search" />
-                    <StatCard Title="Cerrados"    Value="@_stats.Closed.ToString()"     Accent="StatCard.StatAccent.Success" IconClass="bi bi-check-circle" />
+                    <StatCard Title="Abiertos" Value="@_stats.Open.ToString()" Accent="StatCard.StatAccent.Primary" IconClass="bi bi-inbox" />
+                    <StatCard Title="En Progreso" Value="@_stats.InProgress.ToString()" Accent="StatCard.StatAccent.Info" IconClass="bi bi-clock-history" />
+                    <StatCard Title="En Revisión" Value="@_stats.InReview.ToString()" Accent="StatCard.StatAccent.Info" IconClass="bi bi-search" />
+                    <StatCard Title="Cerrados" Value="@_stats.Closed.ToString()" Accent="StatCard.StatAccent.Success" IconClass="bi bi-check-circle" />
                 </StatGrid>
             }
         </section>
@@ -66,7 +67,7 @@ else
                 <div class="pagination-wrapper d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted">Mostrar:</span>
-                        <select class="form-select form-select-sm" style="width:auto;" 
+                        <select class="form-select form-select-sm" style="width:auto;"
                                 @bind="_pageSize" @bind:after="() => OnPageSizeChanged(_pageSize)">
                             <option value="10">10</option>
                             <option value="20">20</option>
@@ -75,7 +76,7 @@ else
                         </select>
                         <span class="text-muted">registros</span>
                     </div>
-                    
+
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_currentPage == 1 ? "disabled" : "")">
@@ -84,7 +85,7 @@ else
                             <li class="page-item @(_currentPage == 1 ? "disabled" : "")">
                                 <button class="page-link" @onclick="() => OnPageChanged(_currentPage - 1)" disabled="@(_currentPage == 1)">«</button>
                             </li>
-                            
+
                             @for (int i = Math.Max(1, _currentPage - 2); i <= Math.Min(_totalPages, _currentPage + 2); i++)
                             {
                                 var pageNum = i;
@@ -92,7 +93,7 @@ else
                                     <button class="page-link" @onclick="() => OnPageChanged(pageNum)">@pageNum</button>
                                 </li>
                             }
-                            
+
                             <li class="page-item @(_currentPage == _totalPages ? "disabled" : "")">
                                 <button class="page-link" @onclick="() => OnPageChanged(_currentPage + 1)" disabled="@(_currentPage == _totalPages)">»</button>
                             </li>
@@ -121,12 +122,12 @@ else
 @code {
     private List<TicketDetailDto>? _tickets;
     private TicketStatsDto? _stats;
-    private string _searchText    = string.Empty;
-    private string _statusFilter  = string.Empty;
+    private string _searchText = string.Empty;
+    private string _statusFilter = string.Empty;
     private string _priorityFilter = string.Empty;
     private bool _isLoading = false;
+    private bool _loadingPermissions = true;
 
-    // 🆕 CancellationToken para cancelar peticiones anteriores
     private CancellationTokenSource? _cts;
 
     // Paginación
@@ -135,59 +136,130 @@ else
     private int _totalCount = 0;
     private int _totalPages => _pageSize > 0 ? (int)Math.Ceiling(_totalCount / (double)_pageSize) : 0;
 
+    // Acceso
     private bool _checkingAccess = true;
-    private bool _hasAccess      = false;
+    private bool _hasAccess = false;
     private string? _currentUserId;
     private string? _currentRole;
+    private int? _clientId;
 
+    // Permisos
     private bool _canViewAll = false;
-    private bool _canCreate  = false;
-    private bool _canEdit    = false;
-    private bool _canDelete  = false;
+    private bool _canCreate = false;
+    private bool _canEdit = false;
+    private bool _canDelete = false;
 
+    // Ordenamiento
     private string _sortField = "createdAt";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
-    // ── Filtrado + Ordenamiento ───────────────────────────────────────────────
-    // Ahora se hace en el servidor con paginación
-    private IEnumerable<TicketDetailDto> _filteredTickets => _tickets ?? Enumerable.Empty<TicketDetailDto>();
+    private IEnumerable<TicketDetailDto> _filteredTickets =>
+        _tickets ?? Enumerable.Empty<TicketDetailDto>();
 
-    private IEnumerable<TicketDetailDto> ApplySort(IEnumerable<TicketDetailDto> q) =>
-        (_sortField, _sortDir) switch
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        // Una sola llamada resuelve todos los permisos desde los claims del JWT
+        var bundle = await PermissionService.GetPermissionBundleAsync();
+
+        if (!bundle.CanView)
         {
-            ("id",        FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Id),
-            ("id",        FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Id),
-            ("title",     FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Title),
-            ("title",     FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Title),
-            ("priority",  FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => PriorityRank(x.Priority)),
-            ("priority",  FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => PriorityRank(x.Priority)),
-            ("status",    FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Status),
-            ("status",    FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Status),
-            ("createdAt", FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.CreatedAt),
-            ("createdAt", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.CreatedAt),
-            _                                              => q.OrderByDescending(x => x.CreatedAt),
-        };
+            _checkingAccess = false;
+            _hasAccess = false;
+            NavigationManager.NavigateTo("/dashboard", forceLoad: true);
+            return;
+        }
 
-    private static int PriorityRank(string? p) => p switch
-    {
-        "Urgente" => 4, "Alta" => 3, "Media" => 2, "Baja" => 1, _ => 0
-    };
+        _currentUserId = bundle.UserId;
+        _currentRole = bundle.Role;
+        _clientId = bundle.ClientId;
+        _canCreate = bundle.CanCreate;
+        _canEdit = bundle.CanEdit;
+        _canDelete = bundle.CanDelete;
+        _canViewAll = bundle.CanViewAll;
+        _hasAccess = true;
+        _checkingAccess = false;
+        _loadingPermissions = false;
+        StateHasChanged(); // header ya muestra el título correcto
 
-    private async void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
-    {
-        _sortField = s.field;
-        _sortDir   = s.dir;
         await LoadData();
     }
 
-    // ── Handlers de filtros ────────────
+    // ── Carga de datos (stats + tickets en paralelo) ──────────────────────────
+    private async Task LoadData()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        if (_isLoading) return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var userId = _currentRole == "Cliente" ? _currentUserId : null;
+            var statusParam = string.IsNullOrWhiteSpace(_statusFilter) ? null : _statusFilter;
+            var priorityParam = string.IsNullOrWhiteSpace(_priorityFilter) ? null : _priorityFilter;
+            var searchParam = string.IsNullOrWhiteSpace(_searchText) ? null : _searchText;
+            var sortDesc = _sortDir == FsSortHeader.SortDirection.Desc;
+
+            if (token.IsCancellationRequested) return;
+
+            // Stats y tickets en paralelo
+            var statsTask = TicketApiService.GetTicketStatsAsync(userId);
+            var ticketsTask = TicketApiService.GetTicketsPaginatedAsync(
+                status: statusParam,
+                priority: priorityParam,
+                userId: userId,
+                page: _currentPage,
+                pageSize: _pageSize,
+                search: searchParam,
+                sortField: _sortField,
+                sortDescending: sortDesc
+            );
+
+            await Task.WhenAll(statsTask, ticketsTask);
+
+            if (token.IsCancellationRequested) return;
+
+            var pagedResult = ticketsTask.Result;
+            if (pagedResult != null)
+            {
+                _tickets = pagedResult.Items;
+                _totalCount = pagedResult.Total;
+            }
+            else
+            {
+                _tickets = new List<TicketDetailDto>();
+                _totalCount = 0;
+            }
+
+            _stats = statsTask.Result;
+        }
+        catch (OperationCanceledException) { /* cancelado intencionalmente */ }
+        catch (Exception ex)
+        {
+            Notify("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Handlers de filtros ───────────────────────────────────────────────────
     private async Task OnSearchChanged(string value)
     {
-        if (_searchText == value) return; // Evitar cambios si es el mismo valor
+        if (_searchText == value) return;
         _searchText = value;
         _currentPage = 1;
         await LoadData();
     }
+
     private async Task OnStatusChanged(string value)
     {
         if (_statusFilter == value) return;
@@ -195,6 +267,7 @@ else
         _currentPage = 1;
         await LoadData();
     }
+
     private async Task OnPriorityChanged(string value)
     {
         if (_priorityFilter == value) return;
@@ -203,141 +276,14 @@ else
         await LoadData();
     }
 
-    // ── Ciclo de vida ─────────────────────────────────────────────────────────
-    protected override async Task OnInitializedAsync()
+    private async void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
     {
-        var canView = await PermissionService.HasPermissionAsync("tickets.view");
-        if (!canView)
-        {
-            _checkingAccess = false;
-            _hasAccess = false;
-            NavigationManager.NavigateTo("/dashboard", forceLoad: true);
-            return;
-        }
-
-        _hasAccess      = true;
-        _checkingAccess = false;
-
-        await LoadPermissions();
+        _sortField = s.field;
+        _sortDir = s.dir;
         await LoadData();
     }
 
-    private async Task LoadPermissions()
-    {
-        _currentUserId = await PermissionService.GetUserIdAsync();
-        _currentRole   = await PermissionService.GetRoleAsync();
-
-        // También verificar por clientId para detectar si es cliente
-        var clientId = await PermissionService.GetClientIdAsync();
-
-        // Si tiene clientId pero el rol viene vacío, forzar rol Cliente
-        if (clientId.HasValue && string.IsNullOrEmpty(_currentRole))
-        {
-            _currentRole = "Cliente";
-        }
-
-        _canCreate  = await PermissionService.HasPermissionAsync("tickets.create");
-        _canEdit    = await PermissionService.HasPermissionAsync("tickets.edit");
-        _canDelete  = await PermissionService.HasPermissionAsync("tickets.delete");
-        _canViewAll = _currentRole is "Admin" or "Administracion" or "Empleado" or "Supervisor";
-    }
-
-    // Método auxiliar para verificar si es cliente por proyectos
-    private async Task<bool> IsClientByProjectsAsync()
-    {
-        var clientEmail = await PermissionService.GetUserEmailAsync();
-        if (string.IsNullOrEmpty(clientEmail)) return false;
-
-        var projects = await ProjectApiService.GetProjectsByUserEmailAsync(clientEmail);
-        return projects != null && projects.Count > 0;
-    }
-
-    // ── Carga de datos ────────────────────────────────────────────────────────
-    private async Task LoadData()
-    {
-        // 🆕 Cancelar cualquier petición anterior
-        _cts?.Cancel();
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-
-        // 🆕 Si ya está cargando, no iniciar otra carga
-        if (_isLoading)
-        {
-            return;
-        }
-
-        _isLoading = true;
-        try
-        {
-            var userId = _currentRole == "Cliente" ? _currentUserId : null;
-
-            // Obtener stats sin paginación (solo si no está cancelado)
-            var statsTask = TicketApiService.GetTicketStatsAsync(userId);
-
-            // Obtener tickets con paginación y filtros
-            var statusParam = string.IsNullOrWhiteSpace(_statusFilter) ? null : _statusFilter;
-            var priorityParam = string.IsNullOrWhiteSpace(_priorityFilter) ? null : _priorityFilter;
-            var searchParam = string.IsNullOrWhiteSpace(_searchText) ? null : _searchText;
-
-            // Determinar dirección del sort
-            var sortDescending = _sortDir == FsSortHeader.SortDirection.Desc;
-
-            // Verificar si fue cancelado antes de hacer la petición
-            if (token.IsCancellationRequested)
-            {
-                return;
-            }
-
-            Console.WriteLine($"[DEBUG] Loading tickets - Status: {statusParam}, Priority: {priorityParam}, Search: {searchParam}, Page: {_currentPage}, Sort: {_sortField} ({sortDescending})");
-
-            var pagedResult = await TicketApiService.GetTicketsPaginatedAsync(
-                status: statusParam,
-                priority: priorityParam,
-                userId: userId,
-                page: _currentPage,
-                pageSize: _pageSize,
-                search: searchParam,
-                sortField: _sortField,
-                sortDescending: sortDescending
-            );
-
-            // Verificar si fue cancelado después de la petición
-            if (token.IsCancellationRequested)
-            {
-                return;
-            }
-
-            if (pagedResult != null)
-            {
-                _tickets = pagedResult.Items;
-                _totalCount = pagedResult.Total;
-                Console.WriteLine($"[DEBUG] Loaded {pagedResult.Items.Count} tickets, total: {pagedResult.Total}");
-            }
-            else
-            {
-                _tickets = new List<TicketDetailDto>();
-                _totalCount = 0;
-                Console.WriteLine($"[DEBUG] No tickets returned");
-            }
-
-            _stats = await statsTask;
-        }
-        catch (OperationCanceledException)
-        {
-            // Petición cancelada, no hacer nada
-            Console.WriteLine("[DEBUG] LoadData cancelled");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] LoadData: {ex.Message}");
-            Notify("Error", $"Error al cargar datos: {ex.Message}", NotificationSeverity.Error);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
+    // ── Paginación ────────────────────────────────────────────────────────────
     private async Task OnPageChanged(int page)
     {
         _currentPage = page;
@@ -355,17 +301,13 @@ else
     private async Task ShowCreateModal()
     {
         bool? result;
-
-        // Verificar si es cliente: por rol O por tener proyectos
         var isCliente = _currentRole == "Cliente" || await IsClientByProjectsAsync();
 
         if (isCliente)
         {
-            // Obtener datos del cliente para pasar al formulario
-            var clientEmail = await PermissionService.GetUserEmailAsync();
-            var clientId = await PermissionService.GetClientIdAsync();
+            var clientEmail = await PermissionService.GetUserEmailAsync(); // usa caché
+            var clientId = _clientId; // ya lo tenemos del bundle, sin HTTP
 
-            // Obtener proyectos del cliente
             List<ProjectDetailDto> projects = new();
             if (clientId.HasValue)
             {
@@ -374,23 +316,18 @@ else
             }
             else if (!string.IsNullOrEmpty(clientEmail))
             {
-                // Si no tenemos clientId, intentar por email
                 var projList = await ProjectApiService.GetProjectsByUserEmailAsync(clientEmail);
                 if (projList != null) projects = projList;
             }
 
-            // Depuración: mostrar cuántos proyectos se encontraron
             if (projects.Count == 0)
-            {
                 Notify("Info", $"Cliente: {clientEmail}, ClientId: {clientId}, Proyectos: 0", NotificationSeverity.Info);
-            }
 
-            // Pasar parámetros al formulario del cliente
             var parameters = new Dictionary<string, object>
             {
                 { "ClientEmail", clientEmail ?? string.Empty },
-                { "ClientId", clientId },
-                { "Projects", projects }
+                { "ClientId",   clientId },
+                { "Projects",   projects }
             };
 
             result = await DialogService.OpenAsync<TicketFormCliente>("Crear Ticket",
@@ -406,6 +343,14 @@ else
         if (result == true) await LoadData();
     }
 
+    private async Task<bool> IsClientByProjectsAsync()
+    {
+        var clientEmail = await PermissionService.GetUserEmailAsync(); // usa caché
+        if (string.IsNullOrEmpty(clientEmail)) return false;
+        var projects = await ProjectApiService.GetProjectsByUserEmailAsync(clientEmail);
+        return projects != null && projects.Count > 0;
+    }
+
     private void ViewTicketDetails(int ticketId) =>
         NavigationManager.NavigateTo($"/tickets/{ticketId}");
 
@@ -415,17 +360,13 @@ else
             new Dictionary<string, object> { { "TicketId", ticketId } },
             new DialogOptions { Width = "500px", Resizable = false });
 
-        if (result == true)
-        {
-            // Recargar tickets
-            await LoadData();
-        }
+        if (result == true) await LoadData();
     }
 
     private async Task ClearFilters()
     {
-        _searchText     = string.Empty;
-        _statusFilter   = string.Empty;
+        _searchText = string.Empty;
+        _statusFilter = string.Empty;
         _priorityFilter = string.Empty;
         await LoadData();
     }
@@ -433,6 +374,9 @@ else
     private void Notify(string title, string message, NotificationSeverity severity) =>
         NotificationService.Notify(new NotificationMessage
         {
-            Severity = severity, Summary = title, Detail = message, Duration = 4000
+            Severity = severity,
+            Summary = title,
+            Detail = message,
+            Duration = 4000
         });
 }

@@ -7,6 +7,15 @@ namespace fs_backend.Repositories;
 public interface IInvoiceService
 {
     Task<IEnumerable<InvoiceDetailDto>> GetInvoicesAsync(string? status = null, string? invoiceType = null, int? clientId = null);
+    Task<(List<InvoiceDetailDto> Items, int Total)> GetInvoicesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? invoiceType = null,
+        int? clientId = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20);
     Task<InvoiceDetailDto?> GetInvoiceByIdAsync(int id);
     Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceAsync(InvoiceDto invoiceDto, string createdByUserId);
     Task<ServiceResult<InvoiceDetailDto>> CreateInvoiceFromQuoteAsync(CreateInvoiceFromQuoteDto dto, string createdByUserId);

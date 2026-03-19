@@ -3,6 +3,7 @@
 @using fs_front.Components.Projects.Index
 @using fs_front.Components.Projects.Form
 @using fs_front.Components.Projects.Shared
+@using fs_front.Components.Shared
 
 @attribute [Authorize]
 
@@ -33,17 +34,28 @@ else
         <section class="fs-index-section">
             <SearchBar Placeholder="Buscar proyectos..."
                        Value="@_searchText"
-                       ValueChanged="@(v => { _searchText = v; StateHasChanged(); })" />
+                       ValueChanged="@OnSearchChanged" />
         </section>
 
         <section class="fs-index-section">
-            <ProjectsTable Items="_sortedProjects"
+            <ProjectsTable Items="_projects"
                            IsLoading="_isLoading"
                            SortField="@_sortField"
                            SortDir="@_sortDir"
                            SortChanged="OnSortChanged"
                            OnViewDetails="ViewProjectDetails" />
         </section>
+
+        @if (_totalPages > 0)
+        {
+            <section class="fs-index-section">
+                <Pagination CurrentPage="_currentPage"
+                            PageSize="_pageSize"
+                            TotalCount="_totalCount"
+                            PageChanged="OnPageChanged"
+                            PageSizeChanged="OnPageSizeChanged" />
+            </section>
+        }
     </div>
 }
 
@@ -54,7 +66,7 @@ else
 @inject IPermissionService PermissionService
 
 @code {
-    private List<ProjectDetailDto>? _projects;
+    private List<ProjectDetailDto> _projects = new();
     private string _searchText = string.Empty;
     private bool _isLoading = false;
 
@@ -67,34 +79,17 @@ else
     private string _sortField = "name";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
-    // ── Filtrado ──────────────────────────────────────────────────────────────
-    private IEnumerable<ProjectDetailDto> _filteredProjects =>
-        _projects?.Where(p =>
-            string.IsNullOrWhiteSpace(_searchText) ||
-            p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-            (p.Client?.CompanyName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (p.Client?.ContactName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false)
-        ) ?? Enumerable.Empty<ProjectDetailDto>();
-
-    // ── Ordenamiento ──────────────────────────────────────────────────────────
-    private IEnumerable<ProjectDetailDto> _sortedProjects => ApplySort(_filteredProjects);
-
-    private IEnumerable<ProjectDetailDto> ApplySort(IEnumerable<ProjectDetailDto> q) =>
-        (_sortField, _sortDir) switch
-        {
-            ("name",   FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Name),
-            ("name",   FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Name),
-            ("client", FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.Client?.CompanyName ?? ""),
-            ("client", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.Client?.CompanyName ?? ""),
-            ("status", FsSortHeader.SortDirection.Asc)  => q.OrderBy(x => x.IsActive),
-            ("status", FsSortHeader.SortDirection.Desc) => q.OrderByDescending(x => x.IsActive),
-            _                                           => q.OrderByDescending(x => x.Name),
-        };
+    // Paginación
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _totalCount = 0;
+    private int _totalPages => _pageSize > 0 ? (int)Math.Ceiling(_totalCount / (double)_pageSize) : 0;
 
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
     {
         _sortField = s.field;
         _sortDir   = s.dir;
+        _ = LoadProjects();
     }
 
     // ── Ciclo de vida ─────────────────────────────────────────────────────────
@@ -126,7 +121,26 @@ else
         _isLoading = true;
         try
         {
-            _projects = await ProjectApiService.GetProjectsAsync();
+            var sortDescending = _sortDir == FsSortHeader.SortDirection.Desc;
+
+            var result = await ProjectApiService.GetProjectsPaginatedAsync(
+                search: string.IsNullOrWhiteSpace(_searchText) ? null : _searchText,
+                page: _currentPage,
+                pageSize: _pageSize,
+                sortField: _sortField,
+                sortDescending: sortDescending
+            );
+
+            if (result != null)
+            {
+                _projects = result.Items;
+                _totalCount = result.Total;
+            }
+            else
+            {
+                _projects = new List<ProjectDetailDto>();
+                _totalCount = 0;
+            }
         }
         catch (Exception ex)
         {
@@ -136,6 +150,27 @@ else
         {
             _isLoading = false;
         }
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        if (_searchText == value) return;
+        _searchText = value;
+        _currentPage = 1;
+        await LoadProjects();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadProjects();
+    }
+
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        _pageSize = newSize;
+        _currentPage = 1;
+        await LoadProjects();
     }
 
     // ── Acciones ──────────────────────────────────────────────────────────────

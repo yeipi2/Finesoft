@@ -30,6 +30,45 @@ public class QuoteApiService : IQuoteApiService
         }
     }
 
+    public async Task<PaginatedResponseDto<QuoteDetailDto>?> GetQuotesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        int? clientId = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortField = null,
+        bool sortDescending = false)
+    {
+        try
+        {
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(search))
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrEmpty(status))
+                queryParams.Add($"status={Uri.EscapeDataString(status)}");
+            if (clientId.HasValue)
+                queryParams.Add($"clientId={clientId}");
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                var sortPrefix = sortDescending ? "-" : "";
+                queryParams.Add($"sort={sortPrefix}{sortField}");
+            }
+
+            var query = "?" + string.Join("&", queryParams);
+            return await _httpClient.GetFromJsonAsync<PaginatedResponseDto<QuoteDetailDto>>($"api/quotes{query}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener cotizaciones paginadas: {e.Message}");
+            return null;
+        }
+    }
+
     public async Task<QuoteDetailDto?> GetQuoteByIdAsync(int id)
     {
         try

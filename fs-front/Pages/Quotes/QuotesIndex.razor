@@ -2,6 +2,7 @@
 @using fs_front.DTO
 @using fs_front.Pages.Invoices
 @using fs_front.Pages.Tickets
+@using fs_front.Components.Shared
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Configuration
 
@@ -48,6 +49,17 @@ else
                          OnViewDetails="ViewQuoteDetails"
                          OnDownloadPdf="DownloadPdf" />
         </section>
+
+        @if (_totalPages > 0)
+        {
+            <section class="fs-index-section">
+                <Pagination CurrentPage="_currentPage"
+                            PageSize="_pageSize"
+                            TotalCount="_totalCount"
+                            PageChanged="OnPageChanged"
+                            PageSizeChanged="OnPageSizeChanged" />
+            </section>
+        }
     </div>
 }
 
@@ -61,7 +73,7 @@ else
 @inject IConfiguration Configuration
 
 @code {
-    private List<QuoteDetailDto>? _quotes;
+    private List<QuoteDetailDto> _quotes = new();
     private List<ClientDto>? _clients;
     private string _searchText = string.Empty;
     private string _statusFilter = string.Empty;
@@ -73,6 +85,12 @@ else
     private string _sortField = "createdAt";
     private FsSortHeader.SortDirection _sortDir = FsSortHeader.SortDirection.Desc;
 
+    // Paginación
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _totalCount = 0;
+    private int _totalPages => _pageSize > 0 ? (int)Math.Ceiling(_totalCount / (double)_pageSize) : 0;
+
     // ── SignalR ───────────────────────────────────────────────────────────────
     private HubConnection? _hubConnection;
     private record QuoteStatusChangedEvent(int QuoteId, string QuoteNumber, string ClientName, string NewStatus);
@@ -80,10 +98,7 @@ else
     // ── Filtrado + ordenamiento ───────────────────────────────────────────────
     private IEnumerable<QuoteDetailDto> _filteredQuotes =>
         _quotes?.Where(q =>
-            (string.IsNullOrWhiteSpace(_searchText) ||
-             q.QuoteNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-             q.ClientName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
-            && (string.IsNullOrEmpty(_statusFilter) || q.Status == _statusFilter)
+            (string.IsNullOrEmpty(_statusFilter) || q.Status == _statusFilter)
             && (_clientFilter == 0 || q.ClientId == _clientFilter)
         ) ?? Enumerable.Empty<QuoteDetailDto>();
 
@@ -110,13 +125,35 @@ else
         };
 
     // ── Handlers de filtros ───────────────────────────────────────────────────
-    private void OnSearchChanged(string v) => _searchText = v;
-    private void OnStatusChanged(string v) => _statusFilter = v;
-    private void OnClientFilterChanged(int v) => _clientFilter = v;
-    private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
+    private async Task OnSearchChanged(string v)
+    {
+        if (_searchText == v) return;
+        _searchText = v;
+        _currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task OnStatusChanged(string v)
+    {
+        if (_statusFilter == v) return;
+        _statusFilter = v;
+        _currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task OnClientFilterChanged(int v)
+    {
+        if (_clientFilter == v) return;
+        _clientFilter = v;
+        _currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
     {
         _sortField = s.field;
         _sortDir = s.dir;
+        await LoadData();
     }
 
     // ── Ciclo de vida ─────────────────────────────────────────────────────────
@@ -157,8 +194,6 @@ else
 
             _hubConnection.On<QuoteStatusChangedEvent>("QuoteStatusChanged", async (data) =>
             {
-                // ✅ FIX: si QuoteId llega en 0 significa que la deserialización falló
-                // en ese caso recargamos toda la lista para asegurar datos frescos
                 if (data.QuoteId == 0)
                 {
                     await InvokeAsync(LoadData);
@@ -169,12 +204,10 @@ else
                 var quote = _quotes?.FirstOrDefault(q => q.Id == data.QuoteId);
                 if (quote != null)
                 {
-                    // Actualizar el estado en memoria sin recargar toda la lista
                     quote.Status = data.NewStatus;
                 }
                 else
                 {
-                    // La cotización no está en la lista local (es nueva), recargar
                     await InvokeAsync(LoadData);
                 }
 
@@ -204,14 +237,51 @@ else
         _isLoading = true;
         try
         {
-            var qt = QuoteApiService.GetQuotesAsync();
-            var ct = ClientApiService.GetClientsAsync();
-            await Task.WhenAll(qt, ct);
-            _quotes = await qt;
-            _clients = await ct;
+            var sortDescending = _sortDir == FsSortHeader.SortDirection.Desc;
+
+            var quotesTask = QuoteApiService.GetQuotesPaginatedAsync(
+                search: string.IsNullOrWhiteSpace(_searchText) ? null : _searchText,
+                status: string.IsNullOrWhiteSpace(_statusFilter) ? null : _statusFilter,
+                clientId: _clientFilter == 0 ? null : _clientFilter,
+                page: _currentPage,
+                pageSize: _pageSize,
+                sortField: _sortField,
+                sortDescending: sortDescending
+            );
+
+            var clientsTask = ClientApiService.GetClientsAsync();
+
+            await Task.WhenAll(quotesTask, clientsTask);
+
+            var result = await quotesTask;
+            if (result != null)
+            {
+                _quotes = result.Items;
+                _totalCount = result.Total;
+            }
+            else
+            {
+                _quotes = new List<QuoteDetailDto>();
+                _totalCount = 0;
+            }
+
+            _clients = await clientsTask;
         }
         catch (Exception ex) { Notify("Error", $"Error al cargar: {ex.Message}", NotificationSeverity.Error); }
         finally { _isLoading = false; }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadData();
+    }
+
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        _pageSize = newSize;
+        _currentPage = 1;
+        await LoadData();
     }
 
     private async Task ShowCreateModal()
@@ -251,6 +321,7 @@ else
         _searchText = string.Empty;
         _statusFilter = string.Empty;
         _clientFilter = 0;
+        _currentPage = 1;
         await LoadData();
     }
 

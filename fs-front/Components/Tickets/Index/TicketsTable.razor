@@ -13,15 +13,15 @@
     <Header>
         <FsSortHeader Text="ID" Field="id" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
         <FsSortHeader Text="Título" Field="title" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-    <th>Cliente / Proyecto</th>
-    <FsSortHeader Text="Prioridad" Field="priority" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-    <FsSortHeader Text="Estado" Field="status" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
-    @if (CanViewAll)
-    {
-        <th style="width: 130px; min-width: 130px;">Asignado a</th>
-    }
-    <th style="width: 140px; min-width: 140px;">Horas</th>
-    <th class="text-center" style="width: 80px;">Acciones</th>
+        <th>Cliente / Proyecto</th>
+        <FsSortHeader Text="Prioridad" Field="priority" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        <FsSortHeader Text="Estado" Field="status" ActiveField="@SortField" Direction="@SortDir" SortChanged="OnSortChanged" />
+        @if (CanViewAll)
+        {
+            <th style="width:130px;min-width:130px;">Asignado a</th>
+        }
+        <th style="width:140px;min-width:140px;">Horas</th>
+        <th class="text-center" style="width:80px;">Acciones</th>
     </Header>
 
     <RowTemplate Context="ticket">
@@ -32,8 +32,8 @@
                 <div class="fw-bold">@ticket.Title</div>
                 <small class="text-muted">
                     @(ticket.Description?.Length > 50
-                                        ? ticket.Description.Substring(0, 50) + "..."
-                                        : ticket.Description)
+                        ? ticket.Description.Substring(0, 50) + "..."
+                        : ticket.Description)
                 </small>
             </td>
 
@@ -52,10 +52,10 @@
 
             @if (CanViewAll)
             {
-                <td style="width: 130px; min-width: 130px;">
+                <td style="width:130px;min-width:130px;">
                     @if (!string.IsNullOrEmpty(ticket.AssignedToUserName))
                     {
-                        <span class="text-truncate d-inline-block" style="max-width: 120px;"
+                        <span class="text-truncate d-inline-block" style="max-width:120px;"
                               title="@ticket.AssignedToUserName">
                             @ticket.AssignedToUserName
                         </span>
@@ -67,7 +67,7 @@
                 </td>
             }
 
-            <td style="width: 140px; min-width: 140px;">
+            <td style="width:140px;min-width:140px;">
                 <div class="d-flex flex-column gap-1">
                     <div>
                         <small class="text-muted">Estimadas:</small>
@@ -83,7 +83,6 @@
             <td class="text-center">
                 @if (CurrentRole != "Cliente")
                 {
-                    @* Botón para completar info si falta cliente/proyecto o datos importantes *@
                     @if (OnCompleteInfo.HasDelegate && TicketNeedsCompletion(ticket))
                     {
                         <button class="btn btn-sm btn-warning me-1"
@@ -110,38 +109,18 @@
     [Parameter] public bool CanViewAll { get; set; }
     [Parameter] public string? CurrentRole { get; set; }
 
-    // Ordenamiento
     [Parameter] public string SortField { get; set; } = "createdAt";
     [Parameter] public FsSortHeader.SortDirection SortDir { get; set; } = FsSortHeader.SortDirection.Desc;
     [Parameter] public EventCallback<(string field, FsSortHeader.SortDirection dir)> SortChanged { get; set; }
 
-    // Acciones
     [Parameter] public EventCallback<int> OnViewDetails { get; set; }
     [Parameter] public EventCallback<int> OnCompleteInfo { get; set; }
 
-    private bool TicketNeedsCompletion(TicketDetailDto ticket)
-    {
-        // Falta cliente o proyecto
-        if (string.IsNullOrEmpty(ticket.ClientName) || ticket.ClientName == "Sin asignar" ||
-            string.IsNullOrEmpty(ticket.ProjectName) || ticket.ProjectName == "Sin asignar")
-        {
-            return true;
-        }
-
-        // Faltan horas estimadas
-        if (ticket.EstimatedHours <= 0)
-        {
-            return true;
-        }
-
-        // Falta empleado asignado
-        if (string.IsNullOrEmpty(ticket.AssignedToUserId))
-        {
-            return true;
-        }
-
-        return false;
-    }
+    private bool TicketNeedsCompletion(TicketDetailDto ticket) =>
+        string.IsNullOrEmpty(ticket.ClientName) || ticket.ClientName == "Sin asignar" ||
+        string.IsNullOrEmpty(ticket.ProjectName) || ticket.ProjectName == "Sin asignar" ||
+        ticket.EstimatedHours <= 0 ||
+        string.IsNullOrEmpty(ticket.AssignedToUserId);
 
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
         => SortChanged.InvokeAsync(s);

@@ -6,6 +6,15 @@ namespace fs_front.Services;
 public interface IInvoiceApiService
 {
     Task<List<InvoiceDetailDto>?> GetInvoicesAsync(string? status = null, string? invoiceType = null, int? clientId = null);
+    Task<PaginatedResponseDto<InvoiceDetailDto>?> GetInvoicesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? invoiceType = null,
+        int? clientId = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortField = null,
+        bool sortDescending = false);
     Task<InvoiceDetailDto?> GetInvoiceByIdAsync(int id);
     Task<(bool Success, InvoiceDetailDto? CreatedInvoice, string? ErrorMessage)> CreateInvoiceAsync(InvoiceDto invoice);
     Task<(bool Success, InvoiceDetailDto? CreatedInvoice, string? ErrorMessage)> CreateInvoiceFromQuoteAsync(CreateInvoiceFromQuoteDto dto);

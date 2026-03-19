@@ -26,6 +26,42 @@ public class EmployeeApiService : IEmployeeApiService
         }
     }
 
+    public async Task<PaginatedResponseDto<EmployeeDto>?> GetEmployeesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortField = null,
+        bool sortDescending = false)
+    {
+        try
+        {
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(search))
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrEmpty(status))
+                queryParams.Add($"status={Uri.EscapeDataString(status)}");
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                var sortPrefix = sortDescending ? "-" : "";
+                queryParams.Add($"sort={sortPrefix}{sortField}");
+            }
+
+            var query = "?" + string.Join("&", queryParams);
+            return await _httpClient.GetFromJsonAsync<PaginatedResponseDto<EmployeeDto>>($"api/employees{query}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener empleados paginados: {e.Message}");
+            return null;
+        }
+    }
+
     public async Task<EmployeeDto?> GetEmployeeByIdAsync(int id)
     {
         try

@@ -71,6 +71,72 @@ public class QuoteService : IQuoteService
         return quoteDtos;
     }
 
+    public async Task<(List<QuoteDetailDto> Items, int Total)> GetQuotesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        int? clientId = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var query = _context.Quotes
+            .Include(q => q.Client)
+            .Include(q => q.Items)
+            .ThenInclude(i => i.Ticket)
+                .ThenInclude(t => t.Project)
+                    .ThenInclude(p => p.Client)
+            .AsQueryable();
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(q =>
+                q.QuoteNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (q.Client != null && q.Client.CompanyName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                q.Status.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(q => q.Status == status);
+        }
+
+        if (clientId.HasValue)
+        {
+            query = query.Where(q => q.ClientId == clientId.Value);
+        }
+
+        // Contar total
+        var total = await query.CountAsync();
+
+        // Aplicar ordenamiento
+        query = sortField?.ToLower() switch
+        {
+            "quotenumber" or "number" => sortDescending ? query.OrderByDescending(q => q.QuoteNumber) : query.OrderBy(q => q.QuoteNumber),
+            "clientname" or "client" => sortDescending ? query.OrderByDescending(q => q.Client!.CompanyName) : query.OrderBy(q => q.Client!.CompanyName),
+            "createdat" => sortDescending ? query.OrderByDescending(q => q.CreatedAt) : query.OrderBy(q => q.CreatedAt),
+            "validuntil" => sortDescending ? query.OrderByDescending(q => q.ValidUntil ?? DateTime.MinValue) : query.OrderBy(q => q.ValidUntil ?? DateTime.MaxValue),
+            "status" => sortDescending ? query.OrderByDescending(q => q.Status) : query.OrderBy(q => q.Status),
+            "total" => sortDescending ? query.OrderByDescending(q => q.Total) : query.OrderBy(q => q.Total),
+            _ => query.OrderByDescending(q => q.CreatedAt)
+        };
+
+        // Paginación
+        var quotes = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var quoteDtos = new List<QuoteDetailDto>();
+        foreach (var quote in quotes)
+        {
+            quoteDtos.Add(await MapToDetailDto(quote));
+        }
+
+        return (quoteDtos, total);
+    }
+
     public async Task<QuoteDetailDto?> GetQuoteByIdAsync(int id)
     {
         var quote = await _context.Quotes

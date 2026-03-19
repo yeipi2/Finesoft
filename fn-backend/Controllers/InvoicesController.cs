@@ -37,12 +37,21 @@ public class InvoicesController : ControllerBase
         [FromQuery] string? invoiceType = null,
         [FromQuery] int? clientId = null)
     {
-        var invoices = await _invoiceService.GetInvoicesAsync(status, invoiceType, clientId);
-        var pagedResult = ApiResponseHelper.Paginate(invoices, query, (i, search) =>
-            i.InvoiceNumber.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || i.ClientName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || i.Status.Contains(search, StringComparison.OrdinalIgnoreCase));
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
+        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
 
+        var (invoices, total) = await _invoiceService.GetInvoicesPaginatedAsync(
+            search: query.Search,
+            status: status,
+            invoiceType: invoiceType,
+            clientId: clientId,
+            sortField: string.IsNullOrEmpty(sortField) ? "date" : sortField,
+            sortDescending: sortDescending,
+            page: query.NormalizedPage,
+            pageSize: query.NormalizedPageSize
+        );
+
+        var pagedResult = PaginatedResponseDto<InvoiceDetailDto>.Create(invoices, total, query.NormalizedPage, query.NormalizedPageSize);
         return Ok(pagedResult);
     }
 

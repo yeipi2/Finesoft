@@ -32,18 +32,24 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetClients([FromQuery] PaginationQueryDto query)
+    public async Task<IActionResult> GetClients([FromQuery] PaginationQueryDto query, [FromQuery] string? status = null)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        _logger.LogInformation("✅ Usuario {UserId} obteniendo clientes", userId);
+        _logger.LogInformation("✅ Usuario {UserId} obtaining clientes", userId);
 
-        var clients = await _clientService.GetClientsAsync();
-        var pagedResult = ApiResponseHelper.Paginate(clients, query, (c, search) =>
-            c.CompanyName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || c.ContactName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || c.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || c.RFC.Contains(search, StringComparison.OrdinalIgnoreCase));
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
+        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
 
+        var (clients, total) = await _clientService.GetClientsPaginatedAsync(
+            search: query.Search,
+            status: status,
+            sortField: string.IsNullOrEmpty(sortField) ? "companyName" : sortField,
+            sortDescending: sortDescending,
+            page: query.NormalizedPage,
+            pageSize: query.NormalizedPageSize
+        );
+
+        var pagedResult = PaginatedResponseDto<ClientDto>.Create(clients, total, query.NormalizedPage, query.NormalizedPageSize);
         return Ok(pagedResult);
     }
 

@@ -1,0 +1,70 @@
+@* Componente de paginación reutilizable *@
+@if (TotalPages > 0)
+{
+    <div class="pagination-wrapper d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted">Mostrar:</span>
+            <select class="form-select form-select-sm" style="width:auto;"
+                    @bind="PageSize" @bind:after="OnPageSizeChanged">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span class="text-muted">registros</span>
+        </div>
+
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => OnPageChanged(1)" disabled="@(CurrentPage == 1)">««</button>
+                </li>
+                <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => OnPageChanged(CurrentPage - 1)" disabled="@(CurrentPage == 1)">«</button>
+                </li>
+
+                @for (int i = Math.Max(1, CurrentPage - 2); i <= Math.Min(TotalPages, CurrentPage + 2); i++)
+                {
+                    var pageNum = i;
+                    <li class="page-item @(CurrentPage == pageNum ? "active" : "")">
+                        <button class="page-link" @onclick="() => OnPageChanged(pageNum)">@pageNum</button>
+                    </li>
+                }
+
+                <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => OnPageChanged(CurrentPage + 1)" disabled="@(CurrentPage == TotalPages)">»</button>
+                </li>
+                <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => OnPageChanged(TotalPages)" disabled="@(CurrentPage == TotalPages)">»»</button>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="text-muted small">
+            Página @CurrentPage de @TotalPages (@TotalCount total)
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 20;
+    [Parameter] public int TotalCount { get; set; } = 0;
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    private int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 0;
+
+    private async Task OnPageChanged(int page)
+    {
+        if (page >= 1 && page <= TotalPages)
+        {
+            await PageChanged.InvokeAsync(page);
+        }
+    }
+
+    private async Task OnPageSizeChanged()
+    {
+        await PageSizeChanged.InvokeAsync(PageSize);
+    }
+}

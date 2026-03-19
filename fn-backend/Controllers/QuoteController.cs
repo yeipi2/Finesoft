@@ -64,13 +64,21 @@ public class QuotesController : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo cotizaciones", userId);
-        var quotes = await _quoteService.GetQuotesAsync(status, clientId);
 
-        var pagedResult = ApiResponseHelper.Paginate(quotes, query, (q, search) =>
-            q.QuoteNumber.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || q.ClientName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || q.Status.Contains(search, StringComparison.OrdinalIgnoreCase));
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
+        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
 
+        var (quotes, total) = await _quoteService.GetQuotesPaginatedAsync(
+            search: query.Search,
+            status: status,
+            clientId: clientId,
+            sortField: string.IsNullOrEmpty(sortField) ? "createdAt" : sortField,
+            sortDescending: sortDescending,
+            page: query.NormalizedPage,
+            pageSize: query.NormalizedPageSize
+        );
+
+        var pagedResult = PaginatedResponseDto<QuoteDetailDto>.Create(quotes, total, query.NormalizedPage, query.NormalizedPageSize);
         return Ok(pagedResult);
     }
 

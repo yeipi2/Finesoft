@@ -25,6 +25,39 @@ public class ProjectApiService : IProjectApiService
         }
     }
 
+    public async Task<PaginatedResponseDto<ProjectDetailDto>?> GetProjectsPaginatedAsync(
+        string? search = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortField = null,
+        bool sortDescending = false)
+    {
+        try
+        {
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(search))
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                var sortPrefix = sortDescending ? "-" : "";
+                queryParams.Add($"sort={sortPrefix}{sortField}");
+            }
+
+            var query = "?" + string.Join("&", queryParams);
+            return await _httpClient.GetFromJsonAsync<PaginatedResponseDto<ProjectDetailDto>>($"api/projects{query}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error al obtener proyectos paginados: {e.Message}");
+            return null;
+        }
+    }
+
     public async Task<ProjectDetailDto?> GetProjectByIdAsync(int id)
     {
         try

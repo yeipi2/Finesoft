@@ -56,6 +56,62 @@ public class EmployeeService : IEmployeeService
         ) ?? new List<EmployeeDto>();
     }
 
+    public async Task<(List<EmployeeDto> Items, int Total)> GetEmployeesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var query = _context.Employees.AsQueryable();
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(e =>
+                e.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                e.Position.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                e.Department.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var isActive = status == "Activos";
+            query = query.Where(e => e.IsActive == isActive);
+        }
+
+        // Contar total antes de paginar
+        var total = await query.CountAsync();
+
+        // Aplicar ordenamiento
+        query = sortField?.ToLower() switch
+        {
+            "fullname" or "name" => sortDescending ? query.OrderByDescending(e => e.FullName) : query.OrderBy(e => e.FullName),
+            "position" => sortDescending ? query.OrderByDescending(e => e.Position) : query.OrderBy(e => e.Position),
+            "department" => sortDescending ? query.OrderByDescending(e => e.Department) : query.OrderBy(e => e.Department),
+            "isactive" or "status" => sortDescending ? query.OrderByDescending(e => e.IsActive) : query.OrderBy(e => e.IsActive),
+            _ => query.OrderBy(e => e.FullName)
+        };
+
+        // Aplicar paginación
+        var employees = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // Mapear a DTOs
+        var employeeDtos = new List<EmployeeDto>();
+        foreach (var emp in employees)
+        {
+            var user = await _userManager.FindByIdAsync(emp.UserId);
+            var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
+            employeeDtos.Add(MapToDto(emp, user, roles));
+        }
+
+        return (employeeDtos, total);
+    }
+
     public async Task<EmployeeDto?> GetEmployeeByIdAsync(int id)
     {
         var cacheKey = $"employees:id:{id}";

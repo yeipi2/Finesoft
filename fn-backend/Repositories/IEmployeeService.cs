@@ -14,6 +14,13 @@ public class ToggleEmployeeResult
 public interface IEmployeeService
 {
     Task<IEnumerable<EmployeeDto>> GetEmployeesAsync();
+    Task<(List<EmployeeDto> Items, int Total)> GetEmployeesPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20);
     Task<EmployeeDto?> GetEmployeeByIdAsync(int id);
     Task<EmployeeDto?> GetEmployeeByUserIdAsync(string userId);
     Task<ServiceResult<EmployeeDto>> CreateEmployeeAsync(EmployeeDto dto);

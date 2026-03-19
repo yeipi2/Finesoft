@@ -170,6 +170,94 @@ public class ClientService : IClientService
         ) ?? new List<ClientDto>();
     }
 
+    public async Task<(List<ClientDto> Items, int Total)> GetClientsPaginatedAsync(
+        string? search = null,
+        string? status = null,
+        string? sortField = null,
+        bool sortDescending = false,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var nextMonth = currentMonth.AddMonths(1);
+
+        var query = _context.Clients
+            .Include(c => c.Projects)
+            .AsQueryable();
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(c =>
+                c.CompanyName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (c.ContactName != null && c.ContactName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.Email != null && c.Email.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.RFC != null && c.RFC.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var isActive = status == "Activos";
+            query = query.Where(c => c.IsActive == isActive);
+        }
+
+        // Contar total
+        var total = await query.CountAsync();
+
+        // Aplicar ordenamiento
+        query = sortField?.ToLower() switch
+        {
+            "companyname" or "company" => sortDescending ? query.OrderByDescending(c => c.CompanyName) : query.OrderBy(c => c.CompanyName),
+            "contactname" or "contact" => sortDescending ? query.OrderByDescending(c => c.ContactName ?? "") : query.OrderBy(c => c.ContactName ?? ""),
+            "email" => sortDescending ? query.OrderByDescending(c => c.Email ?? "") : query.OrderBy(c => c.Email ?? ""),
+            "servicemode" or "service" => sortDescending ? query.OrderByDescending(c => c.ServiceMode ?? "") : query.OrderBy(c => c.ServiceMode ?? ""),
+            "isactive" or "status" => sortDescending ? query.OrderByDescending(c => c.IsActive) : query.OrderBy(c => c.IsActive),
+            _ => query.OrderBy(c => c.CompanyName)
+        };
+
+        // Paginación
+        var clients = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var clientDtos = new List<ClientDto>();
+        foreach (var c in clients)
+        {
+            var projectIds = c.Projects?.Select(p => p.Id).ToList() ?? new List<int>();
+            decimal hoursUsed = 0;
+            if (projectIds.Any())
+            {
+                hoursUsed = await _context.Tickets
+                    .Where(t => t.ProjectId.HasValue
+                             && projectIds.Contains(t.ProjectId.Value)
+                             && t.UpdatedAt >= currentMonth
+                             && t.UpdatedAt < nextMonth)
+                    .SumAsync(t => t.ActualHours);
+            }
+
+            clientDtos.Add(new ClientDto
+            {
+                Id = c.Id,
+                UserId = c.UserId,
+                CompanyName = c.CompanyName,
+                ContactName = c.ContactName,
+                Email = c.Email,
+                Phone = c.Phone,
+                RFC = c.RFC,
+                Address = c.Address,
+                ServiceMode = c.ServiceMode,
+                MonthlyRate = c.MonthlyRate,
+                MonthlyHours = c.MonthlyHours,
+                MonthlyHoursUsed = hoursUsed,
+                IsActive = c.IsActive,
+                ProjectCount = c.Projects?.Count ?? 0
+            });
+        }
+
+        return (clientDtos, total);
+    }
+
     public async Task<Client?> GetClientByIdAsync(int id)
     {
         var cacheKey = string.Format(CacheKeys.ClientById, id);
