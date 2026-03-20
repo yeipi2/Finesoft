@@ -245,7 +245,7 @@ public class InvoiceService : IInvoiceService
             "Nueva Factura Creada",
             $"Se ha creado la factura #{invoice.InvoiceNumber}",
             createdByUserId,
-            $"/invoices/{invoice.Id}");
+            $"/facturas/{invoice.Id}");
         await _notificationHelper.SendToAdminsAsync(invoiceNotification);
         await _notificationHelper.SendToAdministracionAsync(invoiceNotification);
 
@@ -518,7 +518,7 @@ public class InvoiceService : IInvoiceService
                 NotificationType.InvoiceCancelled,
                 "Factura Cancelada",
                 $"La factura #{invoice.InvoiceNumber} ha sido cancelada",
-                $"/invoices/{invoice.Id}");
+                $"/facturas/{invoice.Id}");
             await _notificationHelper.SendToAdminsAsync(cancelNotification);
             await _notificationHelper.SendToAdministracionAsync(cancelNotification);
         }
@@ -528,7 +528,7 @@ public class InvoiceService : IInvoiceService
                 NotificationType.InvoicePaid,
                 "Factura Pagada",
                 $"La factura #{invoice.InvoiceNumber} ha sido marcada como pagada",
-                $"/invoices/{invoice.Id}");
+                $"/facturas/{invoice.Id}");
             await _notificationHelper.SendToAdminsAsync(paidNotification);
             await _notificationHelper.SendToAdministracionAsync(paidNotification);
         }
@@ -592,7 +592,7 @@ public class InvoiceService : IInvoiceService
                 NotificationType.InvoicePaid,
                 "Factura Pagada",
                 $"Se registró un pago de {payment.Amount:C} para la factura #{invoice.InvoiceNumber}",
-                $"/invoices/{invoiceId}");
+                $"/facturas/{invoiceId}");
             await _notificationHelper.SendToAdminsAsync(paidNotification);
             await _notificationHelper.SendToAdministracionAsync(paidNotification);
         }

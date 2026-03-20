@@ -204,7 +204,7 @@ public class EmployeeService : IEmployeeService
                     NotificationType.EmployeeDeactivated,
                     "Empleado Inactivado",
                     $"El empleado {employee.FullName} ha sido inactivado. {unassignedCount} ticket(s) fueron desasignados.",
-                    $"/empleados/{employee.Id}");
+                    $"/empleados");
                 await _notificationHelper.SendToAdminsAsync(employeeNotification);
                 await _notificationHelper.SendToAdministracionAsync(employeeNotification);
             }

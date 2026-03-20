@@ -90,7 +90,7 @@ public class ClientService : IClientService
                 NotificationType.ClientCreated,
                 "Nuevo Cliente Creado",
                 $"Se ha creado el cliente {client.CompanyName}",
-                $"/clients/{client.Id}");
+                $"/clientes");
             await _notificationHelper.SendToAdminsAsync(clientNotification);
             await _notificationHelper.SendToAdministracionAsync(clientNotification);
 

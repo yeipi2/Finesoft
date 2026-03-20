@@ -211,7 +211,7 @@ public class QuoteService : IQuoteService
             "Nueva Cotización Creada",
             $"Se ha creado la cotización #{quote.QuoteNumber} para {quote.Client.CompanyName}",
             createdByUserId,
-            $"/quotes/{quote.Id}");
+            $"/cotizaciones/{quote.Id}");
         await _notificationHelper.SendToAdminsAsync(quoteNotification);
         await _notificationHelper.SendToAdministracionAsync(quoteNotification);
 

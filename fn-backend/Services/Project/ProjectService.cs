@@ -244,7 +244,7 @@ public class ProjectService : IProjectService
                 NotificationType.ProjectCreated,
                 "Nuevo Proyecto Creado",
                 $"Se ha creado el proyecto {project.Name}",
-                $"/projects/{project.Id}");
+                $"/proyectos/{project.Id}");
             await _notificationHelper.SendToAdminsAsync(projectNotification);
             await _notificationHelper.SendToAdministracionAsync(projectNotification);
 
