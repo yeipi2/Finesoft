@@ -43,22 +43,12 @@ public class MonthlyBillingService : IMonthlyBillingService
         if (!clients.Any())
             return ServiceResult<bool>.Failure("No se encontraron clientes con facturación mensual activa");
 
-        var invoicesCreated = 0;
+        var invoicesToCreate = new List<(Client client, GenerateMonthlyInvoiceItemDto itemDto, List<Ticket> tickets, decimal hoursUsed, decimal subtotal, string notes, string hoursInfo)>();
 
         foreach (var client in clients)
         {
-            // Obtener el item con los datos de pago elegidos para este cliente
             var itemDto = items.FirstOrDefault(i => i.ClientId == client.Id);
             if (itemDto == null) continue;
-
-            var paymentType = itemDto.PaymentMethod.ToUpper() == "PUE"
-                                    ? InvoiceConstants.PaymentType.Pue
-                                    : InvoiceConstants.PaymentType.Ppd;
-
-            // Para PUE la forma de pago es requerida; para PPD se deja vacía
-            var paymentMethod = paymentType == InvoiceConstants.PaymentType.Pue
-                                    ? (itemDto.PaymentForm ?? string.Empty)
-                                    : string.Empty;
 
             var existingActiveInvoice = await _context.Invoices
                 .AnyAsync(i => i.ClientId == client.Id
@@ -118,56 +108,106 @@ public class MonthlyBillingService : IMonthlyBillingService
                     hoursInfo = $" | {monthlyHours}h incluidas | {hoursUsed}h usadas";
             }
 
-            var invoiceNumber = await _invoiceNumberService.GenerateAsync();
-
-            var invoice = new Invoice
-            {
-                InvoiceNumber = invoiceNumber,
-                ClientId = client.Id,
-                InvoiceDate = currentMonth,
-                DueDate = currentMonth.AddDays(30),
-                InvoiceType = InvoiceConstants.InvoiceType.Monthly,
-                Status = InvoiceConstants.Status.Pending,
-                PaymentType = paymentType,    // ⭐ viene del selector por cliente
-                PaymentMethod = paymentMethod,  // ⭐ vacío para PPD, forma de pago para PUE
-                CreatedByUserId = userId,
-                Notes = notes
-            };
-
-            invoice.Items.Add(new InvoiceItem
-            {
-                Description = $"Póliza mensual de servicios - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}{hoursInfo}",
-                Quantity = 1,
-                UnitPrice = subtotal,
-                Subtotal = subtotal
-            });
-
-            foreach (var ticket in ticketsThisMonth)
-            {
-                invoice.Items.Add(new InvoiceItem
-                {
-                    Description = $"Ticket #{ticket.Id} — {ticket.Title} ({ticket.ActualHours:0.0}h)",
-                    Quantity = 1,
-                    UnitPrice = 0m,
-                    Subtotal = 0m,
-                    TicketId = ticket.Id
-                });
-            }
-
-            invoice.Subtotal = subtotal;
-            invoice.Tax = subtotal * 0.16m;
-            invoice.Total = invoice.Subtotal + invoice.Tax;
-
-            _context.Invoices.Add(invoice);
-            invoicesCreated++;
-
-            _logger.LogInformation(
-                "Factura mensual generada para {CompanyName} | {PaymentType} | {PaymentMethod} | {TicketCount} tickets",
-                client.CompanyName, paymentType, paymentMethod, ticketsThisMonth.Count);
+            invoicesToCreate.Add((client, itemDto, ticketsThisMonth, hoursUsed, subtotal, notes, hoursInfo));
         }
 
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Total facturas mensuales generadas: {Count}", invoicesCreated);
+        if (!invoicesToCreate.Any())
+            return ServiceResult<bool>.Failure("No hay facturas por generar");
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var invoicesCreated = 0;
+                var year = DateTime.UtcNow.Year;
+                var prefix = $"INV-{year}-";
+
+                var lastInvoice = await _context.Invoices
+                    .Where(i => i.InvoiceNumber.StartsWith(prefix))
+                    .OrderByDescending(i => i.Id)
+                    .FirstOrDefaultAsync();
+
+                var nextNumber = 1;
+                if (lastInvoice != null)
+                {
+                    var parts = lastInvoice.InvoiceNumber.Split('-');
+                    if (parts.Length == 3 && int.TryParse(parts[2], out var lastNum))
+                        nextNumber = lastNum + 1;
+                }
+
+                foreach (var (client, itemDto, ticketsThisMonth, hoursUsed, subtotal, notes, hoursInfo) in invoicesToCreate)
+                {
+                    var paymentType = itemDto.PaymentMethod.ToUpper() == "PUE"
+                                            ? InvoiceConstants.PaymentType.Pue
+                                            : InvoiceConstants.PaymentType.Ppd;
+
+                    var paymentMethod = paymentType == InvoiceConstants.PaymentType.Pue
+                                            ? (itemDto.PaymentForm ?? string.Empty)
+                                            : string.Empty;
+
+                    var invoiceNumber = $"{prefix}{nextNumber:D4}";
+                    nextNumber++;
+
+                    var invoice = new Invoice
+                    {
+                        InvoiceNumber = invoiceNumber,
+                        ClientId = client.Id,
+                        InvoiceDate = currentMonth,
+                        DueDate = currentMonth.AddDays(30),
+                        InvoiceType = InvoiceConstants.InvoiceType.Monthly,
+                        Status = InvoiceConstants.Status.Pending,
+                        PaymentType = paymentType,
+                        PaymentMethod = paymentMethod,
+                        CreatedByUserId = userId,
+                        Notes = notes
+                    };
+
+                    invoice.Items.Add(new InvoiceItem
+                    {
+                        Description = $"Póliza mensual de servicios - {currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-MX"))}{hoursInfo}",
+                        Quantity = 1,
+                        UnitPrice = subtotal,
+                        Subtotal = subtotal
+                    });
+
+                    foreach (var ticket in ticketsThisMonth)
+                    {
+                        invoice.Items.Add(new InvoiceItem
+                        {
+                            Description = $"Ticket #{ticket.Id} — {ticket.Title} ({ticket.ActualHours:0.0}h)",
+                            Quantity = 1,
+                            UnitPrice = 0m,
+                            Subtotal = 0m,
+                            TicketId = ticket.Id
+                        });
+                    }
+
+                    invoice.Subtotal = subtotal;
+                    invoice.Tax = subtotal * 0.16m;
+                    invoice.Total = invoice.Subtotal + invoice.Tax;
+
+                    _context.Invoices.Add(invoice);
+                    invoicesCreated++;
+
+                    _logger.LogInformation(
+                        "Factura mensual generada para {CompanyName} | {PaymentType} | {PaymentMethod} | {TicketCount} tickets",
+                        client.CompanyName, paymentType, paymentMethod, ticketsThisMonth.Count);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Total facturas mensuales generadas: {Count}", invoicesCreated);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
 
         return ServiceResult<bool>.Success(true);
     }
