@@ -70,7 +70,7 @@ public class InvoiceService : IInvoiceService
         if (clientId.HasValue)
             query = query.Where(i => i.ClientId == clientId.Value);
 
-        var invoices = await query.OrderByDescending(i => i.InvoiceDate).ToListAsync();
+        var invoices = await query.OrderByDescending(i => i.Id).ToListAsync();
 
         var invoiceDtos = new List<InvoiceDetailDto>();
         foreach (var invoice in invoices)
@@ -132,7 +132,8 @@ public class InvoiceService : IInvoiceService
             "invoicetype" or "type" => sortDescending ? query.OrderByDescending(i => i.InvoiceType) : query.OrderBy(i => i.InvoiceType),
             "status" => sortDescending ? query.OrderByDescending(i => i.Status) : query.OrderBy(i => i.Status),
             "total" => sortDescending ? query.OrderByDescending(i => i.Total) : query.OrderBy(i => i.Total),
-            _ => query.OrderByDescending(i => i.InvoiceDate)
+            "id" => sortDescending ? query.OrderByDescending(i => i.Id) : query.OrderBy(i => i.Id),
+            _ => query.OrderByDescending(i => i.Id)
         };
 
         // Paginación

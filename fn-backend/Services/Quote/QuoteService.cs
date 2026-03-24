@@ -119,7 +119,8 @@ public class QuoteService : IQuoteService
             "validuntil" => sortDescending ? query.OrderByDescending(q => q.ValidUntil ?? DateTime.MinValue) : query.OrderBy(q => q.ValidUntil ?? DateTime.MaxValue),
             "status" => sortDescending ? query.OrderByDescending(q => q.Status) : query.OrderBy(q => q.Status),
             "total" => sortDescending ? query.OrderByDescending(q => q.Total) : query.OrderBy(q => q.Total),
-            _ => query.OrderByDescending(q => q.CreatedAt)
+            "id" => sortDescending ? query.OrderByDescending(q => q.Id) : query.OrderBy(q => q.Id),
+            _ => query.OrderByDescending(q => q.Id)
         };
 
         // Paginación

@@ -65,14 +65,18 @@ public class QuotesController : ControllerBase
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _logger.LogInformation("✅ Usuario {UserId} obteniendo cotizaciones", userId);
 
-        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
-        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || query.Sort.StartsWith("-");
+        var sortField = string.IsNullOrEmpty(query.Sort)
+            ? "id"
+            : query.Sort.StartsWith("-")
+                ? query.Sort.Substring(1)
+                : query.Sort;
 
         var (quotes, total) = await _quoteService.GetQuotesPaginatedAsync(
             search: query.Search,
             status: status,
             clientId: clientId,
-            sortField: string.IsNullOrEmpty(sortField) ? "createdAt" : sortField,
+            sortField: string.IsNullOrEmpty(sortField) ? "id" : sortField,
             sortDescending: sortDescending,
             page: query.NormalizedPage,
             pageSize: query.NormalizedPageSize

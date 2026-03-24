@@ -586,7 +586,7 @@ public class TicketService : ITicketService
                 : query.OrderBy(t => t.Priority == "Urgente" ? 4 : t.Priority == "Alta" ? 3 : t.Priority == "Media" ? 2 : 1),
             "status" => sortDescending ? query.OrderByDescending(t => t.Status) : query.OrderBy(t => t.Status),
             "createdat" => sortDescending ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt),
-            _ => query.OrderByDescending(t => t.CreatedAt) // default
+            _ => query.OrderByDescending(t => t.Id) // default
         };
 
         // Aplicar paginación

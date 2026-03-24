@@ -93,6 +93,12 @@ public class TicketsController : ControllerBase
         }
 
         // 🆕 Usar paginación a nivel de base de datos
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || query.Sort.StartsWith("-");
+        var sortField = string.IsNullOrEmpty(query.Sort)
+            ? "id"
+            : query.Sort.StartsWith("-")
+                ? query.Sort.Substring(1)
+                : query.Sort;
         var (tickets, total) = await _ticketService.GetTicketsPaginatedAsync(
             status: status,
             priority: priority,
@@ -100,8 +106,8 @@ public class TicketsController : ControllerBase
             userId: userId,
             byCreator: byCreator,
             search: query.Search,
-            sortField: query.Sort,
-            sortDescending: string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-"),
+            sortField: sortField,
+            sortDescending: sortDescending,
             page: query.NormalizedPage,
             pageSize: query.NormalizedPageSize
         );

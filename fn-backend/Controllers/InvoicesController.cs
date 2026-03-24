@@ -37,15 +37,19 @@ public class InvoicesController : ControllerBase
         [FromQuery] string? invoiceType = null,
         [FromQuery] int? clientId = null)
     {
-        var sortDescending = string.IsNullOrEmpty(query.Sort) || !query.Sort.StartsWith("-");
-        var sortField = sortDescending ? query.Sort : query.Sort.Substring(1);
+        var sortDescending = string.IsNullOrEmpty(query.Sort) || query.Sort.StartsWith("-");
+        var sortField = string.IsNullOrEmpty(query.Sort)
+            ? "id"
+            : query.Sort.StartsWith("-")
+                ? query.Sort.Substring(1)
+                : query.Sort;
 
         var (invoices, total) = await _invoiceService.GetInvoicesPaginatedAsync(
             search: query.Search,
             status: status,
             invoiceType: invoiceType,
             clientId: clientId,
-            sortField: string.IsNullOrEmpty(sortField) ? "date" : sortField,
+            sortField: string.IsNullOrEmpty(sortField) ? "id" : sortField,
             sortDescending: sortDescending,
             page: query.NormalizedPage,
             pageSize: query.NormalizedPageSize
