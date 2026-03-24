@@ -373,7 +373,7 @@ public class TicketsController : ControllerBase
             await NotificationsHub.SendToUser(_notificationsHub, dto.AssignedToUserId, notification);
         }
 
-        // Notificar a Admin y Administracion
+        // Notificar a Admin y Administracion (excluir al usuario que realizó la asignación)
         var adminNotification = new NotificationDto
         {
             Type = "ticket_assigned",
@@ -386,12 +386,12 @@ public class TicketsController : ControllerBase
         await NotificationsHub.SendToAdmins(_notificationsHub, adminNotification);
         await NotificationsHub.SendToAdministracion(_notificationsHub, adminNotification);
 
-        // Guardar notificaciones para Admin y Administracion
+        // Guardar notificaciones para Admin y Administracion (excluir al que asignó)
         var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
         var adminUsers2 = await _userManager.GetUsersInRoleAsync("Administracion");
-        var allAdminUsers = adminUsers.Concat(adminUsers2).Distinct();
+        var allAdminUsers = adminUsers.Concat(adminUsers2).DistinctBy(u => u.Id);
 
-        foreach (var user in allAdminUsers)
+        foreach (var user in allAdminUsers.Where(u => u.Id != userId))
         {
             await _notificationService.SaveNotificationAsync(user.Id, adminNotification);
         }

@@ -257,7 +257,7 @@ public class TicketService : ITicketService
 
         await _context.SaveChangesAsync();
 
-        // Notificaciones por ticket creado usando el nuevo sistema
+        // Notificaciones por ticket creado usando el nuevo sistema (excluir al creador)
         var adminNotification = await _notificationHelper.CreateNotificationWithCreatorAsync(
             NotificationType.TicketCreatedByEmployee,
             "Nuevo Ticket Creado",
@@ -265,9 +265,8 @@ public class TicketService : ITicketService
             createdByUserId,
             $"/tickets/{ticket.Id}");
 
-        // Notificar a Admin y Administracion
-        await _notificationHelper.SendToAdminsAsync(adminNotification);
-        await _notificationHelper.SendToAdministracionAsync(adminNotification);
+        // Notificar a Admin y Administracion (excluyendo al creador)
+        await _notificationHelper.SendToAdminsAsync(adminNotification, excludeUserId: createdByUserId);
 
         // Notificar al empleado asignado si existe
         if (!string.IsNullOrEmpty(ticket.AssignedToUserId))
@@ -398,9 +397,8 @@ public class TicketService : ITicketService
                 // Notificar al empleado asignado
                 await _notificationHelper.SendToUserAsync(ticketDto.AssignedToUserId, assignedNotification);
 
-                // Notificar a Admin y Administracion
-                await _notificationHelper.SendToAdminsAsync(assignedNotification);
-                await _notificationHelper.SendToAdministracionAsync(assignedNotification);
+                // Notificar a Admin y Administracion (excluir al usuario que asignó)
+                await _notificationHelper.SendToAdminsAsync(assignedNotification, excludeUserId: userId);
             }
         }
 
@@ -505,9 +503,8 @@ public class TicketService : ITicketService
             await _notificationHelper.SendToUserAsync(ticket.AssignedToUserId, commentNotification);
         }
 
-        // Notificar a Admin y Administracion
-        await _notificationHelper.SendToAdminsAsync(commentNotification);
-        await _notificationHelper.SendToAdministracionAsync(commentNotification);
+        // Notificar a Admin y Administracion (excluir al usuario que hizo el comentario)
+        await _notificationHelper.SendToAdminsAsync(commentNotification, excludeUserId: userId);
 
         return ServiceResult<TicketCommentDto>.Success(new TicketCommentDto
         {
@@ -879,9 +876,8 @@ public class TicketService : ITicketService
                 await _notificationHelper.SendToUserAsync(ticket.CreatedByUserId, activityNotification);
             }
 
-            // Notificar a Admin y Administracion
-            await _notificationHelper.SendToAdminsAsync(activityNotification);
-            await _notificationHelper.SendToAdministracionAsync(activityNotification);
+            // Notificar a Admin y Administracion (excluir al usuario que agregó la actividad)
+            await _notificationHelper.SendToAdminsAsync(activityNotification, excludeUserId: userId);
         }
 
         return ServiceResult<TicketActivityDto>.Success(new TicketActivityDto
@@ -1018,15 +1014,14 @@ public class TicketService : ITicketService
                 await _notificationHelper.SendToUserAsync(ticket.CreatedByUserId, clientNotification);
             }
 
-            // Notificar a Admin y Administracion
+            // Notificar a Admin y Administracion (excluir al usuario que cerró el ticket)
             var adminNotification = await _notificationHelper.CreateNotificationWithCreatorAsync(
                 NotificationType.TicketClosed,
                 "Ticket Cerrado",
                 $"El ticket #{ticket.Id} - {ticket.Title} de {ticket.Project.Client.CompanyName} ha sido cerrado.",
                 userId,
                 $"/tickets/{ticket.Id}");
-            await _notificationHelper.SendToAdminsAsync(adminNotification);
-            await _notificationHelper.SendToAdministracionAsync(adminNotification);
+            await _notificationHelper.SendToAdminsAsync(adminNotification, excludeUserId: userId);
         }
 
         return ServiceResult<bool>.Success(true);

@@ -240,15 +240,14 @@ public class InvoiceService : IInvoiceService
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
-        // Notificaciones de factura creada
+        // Notificaciones de factura creada (excluir al creador)
         var invoiceNotification = await _notificationHelper.CreateNotificationWithCreatorAsync(
             NotificationType.InvoiceCreated,
             "Nueva Factura Creada",
             $"Se ha creado la factura #{invoice.InvoiceNumber}",
             createdByUserId,
             $"/facturas/{invoice.Id}");
-        await _notificationHelper.SendToAdminsAsync(invoiceNotification);
-        await _notificationHelper.SendToAdministracionAsync(invoiceNotification);
+        await _notificationHelper.SendToAdminsAsync(invoiceNotification, excludeUserId: createdByUserId);
 
         await _context.Entry(invoice).Reference(i => i.Client).LoadAsync();
         await _context.Entry(invoice).Collection(i => i.Items).LoadAsync();
@@ -586,7 +585,7 @@ public class InvoiceService : IInvoiceService
 
         await _context.SaveChangesAsync();
 
-        // Notificar si la factura quedó pagada
+        // Notificar si la factura quedó pagada (excluir al usuario que realizó el pago)
         if (invoice.Status == InvoiceConstants.Status.Paid)
         {
             var paidNotification = _notificationHelper.CreateNotification(
@@ -594,8 +593,7 @@ public class InvoiceService : IInvoiceService
                 "Factura Pagada",
                 $"Se registró un pago de {payment.Amount:C} para la factura #{invoice.InvoiceNumber}",
                 $"/facturas/{invoiceId}");
-            await _notificationHelper.SendToAdminsAsync(paidNotification);
-            await _notificationHelper.SendToAdministracionAsync(paidNotification);
+            await _notificationHelper.SendToAdminsAsync(paidNotification, excludeUserId: userId);
         }
 
         var user = await _userManager.FindByIdAsync(userId);

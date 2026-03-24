@@ -28,32 +28,37 @@ public interface INotificationHelper
     /// <summary>
     /// Envía notificación a múltiples usuarios (BD + SignalR)
     /// </summary>
-    Task SendToUsersAsync(IEnumerable<string> userIds, NotificationDto notification);
+    /// <param name="userIds">Lista de usuarios a notificar</param>
+    /// <param name="notification">Notificación a enviar</param>
+    /// <param name="excludeUserId">ID de usuario a excluir de la notificación (ej: el creador de la acción)</param>
+    Task SendToUsersAsync(IEnumerable<string> userIds, NotificationDto notification, string? excludeUserId = null);
 
     /// <summary>
     /// Envía notificación a un rol específico (BD + SignalR)
     /// </summary>
-    Task SendToRoleAsync(string role, NotificationDto notification);
+    Task SendToRoleAsync(string role, NotificationDto notification, string? excludeUserId = null);
 
     /// <summary>
     /// Envía notificación a múltiples roles (BD + SignalR)
     /// </summary>
-    Task SendToRolesAsync(IEnumerable<string> roles, NotificationDto notification);
+    Task SendToRolesAsync(IEnumerable<string> roles, NotificationDto notification, string? excludeUserId = null);
 
     /// <summary>
     /// Envía notificación a administradores (BD + SignalR)
     /// </summary>
-    Task SendToAdminsAsync(NotificationDto notification);
+    /// <param name="notification">Notificación a enviar</param>
+    /// <param name="excludeUserId">ID de usuario a excluir de la notificación (ej: el creador de la acción)</param>
+    Task SendToAdminsAsync(NotificationDto notification, string? excludeUserId = null);
 
     /// <summary>
     /// Envía notificación a administración (BD + SignalR)
     /// </summary>
-    Task SendToAdministracionAsync(NotificationDto notification);
+    Task SendToAdministracionAsync(NotificationDto notification, string? excludeUserId = null);
 
     /// <summary>
     /// Envía notificación a empleados (BD + SignalR)
     /// </summary>
-    Task SendToEmployeesAsync(NotificationDto notification);
+    Task SendToEmployeesAsync(NotificationDto notification, string? excludeUserId = null);
 
     /// <summary>
     /// Obtiene los IDs de usuarios por rol
@@ -181,9 +186,17 @@ public class NotificationHelper : INotificationHelper
         await NotificationsHub.SendToUser(_hubContext, userId, notification);
     }
 
-    public async Task SendToUsersAsync(IEnumerable<string> userIds, NotificationDto notification)
+    public async Task SendToUsersAsync(IEnumerable<string> userIds, NotificationDto notification, string? excludeUserId = null)
     {
         var userIdList = userIds.ToList();
+        if (!userIdList.Any()) return;
+
+        // Excluir el usuario especificado
+        if (!string.IsNullOrEmpty(excludeUserId))
+        {
+            userIdList = userIdList.Where(id => id != excludeUserId).ToList();
+        }
+
         if (!userIdList.Any()) return;
 
         // Guardar en BD para todos los usuarios
@@ -197,53 +210,53 @@ public class NotificationHelper : INotificationHelper
         }
     }
 
-    public async Task SendToRoleAsync(string role, NotificationDto notification)
+    public async Task SendToRoleAsync(string role, NotificationDto notification, string? excludeUserId = null)
     {
         var userIds = await GetUserIdsByRoleAsync(role);
-        await SendToUsersAsync(userIds, notification);
+        await SendToUsersAsync(userIds, notification, excludeUserId);
 
-        // También enviar por el grupo de SignalR
+        // También enviar por el grupo de SignalR (a todos en el rol, la exclusión es a nivel de notificación guardada)
         await NotificationsHub.SendToRole(_hubContext, role.ToLower(), notification);
     }
 
-    public async Task SendToRolesAsync(IEnumerable<string> roles, NotificationDto notification)
+    public async Task SendToRolesAsync(IEnumerable<string> roles, NotificationDto notification, string? excludeUserId = null)
     {
         foreach (var role in roles)
         {
-            await SendToRoleAsync(role, notification);
+            await SendToRoleAsync(role, notification, excludeUserId);
         }
     }
 
-    public async Task SendToAdminsAsync(NotificationDto notification)
+    public async Task SendToAdminsAsync(NotificationDto notification, string? excludeUserId = null)
     {
         // Obtener todos los usuarios de Admin y Administracion para evitar duplicados
         var allAdminIds = await GetUserIdsByRolesAsync(new[] { "Admin", "Administracion" });
         var uniqueIds = allAdminIds.Distinct().ToList();
-        await SendToUsersAsync(uniqueIds, notification);
+        await SendToUsersAsync(uniqueIds, notification, excludeUserId);
     }
 
-    public async Task SendToAdministracionAsync(NotificationDto notification)
+    public async Task SendToAdministracionAsync(NotificationDto notification, string? excludeUserId = null)
     {
         // Ya no enviar por separado para evitar duplicados con Admin
         // SendToAdminsAsync ya incluye Administracion
-        // Pero si se llama单独的, enviar solo a Administracion
+        // Pero si se llama单独, enviar solo a Administracion
         var adminIds = await GetUserIdsByRoleAsync("Administracion");
         var adminSet = new HashSet<string>(adminIds);
-        
+
         // Excluir usuarios que ya recibieron como Admin
         var adminUserIds = await GetUserIdsByRoleAsync("Admin");
         var finalIds = adminIds.Where(id => !adminSet.Contains(id)).ToList();
-        
+
         if (finalIds.Any())
         {
-            await SendToUsersAsync(finalIds, notification);
+            await SendToUsersAsync(finalIds, notification, excludeUserId);
         }
     }
 
-    public async Task SendToEmployeesAsync(NotificationDto notification)
+    public async Task SendToEmployeesAsync(NotificationDto notification, string? excludeUserId = null)
     {
         var employeeIds = await GetUserIdsByRoleAsync("Empleado");
-        await SendToUsersAsync(employeeIds, notification);
+        await SendToUsersAsync(employeeIds, notification, excludeUserId);
     }
 
     public async Task<List<string>> GetUserIdsByRoleAsync(string role)

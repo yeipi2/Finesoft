@@ -297,7 +297,10 @@ public class ProjectService : IProjectService
             if (project == null)
                 return ServiceResult<bool>.Failure("Proyecto no encontrado");
 
-            _context.Projects.Remove(project);
+            // Soft delete: cambiar IsActive en lugar de eliminar
+            project.IsActive = !project.IsActive;
+
+            _context.Projects.Update(project);
             await _context.SaveChangesAsync();
 
             await _cache.InvalidateAsync(CacheKeys.AllProjects);

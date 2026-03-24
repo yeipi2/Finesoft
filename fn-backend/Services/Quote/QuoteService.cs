@@ -206,15 +206,14 @@ public class QuoteService : IQuoteService
         await _context.Entry(quote).Reference(q => q.Client).LoadAsync();
         await _context.Entry(quote).Collection(q => q.Items).LoadAsync();
 
-        // Notificación de cotización creada
+        // Notificación de cotización creada (excluir al creador)
         var quoteNotification = await _notificationHelper.CreateNotificationWithCreatorAsync(
             NotificationType.QuoteCreated,
             "Nueva Cotización Creada",
             $"Se ha creado la cotización #{quote.QuoteNumber} para {quote.Client.CompanyName}",
             createdByUserId,
             $"/cotizaciones/{quote.Id}");
-        await _notificationHelper.SendToAdminsAsync(quoteNotification);
-        await _notificationHelper.SendToAdministracionAsync(quoteNotification);
+        await _notificationHelper.SendToAdminsAsync(quoteNotification, excludeUserId: createdByUserId);
 
         foreach (var item in quote.Items)
         {

@@ -43,7 +43,9 @@ else
                            SortField="@_sortField"
                            SortDir="@_sortDir"
                            SortChanged="OnSortChanged"
-                           OnViewDetails="ViewProjectDetails" />
+                           OnViewDetails="ViewProjectDetails"
+                           CanDelete="@_canDelete"
+                           OnToggleStatus="ToggleProjectStatus" />
         </section>
 
         @if (_totalPages > 0)
@@ -184,6 +186,42 @@ else
 
     private void ViewProjectDetails(int projectId) =>
         NavigationManager.NavigateTo($"/proyectos/{projectId}");
+
+    private async Task ToggleProjectStatus(ProjectDetailDto project)
+    {
+        var actionText = project.IsActive ? "desactivar" : "activar";
+        var confirmed = await DialogService.Confirm(
+            $"¿Estás seguro de que quieres {actionText} el proyecto {project.Name}?",
+            $"Confirmar {actionText}",
+            new ConfirmOptions
+            {
+                OkButtonText = $"Sí, {actionText}",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var (success, errorMessage) = await ProjectApiService.DeleteProjectAsync(project.Id);
+                if (success)
+                {
+                    Notify("Éxito",
+                        $"Proyecto {(project.IsActive ? "desactivado" : "activado")} correctamente.",
+                        NotificationSeverity.Success);
+                    await LoadProjects();
+                }
+                else
+                {
+                    Notify("Error", errorMessage ?? "No se pudo actualizar el estado.", NotificationSeverity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Notify("Error Grave", ex.Message, NotificationSeverity.Error);
+            }
+        }
+    }
 
     // ── Notificaciones ────────────────────────────────────────────────────────
     private void Notify(string title, string message, NotificationSeverity severity) =>

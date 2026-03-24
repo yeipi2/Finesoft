@@ -51,6 +51,14 @@
                         title="Ver detalles">
                     <i class="bi bi-eye-fill"></i>
                 </button>
+                @if (CanDelete)
+                {
+                    <button class="btn btn-sm @(project.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                            @onclick="() => OnToggleStatus.InvokeAsync(project)"
+                            title="@(project.IsActive ? "Desactivar" : "Activar")">
+                        <i class="bi bi-folder-fill"></i>
+                    </button>
+                }
             </td>
         </tr>
     </RowTemplate>
@@ -68,6 +76,8 @@
 
     // Acciones
     [Parameter] public EventCallback<int> OnViewDetails { get; set; }
+    [Parameter] public bool CanDelete { get; set; }
+    [Parameter] public EventCallback<ProjectDetailDto> OnToggleStatus { get; set; }
 
     private void OnSortChanged((string field, FsSortHeader.SortDirection dir) s)
         => SortChanged.InvokeAsync(s);
